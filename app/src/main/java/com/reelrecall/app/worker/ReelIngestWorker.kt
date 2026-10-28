@@ -54,40 +54,69 @@ class ReelIngestWorker(
                 null
             }
 
-            // Step 3: Update status to SUMMARIZING
+            // Check reel duration: if > 1 minute (60,000ms), extract all details & transcript
+            // but skip AI token summarization until user explicitly runs it from the Reel Detail page.
+            val durationMs = if (metadata.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
+                try {
+                    val retriever = android.media.MediaMetadataRetriever()
+                    retriever.setDataSource(metadata.audioFile.absolutePath)
+                    val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    retriever.release()
+                    time?.toLongOrNull() ?: 0L
+                } catch (e: Exception) {
+                    0L
+                }
+            } else {
+                0L
+            }
+
+            val existing = dao.findByCanonicalUrl(canonicalUrl)
+            val cleanHandle = metadata.creatorHandle?.let {
+                android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
+            }
+            val cleanCaption = metadata.caption?.let {
+                android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
+            }
+
+            if (durationMs > 60_000L) {
+                // RULE: Long Reel (> 1 min) -> Save all extracted details without consuming AI summarization tokens
+                if (existing != null) {
+                    val fallbackTitle = cleanCaption?.take(60)?.ifBlank { null }
+                        ?: "Instagram Reel by ${cleanHandle ?: "@creator"}"
+                    val updated = existing.copy(
+                        creatorHandle = cleanHandle ?: existing.creatorHandle,
+                        caption = cleanCaption ?: existing.caption,
+                        audioPath = metadata.audioFile?.absolutePath,
+                        thumbnailUrl = metadata.thumbnailUrl ?: existing.thumbnailUrl,
+                        transcript = transcript,
+                        title = fallbackTitle,
+                        oneLineSummary = null,
+                        takeawaysJson = "[]",
+                        tagsJson = "[]",
+                        engineUsed = transcriptionEngine.name,
+                        status = IngestionStatus.COMPLETED,
+                        errorMessage = null
+                    )
+                    dao.update(updated)
+                }
+
+                val notifTitle = cleanCaption?.take(40) ?: "Reel Library: Long Reel Indexed"
+                postCompletionNotification(notifTitle, "Reel is over 1 min. Tap in app to run AI summary on demand.")
+                return Result.success()
+            }
+
+            // Step 3: Update status to SUMMARIZING for reels <= 1 minute
             dao.updateStatus(reelId, IngestionStatus.SUMMARIZING)
 
             val summarizationEngine = dispatcher.resolveSummarizationEngine(currentPrefs)
             val summaryResult = summarizationEngine.summarize(metadata.caption, transcript ?: "")
 
             val summary = summaryResult.getOrElse { originalErr ->
-                // Try Gemini if available and not yet tried
-                val geminiFallback = if (currentPrefs.geminiApiKey.isNotBlank() && summarizationEngine !is com.reelrecall.app.engine.GeminiSummarizerEngine) {
-                    com.reelrecall.app.engine.GeminiSummarizerEngine(currentPrefs.geminiApiKey).summarize(metadata.caption, transcript ?: "").getOrNull()
-                } else null
-
-                // Try Groq if available and not yet tried
-                val groqFallback = if (geminiFallback == null && currentPrefs.groqApiKey.isNotBlank() && summarizationEngine !is com.reelrecall.app.engine.GroqSummarizerEngine) {
-                    com.reelrecall.app.engine.GroqSummarizerEngine(currentPrefs.groqApiKey).summarize(metadata.caption, transcript ?: "").getOrNull()
-                } else null
-
-                geminiFallback
-                    ?: groqFallback
-                    ?: return handleError(reelId, "Sync failed: ${originalErr.message}")
+                return handleError(reelId, "Processing failed: ${originalErr.message}")
             }
 
-            val warning = summaryResult.exceptionOrNull()?.let { "(Fallback: ${it.message})" }
-
             // Step 4: Persist finalized entity in Room DB
-            val existing = dao.findByCanonicalUrl(canonicalUrl)
             if (existing != null) {
-                val cleanHandle = metadata.creatorHandle?.let {
-                    android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
-                }
-                val cleanCaption = metadata.caption?.let {
-                    android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
-                }
-
                 val updated = existing.copy(
                     creatorHandle = cleanHandle ?: existing.creatorHandle,
                     caption = cleanCaption ?: existing.caption,
@@ -98,13 +127,12 @@ class ReelIngestWorker(
                     oneLineSummary = summary.one_line_summary,
                     takeawaysJson = Json.encodeToString(summary.actionable_takeaways),
                     tagsJson = Json.encodeToString(summary.tags),
-                    engineUsed = "${transcriptionEngine.name} + ${if (warning != null) "Fallback Engine" else summarizationEngine.name}",
+                    engineUsed = "${transcriptionEngine.name} + ${summarizationEngine.name}",
                     status = IngestionStatus.COMPLETED,
-                    errorMessage = warning
+                    errorMessage = null
                 )
                 dao.update(updated)
             }
-
 
             postCompletionNotification(summary.title, summary.one_line_summary)
 

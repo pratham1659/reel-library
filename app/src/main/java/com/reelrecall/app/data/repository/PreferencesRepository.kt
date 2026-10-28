@@ -103,6 +103,7 @@ class PreferencesRepository(private val context: Context) {
         val LAST_CALL_LATENCY_MS = longPreferencesKey("last_call_latency_ms")
         val LAST_CALL_STATUS_CODE = stringPreferencesKey("last_call_status_code")
         val LAST_CALL_PROVIDER = stringPreferencesKey("last_call_provider")
+        val LAST_DAILY_RESET_TIME = longPreferencesKey("last_daily_reset_time")
         // Per-Provider Telemetry Keys
         val GEMINI_TOTAL_TOKENS = longPreferencesKey("gemini_total_tokens")
         val GEMINI_PROMPT_TOKENS = longPreferencesKey("gemini_prompt_tokens")
@@ -113,6 +114,9 @@ class PreferencesRepository(private val context: Context) {
         val GROQ_COMPLETION_TOKENS = longPreferencesKey("groq_completion_tokens")
         val GROQ_CALLS_COUNT = longPreferencesKey("groq_calls_count")
     }
+
+    private val db by lazy { com.reelrecall.app.data.local.AppDatabase.getInstance(context) }
+    private val tokenUsageDao by lazy { db.tokenUsageDao() }
 
     private val secureKeyVault = com.reelrecall.app.data.security.SecureKeyVault.getInstance(context)
 
@@ -290,19 +294,90 @@ class PreferencesRepository(private val context: Context) {
         }
     }
 
+    private fun getCutoff1Am(now: Long = System.currentTimeMillis()): Long {
+        val cal = java.util.Calendar.getInstance()
+        cal.timeInMillis = now
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 1)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        if (now < cal.timeInMillis) {
+            cal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+        }
+        return cal.timeInMillis
+    }
+
+    suspend fun checkAndPerformDailyResetIfNeeded() {
+        val now = System.currentTimeMillis()
+        val cutoff = getCutoff1Am(now)
+        context.dataStore.edit { preferences ->
+            val lastReset = preferences[PreferencesKeys.LAST_DAILY_RESET_TIME] ?: 0L
+            if (lastReset < cutoff) {
+                preferences[PreferencesKeys.TOTAL_TOKENS_USED] = 0L
+                preferences[PreferencesKeys.TOTAL_PROMPT_TOKENS] = 0L
+                preferences[PreferencesKeys.TOTAL_COMPLETION_TOKENS] = 0L
+                preferences[PreferencesKeys.GEMINI_TOTAL_TOKENS] = 0L
+                preferences[PreferencesKeys.GEMINI_PROMPT_TOKENS] = 0L
+                preferences[PreferencesKeys.GEMINI_COMPLETION_TOKENS] = 0L
+                preferences[PreferencesKeys.GEMINI_CALLS_COUNT] = 0L
+                preferences[PreferencesKeys.GROQ_TOTAL_TOKENS] = 0L
+                preferences[PreferencesKeys.GROQ_PROMPT_TOKENS] = 0L
+                preferences[PreferencesKeys.GROQ_COMPLETION_TOKENS] = 0L
+                preferences[PreferencesKeys.GROQ_CALLS_COUNT] = 0L
+                preferences[PreferencesKeys.LAST_DAILY_RESET_TIME] = now
+            }
+        }
+    }
+
     suspend fun recordTokenUsage(
         promptTokens: Long,
         completionTokens: Long,
         latencyMs: Long = 0L,
         statusCode: String = "200 OK",
-        provider: String = ""
+        provider: String = "",
+        model: String = "",
+        errorMessage: String? = null
     ) {
-        if (promptTokens <= 0L && completionTokens <= 0L) return
+        checkAndPerformDailyResetIfNeeded()
+
+        val now = System.currentTimeMillis()
+        val dateFmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        val monthFmt = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US)
+        val dateStr = dateFmt.format(java.util.Date(now))
+        val monthStr = monthFmt.format(java.util.Date(now))
+        val totalForCall = promptTokens + completionTokens
+        val isLocal = (provider.contains("Whisper", ignoreCase = true) && !provider.contains("Groq", ignoreCase = true)) ||
+                provider.contains("Gemma", ignoreCase = true) ||
+                provider.contains("Local", ignoreCase = true)
+        val engineType = if (isLocal) "LOCAL" else "CLOUD"
+
+        // 1. Permanently record full history into Room DB
+        try {
+            tokenUsageDao.insert(
+                com.reelrecall.app.data.model.TokenUsageEntity(
+                    timestamp = now,
+                    dateString = dateStr,
+                    monthString = monthStr,
+                    engineType = engineType,
+                    provider = provider,
+                    promptTokens = promptTokens,
+                    completionTokens = completionTokens,
+                    totalTokens = totalForCall,
+                    latencyMs = latencyMs,
+                    statusCode = statusCode,
+                    errorDetails = errorMessage,
+                    payloadSnippet = model
+                )
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepository", "Failed to insert TokenUsageEntity", e)
+        }
+
+        // 2. Update real-time daily DataStore telemetry
         context.dataStore.edit { preferences ->
             val currentPrompt = preferences[PreferencesKeys.TOTAL_PROMPT_TOKENS] ?: 0L
             val currentComp = preferences[PreferencesKeys.TOTAL_COMPLETION_TOKENS] ?: 0L
             val currentTotal = preferences[PreferencesKeys.TOTAL_TOKENS_USED] ?: 0L
-            val totalForCall = promptTokens + completionTokens
 
             preferences[PreferencesKeys.TOTAL_PROMPT_TOKENS] = currentPrompt + promptTokens
             preferences[PreferencesKeys.TOTAL_COMPLETION_TOKENS] = currentComp + completionTokens
@@ -344,6 +419,10 @@ class PreferencesRepository(private val context: Context) {
             }
         }
     }
+
+    fun getDayWiseConsumption(engineType: String) = tokenUsageDao.getDayWiseConsumption(engineType)
+    fun getMonthWiseConsumption(engineType: String) = tokenUsageDao.getMonthWiseConsumption(engineType)
+    fun getRecentLogs(engineType: String) = tokenUsageDao.getRecentLogs(engineType)
 
     suspend fun resetTokenStats() {
         context.dataStore.edit { preferences ->

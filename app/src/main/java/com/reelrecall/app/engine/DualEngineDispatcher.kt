@@ -9,6 +9,7 @@ import com.reelrecall.app.data.repository.PreferencesRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.reelrecall.app.data.model.ReelSummary
 import java.io.File
 
 class DualEngineDispatcher(
@@ -37,7 +38,7 @@ class DualEngineDispatcher(
                 if (prefs.groqApiKey.isNotBlank()) {
                     GroqWhisperEngine(prefs.groqApiKey)
                 } else {
-                    MockTranscriptionEngine()
+                    FailingTranscriptionEngine("Cloud transcription requires a Groq API key.")
                 }
             }
 
@@ -46,7 +47,7 @@ class DualEngineDispatcher(
                 if (prefs.isWhisperModelDownloaded && modelFile?.exists() == true) {
                     LocalWhisperEngine(modelFile)
                 } else {
-                    MockTranscriptionEngine()
+                    FailingTranscriptionEngine("Local Whisper model is not downloaded. Please download Whisper Base in Settings.")
                 }
             }
 
@@ -75,7 +76,7 @@ class DualEngineDispatcher(
                 } else if (prefs.groqApiKey.isNotBlank()) {
                     GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
                 } else {
-                    MockSummarizationEngine()
+                    FailingSummarizerEngine("Cloud API keys missing. Please configure Groq or Gemini API key in Settings.")
                 }
             }
 
@@ -83,12 +84,8 @@ class DualEngineDispatcher(
                 val modelFile = prefs.llmModelPath?.let { File(it) }
                 if (prefs.isLlmModelDownloaded && modelFile?.exists() == true) {
                     LocalMediaPipeSummarizerEngine(modelFile)
-                } else if (isOnline && prefs.geminiApiKey.isNotBlank()) {
-                    GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
-                } else if (isOnline && prefs.groqApiKey.isNotBlank()) {
-                    GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
                 } else {
-                    MockSummarizationEngine()
+                    FailingSummarizerEngine("Local LLM model is not downloaded. Please download Gemma 2B in Settings.")
                 }
             }
 
@@ -116,3 +113,18 @@ class DualEngineDispatcher(
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 }
+
+class FailingTranscriptionEngine(private val reason: String) : TranscriptionEngine {
+    override val name: String = "Transcription Engine Error"
+    override suspend fun transcribe(audioFile: File): Result<String> {
+        return Result.failure(IllegalStateException(reason))
+    }
+}
+
+class FailingSummarizerEngine(private val reason: String) : SummarizationEngine {
+    override val name: String = "Summarizer Engine Error"
+    override suspend fun summarize(caption: String?, transcript: String): Result<ReelSummary> {
+        return Result.failure(IllegalStateException(reason))
+    }
+}
+

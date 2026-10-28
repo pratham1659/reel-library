@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
@@ -28,6 +29,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.alpha
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -35,11 +37,13 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -61,6 +65,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,6 +73,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
@@ -108,6 +114,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.reelrecall.app.data.repository.AppPreferences
 import com.reelrecall.app.data.repository.EngineMode
 import com.reelrecall.app.ui.theme.CyanAccent
 import com.reelrecall.app.ui.theme.ElectricIndigo
@@ -213,7 +220,7 @@ private fun ProfileMainScreen(
     val preferences by viewModel.preferences.collectAsState()
     val isCloudMode = preferences.engineMode != EngineMode.LOCAL_ONLY
     val isDarkTheme = preferences.themeMode != "OBSIDIAN_LIGHT"
-    var showEmailAuthDialog by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -243,7 +250,7 @@ private fun ProfileMainScreen(
             }
 
             Text(
-                text = "Profile",
+                text = "Settings",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = colors.textPrimary
@@ -260,173 +267,22 @@ private fun ProfileMainScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp, vertical = 8.dp)
         ) {
-            // PROFILE / AUTHENTICATION CARD (NEUMORPHIC)
-            NeumorphicCard(
-                colors = colors,
-                elevation = 6.dp,
-                onClick = if (!preferences.isLoggedIn) { { showEmailAuthDialog = true } } else null,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (!preferences.isLoggedIn) {
-                    // ==========================================
-                    // STATE A: NOT LOGGED IN / SIGNUP PROMPT
-                    // ==========================================
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(54.dp)
-                                    .clip(CircleShape)
-                                    .background(colors.pillBg)
-                                    .border(1.dp, colors.border, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = colors.textMuted,
-                                    modifier = Modifier.size(26.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Column {
-                                Text(
-                                    text = "Not signed in",
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.textPrimary
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Tap to sign in with email or free auth",
-                                    fontSize = 11.sp,
-                                    color = colors.textMuted
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // NEUMORPHIC SIGN-IN / AUTH BUTTON
-                        NeumorphicButton(
-                            onClick = { showEmailAuthDialog = true },
-                            colors = colors,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Email,
-                                    contentDescription = null,
-                                    tint = colors.accent,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = "Sign In / Register with Email",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = colors.textPrimary
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    // ==========================================
-                    // STATE B: LOGGED IN (AVATAR + NAME + EMAIL)
-                    // ==========================================
-                    Row(
-                        modifier = Modifier.padding(18.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(54.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFE91E63)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = preferences.userAvatarInitial.ifBlank { "P" },
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = preferences.userName,
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = preferences.userEmail,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = colors.textSecondary
-                            )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = StatusReady.copy(alpha = 0.15f)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(StatusReady)
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                                Text(
-                                    text = "Active",
-                                    fontSize = 10.sp,
-                                    color = StatusReady,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // SECTION TITLE: SETTINGS
-            Text(
-                text = "SETTINGS",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = colors.textMuted,
-                letterSpacing = 0.5.sp,
-                modifier = Modifier.padding(start = 6.dp, top = 22.dp, bottom = 8.dp)
-            )
-
             // GROUPED SETTINGS NEUMORPHIC CARD
             NeumorphicCard(
                 colors = colors,
                 elevation = 6.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // 1. Account (Opens deep Account Details)
+                // 1. Account (Marked Coming Soon for future release)
                 ProfileMenuRow(
                     icon = Icons.Default.Person,
                     title = "Account",
-                    badgeText = if (preferences.isLoggedIn) "Verified" else "Details",
-                    badgeColor = if (preferences.isLoggedIn) StatusReady else colors.accent,
+                    badgeText = "Coming Soon",
+                    badgeColor = colors.textMuted,
                     colors = colors,
-                    onClick = onNavigateToAccount
+                    onClick = {
+                        Toast.makeText(context, "Account details coming soon", Toast.LENGTH_SHORT).show()
+                    }
                 )
                 NeumorphicDivider(colors = colors)
 
@@ -442,15 +298,17 @@ private fun ProfileMainScreen(
                 )
                 NeumorphicDivider(colors = colors)
 
-                // 3. Preferences (Opens Preferences Subscreen)
+                // 3. Preferences (Marked Coming Soon for future release)
                 ProfileMenuRow(
                     icon = Icons.Default.Tune,
                     iconTint = ElectricIndigo,
                     title = "Preferences",
-                    badgeText = "Feed & AI",
-                    badgeColor = ElectricIndigo,
+                    badgeText = "Coming Soon",
+                    badgeColor = colors.textMuted,
                     colors = colors,
-                    onClick = onNavigateToPreferences
+                    onClick = {
+                        Toast.makeText(context, "Preferences coming soon", Toast.LENGTH_SHORT).show()
+                    }
                 )
                 NeumorphicDivider(colors = colors)
 
@@ -478,14 +336,26 @@ private fun ProfileMainScreen(
                     icon = Icons.Default.Storage,
                     iconTint = CyanAccent,
                     title = "Data & Storage",
-                    badgeText = if (preferences.isCloudBackupEnabled) "Cloud Sync" else "Local Only",
-                    badgeColor = if (preferences.isCloudBackupEnabled) StatusReady else colors.textMuted,
+                    badgeText = "Local Only",
+                    badgeColor = colors.textMuted,
                     colors = colors,
                     onClick = onNavigateToData
                 )
                 NeumorphicDivider(colors = colors)
 
-                // 6. Help & Feedback (Highlight with coral/orange accent)
+                // 6. Check for update (Native software update row)
+                ProfileMenuRow(
+                    icon = Icons.Default.SystemUpdate,
+                    iconTint = CyanAccent,
+                    title = "Check for update",
+                    badgeText = "v1.0 • Up to date",
+                    badgeColor = StatusReady,
+                    colors = colors,
+                    onClick = { showUpdateDialog = true }
+                )
+                NeumorphicDivider(colors = colors)
+
+                // 7. Help & Feedback (Highlight with coral/orange accent)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -513,72 +383,380 @@ private fun ProfileMainScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // SEPARATE LOGOUT / SIGN-IN CARD (NEUMORPHIC)
-            NeumorphicCard(
-                colors = colors,
-                elevation = 4.dp,
-                onClick = {
-                    if (preferences.isLoggedIn) {
-                        viewModel.logout()
-                        Toast.makeText(context, "Signed out of session", Toast.LENGTH_SHORT).show()
-                    } else {
-                        showEmailAuthDialog = true
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (preferences.isLoggedIn) Icons.AutoMirrored.Filled.Logout else Icons.Default.Person,
-                        contentDescription = "Auth Action",
-                        tint = if (preferences.isLoggedIn) Color(0xFFF43F5E) else colors.accent,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text(
-                        text = if (preferences.isLoggedIn) "Logout" else "Sign In / Register with Email",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary
-                    )
-                }
-            }
-
             Spacer(modifier = Modifier.height(30.dp))
         }
 
-        // REAL EMAIL AUTH DIALOG MODAL
-        if (showEmailAuthDialog) {
-            EmailAuthDialog(
-                colors = colors,
-                onDismiss = { showEmailAuthDialog = false },
-                onLogin = { email, name, password, isSignUp ->
-                    viewModel.loginWithEmail(
-                        email = email,
-                        name = name,
-                        password = password,
-                        isSignUp = isSignUp
-                    )
-                    showEmailAuthDialog = false
-                    Toast.makeText(
-                        context,
-                        if (isSignUp) "Account created for $email" else "Signed in as $email",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                },
-                onGoogleLogin = { email ->
-                    viewModel.loginWithGoogle(
-                        name = email.substringBefore("@").replaceFirstChar { it.uppercase() },
-                        email = email
-                    )
-                    showEmailAuthDialog = false
-                    Toast.makeText(context, "Signed in as $email", Toast.LENGTH_SHORT).show()
+        if (showUpdateDialog) {
+            SoftwareUpdateDialog(
+                onDismiss = { showUpdateDialog = false },
+                colors = colors
+            )
+        }
+    }
+}
+
+// =========================================================================
+// SOFTWARE UPDATE MODAL (NATIVE SYSTEM UPDATE EXPERIENCE)
+// =========================================================================
+@Composable
+private fun SoftwareUpdateDialog(
+    onDismiss: () -> Unit,
+    colors: NeumorphicColors
+) {
+    var isChecking by remember { mutableStateOf(false) }
+    var lastCheckedText by remember { mutableStateOf("Just now") }
+    val scope = rememberCoroutineScope()
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.72f))
+                .clickable { onDismiss() },
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .clickable(enabled = false) {}
+            ) {
+                NeumorphicCard(
+                    colors = colors,
+                    elevation = 16.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(22.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Top close header
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.SystemUpdate,
+                                    contentDescription = null,
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "System Update",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary
+                                )
+                            }
+                            IconButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = colors.textSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Glowing update badge
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(CircleShape)
+                                .background(CyanAccent.copy(alpha = 0.12f))
+                                .border(1.5.dp, if (isChecking) CyanAccent else StatusReady.copy(alpha = 0.5f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isChecking) Icons.Default.Sync else Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = if (isChecking) CyanAccent else StatusReady,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = if (isChecking) "Checking for updates..." else "Reel Library is up to date",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = colors.pillBg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
+                        ) {
+                            Text(
+                                text = "Current Version: v1.0",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = CyanAccent,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // Details breakdown card
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = colors.pillBg.copy(alpha = 0.5f),
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(text = "Status", fontSize = 12.sp, color = colors.textSecondary)
+                                    Text(text = "Latest updated", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = StatusReady)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(text = "Last checked", fontSize = 12.sp, color = colors.textSecondary)
+                                    Text(text = lastCheckedText, fontSize = 12.sp, color = colors.textPrimary)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(text = "Engine Runtime", fontSize = 12.sp, color = colors.textSecondary)
+                                    Text(text = "Reel Library Engine v1.0", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = colors.textPrimary)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Check Again Button
+                        NeumorphicButton(
+                            onClick = {
+                                if (!isChecking) {
+                                    scope.launch {
+                                        isChecking = true
+                                        kotlinx.coroutines.delay(1200)
+                                        isChecking = false
+                                        lastCheckedText = "Just now"
+                                    }
+                                }
+                            },
+                            enabled = !isChecking,
+                            colors = colors,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                if (isChecking) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        color = colors.accent,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Connecting to server...",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textPrimary
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.SystemUpdate,
+                                        contentDescription = null,
+                                        tint = colors.accent,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Check for updates",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textPrimary
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+        }
+    }
+}
+
+// =========================================================================
+// DETACHED PROFILE & AUTH COMPOSABLES (PRESERVED FOR FUTURE RELEASE)
+// =========================================================================
+@Composable
+private fun ProfileAuthHeaderCard(
+    preferences: AppPreferences,
+    colors: NeumorphicColors,
+    onSignInClick: () -> Unit
+) {
+    NeumorphicCard(
+        colors = colors,
+        elevation = 6.dp,
+        onClick = if (!preferences.isLoggedIn) onSignInClick else null,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (!preferences.isLoggedIn) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(CircleShape)
+                            .background(colors.pillBg)
+                            .border(1.dp, colors.border, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = colors.textMuted,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column {
+                        Text(
+                            text = "Not signed in",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Tap to sign in with email or free auth",
+                            fontSize = 11.sp,
+                            color = colors.textMuted
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                NeumorphicButton(
+                    onClick = onSignInClick,
+                    colors = colors,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = null,
+                            tint = colors.accent,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Sign In / Register with Email",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.textPrimary
+                        )
+                    }
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.padding(18.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFE91E63)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = preferences.userAvatarInitial.ifBlank { "P" },
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = preferences.userName,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = preferences.userEmail,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = colors.textSecondary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LogoutAuthActionCard(
+    preferences: AppPreferences,
+    colors: NeumorphicColors,
+    onLogoutClick: () -> Unit,
+    onSignInClick: () -> Unit
+) {
+    NeumorphicCard(
+        colors = colors,
+        elevation = 4.dp,
+        onClick = if (preferences.isLoggedIn) onLogoutClick else onSignInClick,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (preferences.isLoggedIn) Icons.AutoMirrored.Filled.Logout else Icons.Default.Person,
+                contentDescription = "Auth Action",
+                tint = if (preferences.isLoggedIn) Color(0xFFF43F5E) else colors.accent,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Text(
+                text = if (preferences.isLoggedIn) "Logout" else "Sign In / Register with Email",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary
             )
         }
     }
@@ -830,6 +1008,13 @@ private fun SelectModelsScreen(
     val localTestResult by viewModel.localTestResult.collectAsState()
     val hardwareInfo by viewModel.deviceHardwareInfo.collectAsState()
 
+    val selectedEndpointForModal by viewModel.selectedEndpointForModal.collectAsState()
+    val showLastCallModal by viewModel.showLastCallModal.collectAsState()
+    val cloudDayWise by viewModel.cloudDayWiseConsumption.collectAsState()
+    val cloudMonthWise by viewModel.cloudMonthWiseConsumption.collectAsState()
+    val localDayWise by viewModel.localDayWiseConsumption.collectAsState()
+    val localMonthWise by viewModel.localMonthWiseConsumption.collectAsState()
+
     var groqApiKeyInput by remember { mutableStateOf(preferences.groqApiKey) }
     var geminiApiKeyInput by remember { mutableStateOf(preferences.geminiApiKey) }
 
@@ -840,6 +1025,83 @@ private fun SelectModelsScreen(
 
     val isCloudMode = preferences.engineMode != EngineMode.LOCAL_ONLY
     var selectedTokenApi by remember { mutableStateOf("ALL") } // "ALL", "GEMINI", "GROQ"
+    var keyToClear by remember { mutableStateOf<String?>(null) } // "Groq" or "Gemini"
+
+    // Endpoint Diagnostics Modal
+    if (selectedEndpointForModal != null) {
+        EndpointDetailsDialog(
+            result = selectedEndpointForModal!!,
+            colors = colors,
+            onDismiss = { viewModel.closeEndpointModal() }
+        )
+    }
+
+    // Last Call Telemetry Drawer
+    if (showLastCallModal) {
+        LastCallDetailsDrawer(
+            preferences = preferences,
+            colors = colors,
+            onDismiss = { viewModel.closeLastCallModal() }
+        )
+    }
+
+    // Key Clear Confirmation Dialog
+    if (keyToClear != null) {
+        val isGroq = keyToClear == "Groq"
+        val titleText = if (isGroq) "Clear Groq API Key?" else "Clear Google AI Studio Key?"
+        val bodyText = if (isGroq) {
+            "Are you sure you want to remove your Groq API key from the Keystore vault? Cloud audio transcription will be disabled until a key is added."
+        } else {
+            "Are you sure you want to remove your Google AI Studio key from the Keystore vault? Cloud summarization will be disabled until a key is added."
+        }
+
+        AlertDialog(
+            onDismissRequest = { keyToClear = null },
+            title = {
+                Text(
+                    text = titleText,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = bodyText,
+                    color = colors.textSecondary,
+                    fontSize = 13.5.sp
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (isGroq) {
+                            groqApiKeyInput = ""
+                            viewModel.setGroqApiKey("")
+                            Toast.makeText(context, "Groq key cleared from vault", Toast.LENGTH_SHORT).show()
+                        } else {
+                            geminiApiKeyInput = ""
+                            viewModel.setGeminiApiKey("")
+                            Toast.makeText(context, "Gemini key cleared from vault", Toast.LENGTH_SHORT).show()
+                        }
+                        keyToClear = null
+                    }
+                ) {
+                    Text(
+                        text = "Clear Key",
+                        color = StatusError,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { keyToClear = null }) {
+                    Text("Cancel", color = colors.textMuted)
+                }
+            },
+            containerColor = colors.surface,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
 
     Column(
         modifier = modifier
@@ -938,8 +1200,9 @@ private fun SelectModelsScreen(
                 }
             }
 
-            // CARD 2: CLOUD API CREDENTIALS & LIVE TESTING
-            NeumorphicCard(colors = colors) {
+            if (isCloudMode) {
+                // CARD 2: CLOUD API CREDENTIALS & LIVE TESTING
+                NeumorphicCard(colors = colors) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1000,9 +1263,7 @@ private fun SelectModelsScreen(
                                 shape = RoundedCornerShape(6.dp),
                                 color = StatusError.copy(alpha = 0.12f),
                                 modifier = Modifier.clickable {
-                                    groqApiKeyInput = ""
-                                    viewModel.setGroqApiKey("")
-                                    Toast.makeText(context, "Groq key cleared from vault", Toast.LENGTH_SHORT).show()
+                                    keyToClear = "Groq"
                                 }
                             ) {
                                 Row(
@@ -1197,9 +1458,7 @@ private fun SelectModelsScreen(
                                 shape = RoundedCornerShape(6.dp),
                                 color = StatusError.copy(alpha = 0.12f),
                                 modifier = Modifier.clickable {
-                                    geminiApiKeyInput = ""
-                                    viewModel.setGeminiApiKey("")
-                                    Toast.makeText(context, "Gemini key cleared from vault", Toast.LENGTH_SHORT).show()
+                                    keyToClear = "Gemini"
                                 }
                             ) {
                                 Row(
@@ -1475,7 +1734,10 @@ private fun SelectModelsScreen(
                                         1.dp,
                                         if (ok) StatusReady.copy(alpha = 0.25f) else StatusError.copy(alpha = 0.25f)
                                     ),
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable { viewModel.openEndpointModal(ep) }
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -1485,18 +1747,27 @@ private fun SelectModelsScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Column(modifier = Modifier.weight(1f, fill = false)) {
-                                            Text(
-                                                text = ep.provider,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = colors.textPrimary,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                softWrap = false
-                                            )
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    text = ep.provider,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = colors.textPrimary,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    softWrap = false
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "🔍 Details",
+                                                    fontSize = 9.sp,
+                                                    color = CyanAccent,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
                                             if (ep.errorDetails != null) {
                                                 Text(
-                                                    text = ep.errorDetails,
+                                                    text = ep.errorDetails.take(60),
                                                     fontSize = 10.sp,
                                                     color = StatusError,
                                                     maxLines = 1,
@@ -1881,7 +2152,10 @@ private fun SelectModelsScreen(
                                     shape = RoundedCornerShape(8.dp),
                                     color = colors.surface.copy(alpha = 0.7f),
                                     border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.3f)),
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { viewModel.openLastCallModal() }
                                 ) {
                                     Column(
                                         modifier = Modifier
@@ -1894,14 +2168,23 @@ private fun SelectModelsScreen(
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text(
-                                                text = "Last Call: ${preferences.lastCallProvider.ifBlank { "Cloud API" }}",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = colors.textPrimary,
-                                                maxLines = 1,
-                                                softWrap = false
-                                            )
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    text = "Last Call: ${preferences.lastCallProvider.ifBlank { "Cloud API" }}",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = colors.textPrimary,
+                                                    maxLines = 1,
+                                                    softWrap = false
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "↗ Drawer",
+                                                    fontSize = 9.sp,
+                                                    color = CyanAccent,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
                                             Text(
                                                 text = "⚡ ${preferences.lastCallLatencyMs}ms • ${preferences.lastCallStatusCode}",
                                                 fontSize = 10.sp,
@@ -1944,6 +2227,14 @@ private fun SelectModelsScreen(
                 }
             }
 
+            // CLOUD TOKEN CONSUMPTION TABLE (DAY-WISE & MONTH-WISE)
+            TokenConsumptionTableCard(
+                isCloud = true,
+                dayWiseList = cloudDayWise,
+                monthWiseList = cloudMonthWise,
+                colors = colors
+            )
+        } else {
             // CARD 3: LOCAL HARDWARE & DOWNLOAD PROGRESS
             NeumorphicCard(colors = colors) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -2134,7 +2425,16 @@ private fun SelectModelsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            // LOCAL LLM CONSUMPTION TABLE (DAY-WISE & MONTH-WISE)
+            TokenConsumptionTableCard(
+                isCloud = false,
+                dayWiseList = localDayWise,
+                monthWiseList = localMonthWise,
+                colors = colors
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -2536,14 +2836,15 @@ private fun ModelSelectionCard(
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = if (isSelected) colors.accentBg else colors.pillBg,
+        color = if (isSelected) colors.accentBg else colors.pillBg.copy(alpha = 0.5f),
         border = androidx.compose.foundation.BorderStroke(
             1.2.dp,
-            if (isSelected) colors.accent else colors.border
+            if (isSelected) colors.accent else Color.Gray.copy(alpha = 0.35f)
         ),
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
+            .then(if (!isSelected) Modifier.alpha(0.42f) else Modifier)
             .clickable(onClick = onClick)
     ) {
         Row(
@@ -2555,7 +2856,7 @@ private fun ModelSelectionCard(
                 onClick = onClick,
                 colors = RadioButtonDefaults.colors(
                     selectedColor = colors.accent,
-                    unselectedColor = colors.textMuted
+                    unselectedColor = Color.Gray
                 )
             )
 
@@ -2571,19 +2872,19 @@ private fun ModelSelectionCard(
                         text = title,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isSelected) colors.textPrimary else colors.textSecondary,
+                        color = if (isSelected) colors.textPrimary else Color.Gray,
                         maxLines = 1,
                         softWrap = false
                     )
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = if (isSelected) colors.accent.copy(alpha = 0.2f) else colors.border
+                        color = if (isSelected) colors.accent.copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.15f)
                     ) {
                         Text(
-                            text = badge,
+                            text = if (isSelected) badge else "DISABLED",
                             fontSize = 10.sp,
-                            color = if (isSelected) colors.accent else colors.textMuted,
-                            fontWeight = FontWeight.Medium,
+                            color = if (isSelected) colors.accent else Color.Gray,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             softWrap = false,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -2592,11 +2893,634 @@ private fun ModelSelectionCard(
                 }
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
-                    text = subtitle,
+                    text = if (isSelected) subtitle else "Disabled • Click to switch to this engine",
                     fontSize = 11.sp,
-                    color = if (isSelected) colors.textSecondary else colors.textMuted,
+                    color = if (isSelected) colors.textSecondary else Color.Gray.copy(alpha = 0.8f),
                     lineHeight = 15.sp
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EndpointDetailsDialog(
+    result: CloudEndpointTestResult,
+    colors: NeumorphicColors,
+    onDismiss: () -> Unit
+) {
+    var isErrorExpanded by remember { mutableStateOf(false) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(22.dp),
+            color = colors.surface,
+            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .padding(vertical = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (result.isSuccess) StatusReady.copy(alpha = 0.15f) else StatusError.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (result.isSuccess) Icons.Default.Check else Icons.Default.Close,
+                                contentDescription = null,
+                                tint = if (result.isSuccess) StatusReady else StatusError,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "${result.provider} Details",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary
+                            )
+                            Text(
+                                text = "Full scale endpoint diagnostic telemetry",
+                                fontSize = 11.sp,
+                                color = colors.textSecondary
+                            )
+                        }
+                    }
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = colors.textMuted)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Status & Metrics Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Status Code
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (result.isSuccess) StatusReady.copy(alpha = 0.3f) else StatusError.copy(alpha = 0.3f)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text("STATUS CODE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.textMuted)
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = result.statusMessage,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (result.isSuccess) StatusReady else StatusError,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // Request Latency
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.3f)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text("LATENCY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.textMuted)
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = "⚡ ${result.latencyMs} ms",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CyanAccent,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Model Used
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = colors.pillBg,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Model Endpoint", fontSize = 11.sp, color = colors.textSecondary)
+                        Text(
+                            text = result.modelName.ifBlank { "Standard Cloud LLM" },
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.textPrimary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Token Consumption Breakdown
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = colors.pillBg,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "Token Consumption",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Prompt Tokens", fontSize = 10.sp, color = colors.textMuted)
+                                Text("${result.promptTokens} tk", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                            }
+                            Column {
+                                Text("Output Tokens", fontSize = 10.sp, color = colors.textMuted)
+                                Text("${result.completionTokens} tk", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ElectricIndigo)
+                            }
+                            Column {
+                                Text("Total Tokens", fontSize = 10.sp, color = colors.textMuted)
+                                Text("${result.tokensConsumed} tk", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = StatusReady)
+                            }
+                        }
+                    }
+                }
+
+                // Error Diagnostics (Collapsible & Scrollable - Never overflows screen)
+                if (result.errorDetails != null || !result.isSuccess) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = StatusError.copy(alpha = 0.08f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, StatusError.copy(alpha = 0.35f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { isErrorExpanded = !isErrorExpanded },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Close, contentDescription = null, tint = StatusError, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Diagnostic Error Payload",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = StatusError
+                                    )
+                                }
+                                Text(
+                                    text = if (isErrorExpanded) "Collapse ▲" else "Expand ▼",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = StatusError
+                                )
+                            }
+
+                            // Collapsed/scrollable view: max 120dp so it never fills full screen
+                            if (isErrorExpanded) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 120.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(colors.surface)
+                                        .padding(8.dp)
+                                        .verticalScroll(rememberScrollState())
+                                ) {
+                                    Text(
+                                        text = result.errorDetails ?: result.rawResponse ?: "Unknown Network Error",
+                                        fontSize = 10.sp,
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        color = StatusError,
+                                        lineHeight = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanAccent)
+                ) {
+                    Text("Close Details", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LastCallDetailsDrawer(
+    preferences: AppPreferences,
+    colors: NeumorphicColors,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Surface(
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                color = colors.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = false) {}
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Drawer Drag Handle
+                    Box(
+                        modifier = Modifier
+                            .width(38.dp)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(colors.border)
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Last Call Telemetry",
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary
+                            )
+                            Text(
+                                text = "Real-time stats from the most recent cloud invocation",
+                                fontSize = 11.sp,
+                                color = colors.textSecondary
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = CyanAccent.copy(alpha = 0.15f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.4f))
+                        ) {
+                            Text(
+                                text = preferences.lastCallStatusCode.ifBlank { "200 OK" },
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CyanAccent,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Metrics Grid
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = colors.pillBg,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("ENDPOINT", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.textMuted)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = preferences.lastCallProvider.ifBlank { "Cloud API" },
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = colors.pillBg,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("LATENCY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.textMuted)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "⚡ ${preferences.lastCallLatencyMs} ms",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CyanAccent
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Token Breakdown Grid
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text("Token Consumption Breakdown", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text("Prompt (Input)", fontSize = 10.sp, color = colors.textMuted)
+                                    Text("${preferences.lastCallPromptTokens} tk", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                                }
+                                Column {
+                                    Text("Output (Generation)", fontSize = 10.sp, color = colors.textMuted)
+                                    Text("${preferences.lastCallCompletionTokens} tk", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ElectricIndigo)
+                                }
+                                Column {
+                                    Text("Total Consumed", fontSize = 10.sp, color = colors.textMuted)
+                                    Text("+${preferences.lastCallTokens} tk", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = StatusReady)
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // Close Drawer Button
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.accentBg)
+                    ) {
+                        Text("Close Drawer", color = colors.accent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TokenConsumptionTableCard(
+    isCloud: Boolean,
+    dayWiseList: List<com.reelrecall.app.data.model.TokenPeriodAggregate>,
+    monthWiseList: List<com.reelrecall.app.data.model.TokenPeriodAggregate>,
+    colors: NeumorphicColors
+) {
+    var selectedTab by remember { mutableStateOf("DAY") } // "DAY" or "MONTH"
+    val activeList = if (selectedTab == "DAY") dayWiseList else monthWiseList
+
+    NeumorphicCard(colors = colors) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isCloud) CyanAccent.copy(alpha = 0.15f) else ElectricIndigo.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Storage,
+                            contentDescription = null,
+                            tint = if (isCloud) CyanAccent else ElectricIndigo,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = if (isCloud) "Cloud Token Consumption" else "Local LLM Inferences",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                        Text(
+                            text = if (isCloud) "Resets daily at 1:00 AM • Historical log preserved" else "Offline on-device inference consumption",
+                            fontSize = 11.sp,
+                            color = colors.textSecondary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Day-wise / Month-wise Toggle Tabs
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(colors.pillBg)
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (selectedTab == "DAY") (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.18f) else Color.Transparent,
+                    border = if (selectedTab == "DAY") androidx.compose.foundation.BorderStroke(1.dp, (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.5f)) else null,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { selectedTab = "DAY" }
+                ) {
+                    Text(
+                        text = "Day-wise",
+                        fontSize = 11.sp,
+                        fontWeight = if (selectedTab == "DAY") FontWeight.Bold else FontWeight.Medium,
+                        color = if (selectedTab == "DAY") (if (isCloud) CyanAccent else ElectricIndigo) else colors.textSecondary,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 7.dp)
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (selectedTab == "MONTH") (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.18f) else Color.Transparent,
+                    border = if (selectedTab == "MONTH") androidx.compose.foundation.BorderStroke(1.dp, (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.5f)) else null,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { selectedTab = "MONTH" }
+                ) {
+                    Text(
+                        text = "Month-wise",
+                        fontSize = 11.sp,
+                        fontWeight = if (selectedTab == "MONTH") FontWeight.Bold else FontWeight.Medium,
+                        color = if (selectedTab == "MONTH") (if (isCloud) CyanAccent else ElectricIndigo) else colors.textSecondary,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 7.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Table Content
+            if (activeList.isEmpty()) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = colors.pillBg,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (isCloud) "No token consumption recorded yet. Run 'Test Cloud' above or ingest reels." else "No local inferences recorded yet. Tap 'Test Engine' to run benchmark.",
+                        fontSize = 11.sp,
+                        color = colors.textMuted,
+                        modifier = Modifier.padding(14.dp)
+                    )
+                }
+            } else {
+                // Table Header Row
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = colors.pillBg,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(if (selectedTab == "DAY") "Date" else "Month", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(1.3f))
+                        Text("Calls", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.8f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        Text("Prompt", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        Text("Output", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        Text("Total (tk)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (isCloud) CyanAccent else ElectricIndigo, modifier = Modifier.weight(1.2f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Table Rows
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    activeList.forEach { row ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colors.surface,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = row.period,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    modifier = Modifier.weight(1.3f)
+                                )
+                                Text(
+                                    text = "${row.requestCount}",
+                                    fontSize = 11.sp,
+                                    color = colors.textSecondary,
+                                    modifier = Modifier.weight(0.8f),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                                )
+                                Text(
+                                    text = "${row.promptTokens}",
+                                    fontSize = 10.sp,
+                                    color = colors.textMuted,
+                                    modifier = Modifier.weight(1f),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                                )
+                                Text(
+                                    text = "${row.completionTokens}",
+                                    fontSize = 10.sp,
+                                    color = colors.textMuted,
+                                    modifier = Modifier.weight(1f),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                                )
+                                Text(
+                                    text = "${row.totalTokens}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isCloud) CyanAccent else ElectricIndigo,
+                                    modifier = Modifier.weight(1.2f),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -3259,36 +4183,64 @@ private fun DataStorageScreen(
                 .padding(horizontal = 18.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // CARD 1: WHATSAPP-STYLE GOOGLE CLOUD BACKUP
-            NeumorphicCard(colors = colors) {
+            // CARD 1: GOOGLE CLOUD BACKUP (COMING SOON & DISABLED)
+            NeumorphicCard(
+                colors = colors,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .alpha(0.45f)
+            ) {
                 Column(modifier = Modifier.padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(CyanAccent.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.CloudUpload,
-                                contentDescription = null,
-                                tint = CyanAccent,
-                                modifier = Modifier.size(22.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.textMuted.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudUpload,
+                                    contentDescription = null,
+                                    tint = colors.textMuted,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Google Cloud Backup",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = "Auto-sync reels, transcripts & metadata to Google Cloud",
+                                    fontSize = 11.sp,
+                                    color = colors.textSecondary
+                                )
+                            }
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colors.pillBg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
+                        ) {
                             Text(
-                                text = "Google Cloud Backup",
-                                fontSize = 16.sp,
+                                text = "Coming Soon",
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary
-                            )
-                            Text(
-                                text = "Auto-sync reels, transcripts & metadata to Google Cloud",
-                                fontSize = 11.sp,
-                                color = colors.textSecondary
+                                color = colors.textMuted,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
                     }
@@ -3297,7 +4249,7 @@ private fun DataStorageScreen(
                     NeumorphicDivider(colors = colors)
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Switch: Enable Cloud Backup
+                    // Switch: Enable Cloud Backup (Disabled)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -3308,117 +4260,36 @@ private fun DataStorageScreen(
                                 text = "Back up to Google Cloud",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = colors.textPrimary
+                                color = colors.textMuted
                             )
                             Text(
-                                text = if (preferences.isCloudBackupEnabled) "Enabled: vault metadata synced" else "Disabled: stored locally only",
+                                text = "Feature coming in future release • Currently disabled",
                                 fontSize = 11.sp,
-                                color = if (preferences.isCloudBackupEnabled) StatusReady else colors.textMuted
+                                color = colors.textMuted
                             )
                         }
 
                         Switch(
-                            checked = preferences.isCloudBackupEnabled,
-                            onCheckedChange = { viewModel.setCloudBackupEnabled(it) },
+                            checked = false,
+                            enabled = false,
+                            onCheckedChange = {
+                                Toast.makeText(context, "Google Cloud Backup coming soon", Toast.LENGTH_SHORT).show()
+                            },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = colors.accent,
-                                uncheckedThumbColor = colors.textMuted,
-                                uncheckedTrackColor = colors.pillBg
+                                disabledUncheckedThumbColor = colors.textMuted,
+                                disabledUncheckedTrackColor = colors.pillBg
                             )
                         )
                     }
 
-                    AnimatedVisibility(visible = preferences.isCloudBackupEnabled) {
-                        Column {
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Cloud Folder Indicator Pill
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = colors.pillBg,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Folder,
-                                        contentDescription = null,
-                                        tint = CyanAccent,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column {
-                                        Text(
-                                            text = "Dedicated Cloud Folder",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = colors.textSecondary
-                                        )
-                                        Text(
-                                            text = "Google Cloud / Drive: /${preferences.cloudBackupFolder}/metadata/",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = colors.textPrimary
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Switch: Wi-Fi Only
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Back up over Wi-Fi only",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = colors.textPrimary
-                                    )
-                                    Text(
-                                        text = "Avoid using mobile cellular data",
-                                        fontSize = 11.sp,
-                                        color = colors.textMuted
-                                    )
-                                }
-
-                                Switch(
-                                    checked = preferences.backupOnlyOnWifi,
-                                    onCheckedChange = { viewModel.setBackupOnlyOnWifi(it) },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = colors.accent,
-                                        uncheckedThumbColor = colors.textMuted,
-                                        uncheckedTrackColor = colors.pillBg
-                                    )
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            // Last Backup Time
-                            Text(
-                                text = "Last Backup: ${preferences.lastBackupTimeFormatted}",
-                                fontSize = 12.sp,
-                                color = colors.textSecondary
-                            )
-                        }
-                    }
-
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Backup Now Button
+                    // Backup Now Button (Disabled)
                     NeumorphicButton(
-                        onClick = { viewModel.performCloudBackup() },
-                        enabled = !isBackingUp,
+                        onClick = {
+                            Toast.makeText(context, "Google Cloud Backup coming soon", Toast.LENGTH_SHORT).show()
+                        },
+                        enabled = false,
                         colors = colors,
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -3426,45 +4297,20 @@ private fun DataStorageScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
-                            if (isBackingUp) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    color = colors.accent,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = backupProgress ?: "Backing up to Cloud...",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = colors.textPrimary
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.CloudDone,
-                                    contentDescription = null,
-                                    tint = CyanAccent,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = "Back Up Now",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.textPrimary
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.CloudDone,
+                                contentDescription = null,
+                                tint = colors.textMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Back Up Now (Coming Soon)",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textMuted
+                            )
                         }
-                    }
-
-                    if (backupProgress != null && !isBackingUp) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = backupProgress!!,
-                            fontSize = 11.sp,
-                            color = StatusReady,
-                            fontWeight = FontWeight.Medium
-                        )
                     }
                 }
             }
