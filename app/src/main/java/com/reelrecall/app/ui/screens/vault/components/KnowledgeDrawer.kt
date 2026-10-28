@@ -108,7 +108,8 @@ fun KnowledgeDrawerContent(
     onStartMultiSelect: () -> Unit = {},
     onToggleViewMode: () -> Unit = {},
     onReprocessAll: () -> Unit = {},
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    isDarkTheme: Boolean = true
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var isSearchExpanded by remember { mutableStateOf(false) }
@@ -123,6 +124,13 @@ fun KnowledgeDrawerContent(
     val readyCount = remember(reels) { reels.count { it.status == IngestionStatus.COMPLETED } }
     val processingCount = remember(reels) { reels.count { it.status != IngestionStatus.COMPLETED && it.status != IngestionStatus.FAILED } }
     val notesCount = remember(reels) { reels.count { !it.userNotes.isNullOrBlank() } }
+
+    // Colors according to theme
+    val drawerBg = if (isDarkTheme) Color(0xFF13141B) else Color(0xFFFFFFFF)
+    val dividerColor = if (isDarkTheme) Color(0xFF222430) else Color(0xFFE2E8F0)
+    val textPrimaryColor = if (isDarkTheme) TextPrimary else Color(0xFF0F172A)
+    val textSecondaryColor = if (isDarkTheme) TextSecondary else Color(0xFF475569)
+    val textMutedColor = if (isDarkTheme) TextMuted else Color(0xFF94A3B8)
 
     // Filter and Sort Pipeline
     val filteredReels = remember(reels, selectedFilter, searchQuery, sortOrder) {
@@ -159,7 +167,7 @@ fun KnowledgeDrawerContent(
         modifier = Modifier
             .fillMaxHeight()
             .width(320.dp),
-        color = Color(0xFF13141B)
+        color = drawerBg
     ) {
         Column(
             modifier = Modifier
@@ -179,6 +187,7 @@ fun KnowledgeDrawerContent(
                 NeumorphicDrawerButton(
                     icon = Icons.Default.Add,
                     contentDescription = "Add Reel",
+                    isDark = isDarkTheme,
                     onClick = {
                         onClose()
                         onAddReel()
@@ -190,6 +199,7 @@ fun KnowledgeDrawerContent(
                     icon = Icons.Default.FilterList,
                     contentDescription = "Filter",
                     active = isFilterRowVisible,
+                    isDark = isDarkTheme,
                     onClick = { isFilterRowVisible = !isFilterRowVisible }
                 )
 
@@ -198,6 +208,7 @@ fun KnowledgeDrawerContent(
                     icon = Icons.Default.SwapVert,
                     contentDescription = "Sort: ${sortOrder.name}",
                     active = sortOrder != DrawerSortOrder.NEWEST,
+                    isDark = isDarkTheme,
                     onClick = {
                         sortOrder = when (sortOrder) {
                             DrawerSortOrder.NEWEST -> DrawerSortOrder.OLDEST
@@ -207,11 +218,12 @@ fun KnowledgeDrawerContent(
                     }
                 )
 
-                // 4. View Mode / Sidebar Button
+                // 4. Refresh Library Button (Replaced Grid Style Change Icon)
                 NeumorphicDrawerButton(
-                    icon = Icons.Default.GridView,
-                    contentDescription = "Toggle Grid/List",
-                    onClick = onToggleViewMode
+                    icon = Icons.Default.Refresh,
+                    contentDescription = "Refresh Library",
+                    isDark = isDarkTheme,
+                    onClick = onReprocessAll
                 )
 
                 // 5. Search Button
@@ -219,6 +231,7 @@ fun KnowledgeDrawerContent(
                     icon = Icons.Default.Search,
                     contentDescription = "Search Drawer",
                     active = isSearchExpanded,
+                    isDark = isDarkTheme,
                     onClick = {
                         isSearchExpanded = !isSearchExpanded
                         if (!isSearchExpanded) searchQuery = ""
@@ -239,8 +252,8 @@ fun KnowledgeDrawerContent(
                             .fillMaxWidth()
                             .height(40.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF0F1015))
-                            .border(1.dp, Color(0xFF262838), RoundedCornerShape(12.dp))
+                            .background(if (isDarkTheme) Color(0xFF0F1015) else Color(0xFFF1F5F9))
+                            .border(1.dp, if (isDarkTheme) Color(0xFF262838) else Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
                             .padding(horizontal = 12.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
@@ -251,7 +264,7 @@ fun KnowledgeDrawerContent(
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = null,
-                                tint = TextMuted,
+                                tint = textMutedColor,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -259,7 +272,7 @@ fun KnowledgeDrawerContent(
                                 if (searchQuery.isEmpty()) {
                                     Text(
                                         text = "Search in library...",
-                                        color = TextMuted,
+                                        color = textMutedColor,
                                         fontSize = 12.sp
                                     )
                                 }
@@ -268,7 +281,7 @@ fun KnowledgeDrawerContent(
                                     onValueChange = { searchQuery = it },
                                     singleLine = true,
                                     textStyle = TextStyle(
-                                        color = TextPrimary,
+                                        color = textPrimaryColor,
                                         fontSize = 12.sp
                                     ),
                                     cursorBrush = SolidColor(ActiveBlue),
@@ -283,7 +296,7 @@ fun KnowledgeDrawerContent(
                                     Icon(
                                         imageVector = Icons.Default.Clear,
                                         contentDescription = "Clear",
-                                        tint = TextMuted,
+                                        tint = textMutedColor,
                                         modifier = Modifier.size(14.dp)
                                     )
                                 }
@@ -312,24 +325,28 @@ fun KnowledgeDrawerContent(
                             label = "All",
                             count = totalCount,
                             selected = selectedFilter == DrawerFilter.ALL,
+                            isDark = isDarkTheme,
                             onClick = { selectedFilter = DrawerFilter.ALL }
                         )
                         DrawerFilterChip(
                             label = "Ready",
                             count = readyCount,
                             selected = selectedFilter == DrawerFilter.READY,
+                            isDark = isDarkTheme,
                             onClick = { selectedFilter = DrawerFilter.READY }
                         )
                         DrawerFilterChip(
                             label = "Processing",
                             count = processingCount,
                             selected = selectedFilter == DrawerFilter.PROCESSING,
+                            isDark = isDarkTheme,
                             onClick = { selectedFilter = DrawerFilter.PROCESSING }
                         )
                         DrawerFilterChip(
                             label = "Notes",
                             count = notesCount,
                             selected = selectedFilter == DrawerFilter.NOTES,
+                            isDark = isDarkTheme,
                             onClick = { selectedFilter = DrawerFilter.NOTES }
                         )
                     }
@@ -337,7 +354,7 @@ fun KnowledgeDrawerContent(
                 }
             }
 
-            Divider(color = Color(0xFF222430), thickness = 0.8.dp)
+            Divider(color = dividerColor, thickness = 0.8.dp)
             Spacer(modifier = Modifier.height(12.dp))
 
             // CATEGORY HEADER: "Reel Library" with 3-Dot Options Button
@@ -359,7 +376,7 @@ fun KnowledgeDrawerContent(
                     Icon(
                         imageVector = if (isCategoryExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
                         contentDescription = "Expand/Collapse",
-                        tint = TextSecondary,
+                        tint = textSecondaryColor,
                         modifier = Modifier.size(18.dp)
                     )
                     Icon(
@@ -372,12 +389,15 @@ fun KnowledgeDrawerContent(
                         text = "Reel Library",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = textPrimaryColor
                     )
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = Color(0xFF222432),
-                        border = androidx.compose.foundation.BorderStroke(0.6.dp, Color(0xFF2E3144))
+                        color = if (isDarkTheme) Color(0xFF222432) else Color(0xFFEFF6FF),
+                        border = androidx.compose.foundation.BorderStroke(
+                            0.6.dp,
+                            if (isDarkTheme) Color(0xFF2E3144) else Color(0xFFDBEAFE)
+                        )
                     ) {
                         Text(
                             text = "${filteredReels.size}",
@@ -396,12 +416,12 @@ fun KnowledgeDrawerContent(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF1B1C26))
+                            .background(if (isDarkTheme) Color(0xFF1B1C26) else Color(0xFFF1F5F9))
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "Library Options",
-                            tint = TextSecondary,
+                            tint = textSecondaryColor,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -410,8 +430,8 @@ fun KnowledgeDrawerContent(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false },
                         modifier = Modifier
-                            .background(Color(0xFF1A1C27))
-                            .border(1.dp, Color(0xFF2E3144), RoundedCornerShape(12.dp))
+                            .background(if (isDarkTheme) Color(0xFF1A1C27) else Color(0xFFFFFFFF))
+                            .border(1.dp, if (isDarkTheme) Color(0xFF2E3144) else Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
                     ) {
                         DropdownMenuItem(
                             text = {
@@ -428,8 +448,8 @@ fun KnowledgeDrawerContent(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Icon(Icons.Default.Add, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
-                                    Text("Add New Reel", color = TextPrimary, fontSize = 13.sp)
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = textPrimaryColor, modifier = Modifier.size(16.dp))
+                                    Text("Add New Reel", color = textPrimaryColor, fontSize = 13.sp)
                                 }
                             },
                             onClick = {
@@ -441,8 +461,8 @@ fun KnowledgeDrawerContent(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
-                                    Text("Reprocess All Reels", color = TextPrimary, fontSize = 13.sp)
+                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = textPrimaryColor, modifier = Modifier.size(16.dp))
+                                    Text("Reprocess All Reels", color = textPrimaryColor, fontSize = 13.sp)
                                 }
                             },
                             onClick = {
@@ -453,8 +473,8 @@ fun KnowledgeDrawerContent(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Icon(Icons.Default.FilterList, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
-                                    Text("Reset Filters", color = TextSecondary, fontSize = 13.sp)
+                                    Icon(Icons.Default.FilterList, contentDescription = null, tint = textMutedColor, modifier = Modifier.size(16.dp))
+                                    Text("Reset Filters", color = textSecondaryColor, fontSize = 13.sp)
                                 }
                             },
                             onClick = {
@@ -493,6 +513,7 @@ fun KnowledgeDrawerContent(
                         items(filteredReels, key = { it.id }) { reel ->
                             DrawerReelCard(
                                 reel = reel,
+                                isDark = isDarkTheme,
                                 onClick = {
                                     // Navigate directly to Reel Detail Page!
                                     onSelectReel(reel)
@@ -506,7 +527,7 @@ fun KnowledgeDrawerContent(
             }
 
             // Bottom drawer footer
-            Divider(color = Color(0xFF222430), thickness = 0.8.dp)
+            Divider(color = dividerColor, thickness = 0.8.dp)
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -516,7 +537,7 @@ fun KnowledgeDrawerContent(
                 Text(
                     text = "Reel Library Engine",
                     fontSize = 11.sp,
-                    color = TextMuted
+                    color = textMutedColor
                 )
                 Text(
                     text = "${filteredReels.size} of $totalCount",
@@ -534,16 +555,29 @@ private fun NeumorphicDrawerButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
     active: Boolean = false,
+    isDark: Boolean = true,
     onClick: () -> Unit
 ) {
+    val bgColor = if (isDark) {
+        if (active) Color(0xFF222536) else Color(0xFF191B24)
+    } else {
+        if (active) Color(0xFFEFF6FF) else Color(0xFFF1F5F9)
+    }
+    val borderColor = if (isDark) {
+        if (active) ActiveBlue.copy(alpha = 0.7f) else Color(0xFF2B2E3D)
+    } else {
+        if (active) ActiveBlue else Color(0xFFE2E8F0)
+    }
+    val iconTint = if (active) ActiveBlue else (if (isDark) TextSecondary else Color(0xFF475569))
+
     Box(
         modifier = Modifier
             .size(38.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(if (active) Color(0xFF222536) else Color(0xFF191B24))
+            .background(bgColor)
             .border(
                 width = 1.dp,
-                color = if (active) ActiveBlue.copy(alpha = 0.7f) else Color(0xFF2B2E3D),
+                color = borderColor,
                 shape = RoundedCornerShape(10.dp)
             )
             .clickable(onClick = onClick),
@@ -552,7 +586,7 @@ private fun NeumorphicDrawerButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = if (active) ActiveBlue else TextSecondary,
+            tint = iconTint,
             modifier = Modifier.size(18.dp)
         )
     }
@@ -563,14 +597,31 @@ private fun DrawerFilterChip(
     label: String,
     count: Int,
     selected: Boolean,
+    isDark: Boolean = true,
     onClick: () -> Unit
 ) {
+    val bgColor = if (isDark) {
+        if (selected) Color(0xFF202336) else Color(0xFF171822)
+    } else {
+        if (selected) Color(0xFFEFF6FF) else Color(0xFFF1F5F9)
+    }
+    val borderColor = if (isDark) {
+        if (selected) ActiveBlue else Color(0xFF272A3A)
+    } else {
+        if (selected) ActiveBlue else Color(0xFFE2E8F0)
+    }
+    val labelColor = if (isDark) {
+        if (selected) TextPrimary else TextSecondary
+    } else {
+        if (selected) ActiveBlue else Color(0xFF475569)
+    }
+
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = if (selected) Color(0xFF202336) else Color(0xFF171822),
+        color = bgColor,
         border = androidx.compose.foundation.BorderStroke(
             0.8.dp,
-            if (selected) ActiveBlue else Color(0xFF272A3A)
+            borderColor
         ),
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
@@ -585,13 +636,13 @@ private fun DrawerFilterChip(
                 text = label,
                 fontSize = 11.sp,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (selected) TextPrimary else TextSecondary
+                color = labelColor
             )
             Text(
                 text = "$count",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (selected) ActiveBlue else TextMuted
+                color = if (selected) ActiveBlue else (if (isDark) TextMuted else Color(0xFF94A3B8))
             )
         }
     }
@@ -600,14 +651,22 @@ private fun DrawerFilterChip(
 @Composable
 private fun DrawerReelCard(
     reel: ReelEntity,
+    isDark: Boolean = true,
     onClick: () -> Unit
 ) {
+    val cardBg = if (isDark) Color(0xFF181A24) else Color(0xFFFFFFFF)
+    val cardBorder = if (isDark) Color(0xFF242736) else Color(0xFFE2E8F0)
+    val thumbBg = if (isDark) Color(0xFF0F1015) else Color(0xFFF1F5F9)
+    val titleColor = if (isDark) TextPrimary else Color(0xFF0F172A)
+    val handleColor = if (isDark) TextMuted else Color(0xFF64748B)
+    val dateColor = if (isDark) Color(0xFF6B7280) else Color(0xFF94A3B8)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF181A24))
-            .border(0.8.dp, Color(0xFF242736), RoundedCornerShape(12.dp))
+            .background(cardBg)
+            .border(0.8.dp, cardBorder, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -618,7 +677,7 @@ private fun DrawerReelCard(
             modifier = Modifier
                 .size(46.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF0F1015))
+                .background(thumbBg)
         ) {
             if (!reel.thumbnailUrl.isNullOrBlank()) {
                 AsyncImage(
@@ -632,7 +691,7 @@ private fun DrawerReelCard(
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
-                        tint = TextMuted,
+                        tint = handleColor,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -660,7 +719,7 @@ private fun DrawerReelCard(
                 text = reel.title ?: (reel.caption?.take(60) ?: "Reel #${reel.shortcode}"),
                 fontSize = 12.5.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimary,
+                color = titleColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -677,7 +736,7 @@ private fun DrawerReelCard(
                     Text(
                         text = handle.take(20),
                         fontSize = 10.5.sp,
-                        color = TextMuted,
+                        color = handleColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -688,7 +747,7 @@ private fun DrawerReelCard(
                 Text(
                     text = "• $dateStr",
                     fontSize = 10.5.sp,
-                    color = Color(0xFF6B7280)
+                    color = dateColor
                 )
             }
         }
