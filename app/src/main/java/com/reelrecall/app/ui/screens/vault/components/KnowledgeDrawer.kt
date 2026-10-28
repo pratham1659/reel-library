@@ -740,9 +740,9 @@ private fun DrawerReelCard(
     isDark: Boolean = true,
     onClick: () -> Unit
 ) {
-    val cardBg = if (isDark) Color(0xFF181A24) else Color(0xFFFFFFFF)
-    val cardBorder = if (isDark) Color(0xFF242736) else Color(0xFFE2E8F0)
-    val thumbBg = if (isDark) Color(0xFF0F1015) else Color(0xFFF1F5F9)
+    val cardBg = if (isDark) Color(0xFF181A24) else Color(0xFFECEFF5)
+    val cardBorder = if (isDark) Color(0xFF242736) else Color(0xFFDCE2ED)
+    val thumbBg = if (isDark) Color(0xFF0F1015) else Color(0xFFDEE4EE)
     val titleColor = if (isDark) TextPrimary else Color(0xFF0F172A)
     val handleColor = if (isDark) TextMuted else Color(0xFF64748B)
     val dateColor = if (isDark) Color(0xFF6B7280) else Color(0xFF94A3B8)

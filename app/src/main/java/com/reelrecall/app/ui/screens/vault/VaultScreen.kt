@@ -934,45 +934,29 @@ fun AppleGlassAddButton(
 ) {
     Box(
         modifier = modifier
-            .size(46.dp)
+            .size(52.dp)
             .shadow(
-                elevation = 8.dp,
+                elevation = 12.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = if (isDarkTheme) 0.5f else 0.2f),
-                spotColor = Color.Black.copy(alpha = if (isDarkTheme) 0.6f else 0.3f)
+                ambientColor = Color.Black.copy(alpha = 0.55f),
+                spotColor = Color.Black.copy(alpha = 0.7f)
             )
             .clip(CircleShape)
             .background(
-                if (isDarkTheme) {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.22f),
-                            Color.White.copy(alpha = 0.08f)
-                        )
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF262938),
+                        Color(0xFF13151F)
                     )
-                } else {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFF2563EB),
-                            Color(0xFF1D4ED8)
-                        )
-                    )
-                }
+                )
             )
             .border(
-                width = 1.dp,
+                width = 1.2.dp,
                 brush = Brush.verticalGradient(
-                    if (isDarkTheme) {
-                        listOf(
-                            Color.White.copy(alpha = 0.55f),
-                            Color.White.copy(alpha = 0.15f)
-                        )
-                    } else {
-                        listOf(
-                            Color(0xFF60A5FA),
-                            Color(0xFF1D4ED8)
-                        )
-                    }
+                    listOf(
+                        Color(0xFF5A617D),
+                        Color(0xFF282C3D)
+                    )
                 ),
                 shape = CircleShape
             )
@@ -983,7 +967,7 @@ fun AppleGlassAddButton(
             imageVector = Icons.Default.Add,
             contentDescription = "Add Reel",
             tint = Color.White,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(24.dp)
         )
     }
 }
