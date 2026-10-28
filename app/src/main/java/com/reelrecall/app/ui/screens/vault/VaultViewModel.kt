@@ -464,9 +464,13 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     Regex("(@[a-zA-Z0-9._]+)").find(cleanHandle)?.value ?: cleanHandle
                 } else cleanHandle
 
-                val realTranscript = if (metadata?.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
+                val realTranscript = if (!reel.transcript.isNullOrBlank()) {
+                    reel.transcript
+                } else if (metadata?.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
                     transcriber.transcribe(metadata.audioFile).getOrNull()?.trim()?.ifBlank { null }
-                } else reel.transcript
+                } else {
+                    null
+                }
 
                 val summaryResult = summarizer.summarize(cleanCaption, realTranscript ?: "")
                 val summary = summaryResult.getOrNull()

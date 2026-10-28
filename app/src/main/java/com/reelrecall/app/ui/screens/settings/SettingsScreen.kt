@@ -65,6 +65,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -72,6 +73,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
@@ -1023,6 +1025,7 @@ private fun SelectModelsScreen(
 
     val isCloudMode = preferences.engineMode != EngineMode.LOCAL_ONLY
     var selectedTokenApi by remember { mutableStateOf("ALL") } // "ALL", "GEMINI", "GROQ"
+    var keyToClear by remember { mutableStateOf<String?>(null) } // "Groq" or "Gemini"
 
     // Endpoint Diagnostics Modal
     if (selectedEndpointForModal != null) {
@@ -1039,6 +1042,64 @@ private fun SelectModelsScreen(
             preferences = preferences,
             colors = colors,
             onDismiss = { viewModel.closeLastCallModal() }
+        )
+    }
+
+    // Key Clear Confirmation Dialog
+    if (keyToClear != null) {
+        val isGroq = keyToClear == "Groq"
+        val titleText = if (isGroq) "Clear Groq API Key?" else "Clear Google AI Studio Key?"
+        val bodyText = if (isGroq) {
+            "Are you sure you want to remove your Groq API key from the Keystore vault? Cloud audio transcription will be disabled until a key is added."
+        } else {
+            "Are you sure you want to remove your Google AI Studio key from the Keystore vault? Cloud summarization will be disabled until a key is added."
+        }
+
+        AlertDialog(
+            onDismissRequest = { keyToClear = null },
+            title = {
+                Text(
+                    text = titleText,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = bodyText,
+                    color = colors.textSecondary,
+                    fontSize = 13.5.sp
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (isGroq) {
+                            groqApiKeyInput = ""
+                            viewModel.setGroqApiKey("")
+                            Toast.makeText(context, "Groq key cleared from vault", Toast.LENGTH_SHORT).show()
+                        } else {
+                            geminiApiKeyInput = ""
+                            viewModel.setGeminiApiKey("")
+                            Toast.makeText(context, "Gemini key cleared from vault", Toast.LENGTH_SHORT).show()
+                        }
+                        keyToClear = null
+                    }
+                ) {
+                    Text(
+                        text = "Clear Key",
+                        color = StatusError,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { keyToClear = null }) {
+                    Text("Cancel", color = colors.textMuted)
+                }
+            },
+            containerColor = colors.surface,
+            shape = RoundedCornerShape(20.dp)
         )
     }
 
@@ -1202,9 +1263,7 @@ private fun SelectModelsScreen(
                                 shape = RoundedCornerShape(6.dp),
                                 color = StatusError.copy(alpha = 0.12f),
                                 modifier = Modifier.clickable {
-                                    groqApiKeyInput = ""
-                                    viewModel.setGroqApiKey("")
-                                    Toast.makeText(context, "Groq key cleared from vault", Toast.LENGTH_SHORT).show()
+                                    keyToClear = "Groq"
                                 }
                             ) {
                                 Row(
@@ -1399,9 +1458,7 @@ private fun SelectModelsScreen(
                                 shape = RoundedCornerShape(6.dp),
                                 color = StatusError.copy(alpha = 0.12f),
                                 modifier = Modifier.clickable {
-                                    geminiApiKeyInput = ""
-                                    viewModel.setGeminiApiKey("")
-                                    Toast.makeText(context, "Gemini key cleared from vault", Toast.LENGTH_SHORT).show()
+                                    keyToClear = "Gemini"
                                 }
                             ) {
                                 Row(
