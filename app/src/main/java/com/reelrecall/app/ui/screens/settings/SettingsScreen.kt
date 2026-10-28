@@ -32,6 +32,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.alpha
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -3332,7 +3333,20 @@ private fun TokenConsumptionTableCard(
     colors: NeumorphicColors
 ) {
     var selectedTab by remember { mutableStateOf("DAY") } // "DAY" or "MONTH"
+    var currentDayPage by remember { mutableStateOf(0) }
+    val dayPageSize = 7
+
     val activeList = if (selectedTab == "DAY") dayWiseList else monthWiseList
+    val totalDayPages = if (dayWiseList.isEmpty()) 1 else (dayWiseList.size + dayPageSize - 1) / dayPageSize
+    val safeDayPage = currentDayPage.coerceIn(0, (totalDayPages - 1).coerceAtLeast(0))
+
+    val displayList = if (selectedTab == "DAY") {
+        val start = safeDayPage * dayPageSize
+        val end = (start + dayPageSize).coerceAtMost(dayWiseList.size)
+        if (start < dayWiseList.size) dayWiseList.subList(start, end) else emptyList()
+    } else {
+        monthWiseList
+    }
 
     NeumorphicCard(colors = colors) {
         Column(modifier = Modifier.padding(18.dp)) {
@@ -3464,9 +3478,9 @@ private fun TokenConsumptionTableCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Table Rows
+                // Table Rows (Paginated to 7 days for Day-wise)
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    activeList.forEach { row ->
+                    displayList.forEach { row ->
                         Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = colors.surface,
@@ -3517,6 +3531,109 @@ private fun TokenConsumptionTableCard(
                                     modifier = Modifier.weight(1.2f),
                                     textAlign = androidx.compose.ui.text.style.TextAlign.End
                                 )
+                            }
+                        }
+                    }
+                }
+
+                // Day-wise 7-Day Pagination Controls
+                if (selectedTab == "DAY" && dayWiseList.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 7.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val canGoPrev = safeDayPage > 0
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (canGoPrev) (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.12f) else colors.border.copy(alpha = 0.1f),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    0.8.dp,
+                                    if (canGoPrev) (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.4f) else colors.border.copy(alpha = 0.2f)
+                                ),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable(enabled = canGoPrev) {
+                                        if (canGoPrev) currentDayPage = safeDayPage - 1
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Previous Page",
+                                        tint = if (canGoPrev) (if (isCloud) CyanAccent else ElectricIndigo) else colors.textMuted.copy(alpha = 0.4f),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = "Prev",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (canGoPrev) (if (isCloud) CyanAccent else ElectricIndigo) else colors.textMuted.copy(alpha = 0.4f)
+                                    )
+                                }
+                            }
+
+                            val startIdx = safeDayPage * dayPageSize + 1
+                            val endIdx = (startIdx + dayPageSize - 1).coerceAtMost(dayWiseList.size)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Page ${safeDayPage + 1} of $totalDayPages",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = "Days $startIdx–$endIdx of ${dayWiseList.size} logged",
+                                    fontSize = 9.5.sp,
+                                    color = colors.textSecondary
+                                )
+                            }
+
+                            val canGoNext = safeDayPage < totalDayPages - 1
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (canGoNext) (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.12f) else colors.border.copy(alpha = 0.1f),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    0.8.dp,
+                                    if (canGoNext) (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.4f) else colors.border.copy(alpha = 0.2f)
+                                ),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable(enabled = canGoNext) {
+                                        if (canGoNext) currentDayPage = safeDayPage + 1
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "Next",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (canGoNext) (if (isCloud) CyanAccent else ElectricIndigo) else colors.textMuted.copy(alpha = 0.4f)
+                                    )
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = "Next Page",
+                                        tint = if (canGoNext) (if (isCloud) CyanAccent else ElectricIndigo) else colors.textMuted.copy(alpha = 0.4f),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                }
                             }
                         }
                     }
