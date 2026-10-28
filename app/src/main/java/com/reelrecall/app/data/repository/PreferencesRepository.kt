@@ -46,7 +46,7 @@ data class AppPreferences(
     val userAvatarInitial: String = "?",
     val isCloudBackupEnabled: Boolean = false,
     val backupOnlyOnWifi: Boolean = true,
-    val cloudBackupFolder: String = "ReelRecall_Vault",
+    val cloudBackupFolder: String = "ReelLibrary_Vault",
     val lastBackupTimeFormatted: String = "Never backed up",
     // Real-Time Cloud Telemetry & Token Tracking (Zero demo data)
     val totalTokensUsed: Long = 0L,
@@ -160,7 +160,7 @@ class PreferencesRepository(private val context: Context) {
             userAvatarInitial = preferences[PreferencesKeys.USER_AVATAR_INITIAL] ?: "?",
             isCloudBackupEnabled = preferences[PreferencesKeys.IS_CLOUD_BACKUP_ENABLED] ?: false,
             backupOnlyOnWifi = preferences[PreferencesKeys.BACKUP_ONLY_ON_WIFI] ?: true,
-            cloudBackupFolder = preferences[PreferencesKeys.CLOUD_BACKUP_FOLDER] ?: "ReelRecall_Vault",
+            cloudBackupFolder = preferences[PreferencesKeys.CLOUD_BACKUP_FOLDER] ?: "ReelLibrary_Vault",
             lastBackupTimeFormatted = preferences[PreferencesKeys.LAST_BACKUP_TIME] ?: "Never backed up",
             totalTokensUsed = preferences[PreferencesKeys.TOTAL_TOKENS_USED] ?: 0L,
             totalPromptTokens = preferences[PreferencesKeys.TOTAL_PROMPT_TOKENS] ?: 0L,

@@ -1221,7 +1221,7 @@ fun EmptyVaultView(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Open Instagram, tap Share on any Reel, and choose ReelRecall to capture its takeaways, poster preview, and full transcript.",
+            text = "Open Instagram, tap Share on any Reel, and choose Reel Library to capture its takeaways, poster preview, and full transcript.",
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -2795,7 +2795,7 @@ fun ReelDetailScreen(
                 text = {
                     Column {
                         Text(
-                            text = "You are about to leave ReelRecall to open an external link in your web browser:",
+                            text = "You are about to leave Reel Library to open an external link in your web browser:",
                             fontSize = 13.sp,
                             color = colors.textSecondary
                         )

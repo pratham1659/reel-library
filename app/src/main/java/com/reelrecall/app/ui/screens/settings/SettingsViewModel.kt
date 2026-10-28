@@ -604,7 +604,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             isCloudBackingUp.value = true
             cloudBackupProgress.value = "Authenticating Google Cloud Storage session..."
             delay(500)
-            cloudBackupProgress.value = "Creating cloud folder /ReelRecall_Vault/metadata/..."
+            cloudBackupProgress.value = "Creating cloud folder /ReelLibrary_Vault/metadata/..."
             delay(600)
             val dao = AppDatabase.getInstance(getApplication()).reelDao()
             val reels = withContext(Dispatchers.IO) { dao.getAllReelsSync() }
@@ -613,7 +613,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val nowFormatted = SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault()).format(Date())
             repository.updateLastBackupTime(nowFormatted)
             isCloudBackingUp.value = false
-            cloudBackupProgress.value = "Cloud backup complete! Saved ${reels.size} reels to /ReelRecall_Vault/"
+            cloudBackupProgress.value = "Cloud backup complete! Saved ${reels.size} reels to /ReelLibrary_Vault/"
         }
     }
 
@@ -630,11 +630,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val jsonString = Json { prettyPrint = true; ignoreUnknownKeys = true }.encodeToString(exportData)
 
             val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
-            val zipFile = File(exportDir, "ReelRecall_Vault_Backup_${System.currentTimeMillis()}.zip")
+            val zipFile = File(exportDir, "ReelLibrary_Vault_Backup_${System.currentTimeMillis()}.zip")
 
             ZipOutputStream(FileOutputStream(zipFile)).use { zos ->
                 // 1. Write metadata.json
-                val metaEntry = ZipEntry("reelrecall_metadata.json")
+                val metaEntry = ZipEntry("reellibrary_metadata.json")
                 zos.putNextEntry(metaEntry)
                 zos.write(jsonString.toByteArray(Charsets.UTF_8))
                 zos.closeEntry()
@@ -697,7 +697,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             }
 
             if (jsonContent.isNullOrBlank()) {
-                return@withContext Result.failure(Exception("No valid reelrecall_metadata.json found in file"))
+                return@withContext Result.failure(Exception("No valid metadata JSON found in file"))
             }
 
             val export = Json { ignoreUnknownKeys = true }.decodeFromString<ReelLibraryExport>(jsonContent!!)

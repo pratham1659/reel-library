@@ -136,7 +136,7 @@ class ReelIngestWorker(
 
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Reel Recalled: $title")
+            .setContentTitle("Reel Library: $title")
             .setContentText(summary)
             .setStyle(NotificationCompat.BigTextStyle().bigText(summary))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

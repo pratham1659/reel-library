@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -500,12 +501,12 @@ private fun ProfileMainScreen(
                         colors = colors,
                         onClick = {
                             val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                                data = Uri.parse("mailto:support@reelrecall.app")
-                                putExtra(Intent.EXTRA_SUBJECT, "ReelRecall Feedback & Support")
+                                data = Uri.parse("mailto:support@reellibrary.app")
+                                putExtra(Intent.EXTRA_SUBJECT, "Reel Library Feedback & Support")
                             }
                             runCatching { context.startActivity(emailIntent) }
                                 .onFailure {
-                                    Toast.makeText(context, "Support: support@reelrecall.app", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, "Support: support@reellibrary.app", Toast.LENGTH_LONG).show()
                                 }
                         }
                     )
@@ -1688,7 +1689,7 @@ private fun SelectModelsScreen(
                                                 softWrap = false
                                             )
                                             Text(
-                                                text = if (tokens > 0) "${java.text.NumberFormat.getIntegerInstance().format(tokens)} tok" else "0 tok",
+                                                text = if (tokens > 0) "${java.text.NumberFormat.getIntegerInstance().format(tokens)} tk" else "0 tk",
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = if (isSelected) CyanAccent else colors.textMuted,
@@ -1760,7 +1761,7 @@ private fun SelectModelsScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // 3 Metric Cards for Selected API
+                            // 3 Metric Cards for Selected API (labeled with tk)
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1774,7 +1775,7 @@ private fun SelectModelsScreen(
                                 ) {
                                     Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
                                         Text(
-                                            text = "TOTAL",
+                                            text = "TOTAL (tk)",
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = CyanAccent,
@@ -1802,7 +1803,7 @@ private fun SelectModelsScreen(
                                 ) {
                                     Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
                                         Text(
-                                            text = "PROMPT",
+                                            text = "PROMPT (tk)",
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = colors.textSecondary,
@@ -1830,7 +1831,7 @@ private fun SelectModelsScreen(
                                 ) {
                                     Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
                                         Text(
-                                            text = "OUTPUT",
+                                            text = "OUTPUT (tk)",
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = ElectricIndigo,
@@ -1873,39 +1874,68 @@ private fun SelectModelsScreen(
                                 }
                             }
 
+                            // Last Call Telemetry (Two-Line Structure for 100% detail visibility)
                             if (preferences.lastCallTokens > 0L) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = colors.surface.copy(alpha = 0.6f),
+                                    color = colors.surface.copy(alpha = 0.7f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.3f)),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Row(
+                                    Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 8.dp, vertical = 5.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                            .padding(horizontal = 10.dp, vertical = 7.dp)
                                     ) {
-                                        Text(
-                                            text = "Last Call: +${preferences.lastCallTokens} tok (${preferences.lastCallProvider.ifBlank { "Cloud" }})",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = colors.textSecondary,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            softWrap = false,
-                                            modifier = Modifier.weight(1f, fill = false)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = "⚡ ${preferences.lastCallLatencyMs}ms • ${preferences.lastCallStatusCode}",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = CyanAccent,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
+                                        // Line 1: Endpoint provider & Realtime Latency / HTTP Status
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Last Call: ${preferences.lastCallProvider.ifBlank { "Cloud API" }}",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Text(
+                                                text = "⚡ ${preferences.lastCallLatencyMs}ms • ${preferences.lastCallStatusCode}",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CyanAccent,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(3.dp))
+
+                                        // Line 2: Token breakdown without truncation
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "+${preferences.lastCallTokens} tk consumed",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = StatusReady,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Text(
+                                                text = "(${preferences.lastCallPromptTokens} prompt + ${preferences.lastCallCompletionTokens} output tk)",
+                                                fontSize = 10.sp,
+                                                color = colors.textSecondary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1950,84 +1980,107 @@ private fun SelectModelsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
+                            // Line 1: Device / Processor Name on Left, Small Test Engine Button on Right
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column(modifier = Modifier.weight(1f, fill = false)) {
-                                    Text(
-                                        text = hardwareInfo.processorName,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = colors.textPrimary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        softWrap = false
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "${hardwareInfo.ramDisplay} • ${hardwareInfo.storageDisplay}",
-                                        fontSize = 10.sp,
-                                        color = StatusReady,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        softWrap = false
-                                    )
-                                    Spacer(modifier = Modifier.height(1.dp))
-                                    Text(
-                                        text = hardwareInfo.npuAcceleratorStatus,
-                                        fontSize = 9.sp,
-                                        color = colors.textSecondary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        softWrap = false
-                                    )
-                                }
+                                Text(
+                                    text = hardwareInfo.processorName,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    softWrap = false,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
 
                                 Spacer(modifier = Modifier.width(8.dp))
 
-                                Column(horizontalAlignment = Alignment.End) {
-                                    OutlinedButton(
-                                        onClick = { viewModel.testLocalEngine() },
-                                        enabled = !isCloudMode && !localTestResult.isTesting,
-                                        shape = RoundedCornerShape(8.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, if (!isCloudMode) ElectricIndigo else colors.border),
-                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ElectricIndigo)
-                                    ) {
-                                        if (localTestResult.isTesting) {
-                                            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = ElectricIndigo)
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Testing...", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                                        } else {
-                                            Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(12.dp))
-                                            Spacer(modifier = Modifier.width(3.dp))
-                                            Text("Test Engine", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                                        }
+                                OutlinedButton(
+                                    onClick = { viewModel.testLocalEngine() },
+                                    enabled = !isCloudMode && !localTestResult.isTesting,
+                                    shape = RoundedCornerShape(6.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(26.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (!isCloudMode) ElectricIndigo else colors.border),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ElectricIndigo)
+                                ) {
+                                    if (localTestResult.isTesting) {
+                                        CircularProgressIndicator(modifier = Modifier.size(10.dp), strokeWidth = 1.5.dp, color = ElectricIndigo)
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text("Testing...", fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                    } else {
+                                        Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(10.dp))
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text("Test Engine", fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                     }
+                                }
+                            }
 
-                                    if (localTestResult.latencyMs != null) {
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = ElectricIndigo.copy(alpha = 0.15f)
-                                        ) {
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            // Line 2: System Configuration (RAM, Storage, Cores) - full width, unobstructed
+                            Text(
+                                text = "${hardwareInfo.ramDisplay} • ${hardwareInfo.storageDisplay} • ${hardwareInfo.coreCount} Cores",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = StatusReady,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                softWrap = false
+                            )
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            // Line 3: NPU / GPU accelerator details
+                            Text(
+                                text = hardwareInfo.npuAcceleratorStatus,
+                                fontSize = 9.sp,
+                                color = colors.textSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                softWrap = false
+                            )
+
+                            // Line 4: Latency in another dedicated line
+                            if (localTestResult.latencyMs != null) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = ElectricIndigo.copy(alpha = 0.15f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "⚡ Real Latency: ${localTestResult.latencyMs}ms",
+                                            color = ElectricIndigo,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                        if (localTestResult.statusCode != null) {
                                             Text(
-                                                text = "⚡ ${localTestResult.latencyMs}ms",
+                                                text = " • ${localTestResult.statusCode}",
                                                 color = ElectricIndigo,
                                                 fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                fontWeight = FontWeight.Medium,
                                                 maxLines = 1,
-                                                softWrap = false,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                softWrap = false
                                             )
                                         }
                                     }
                                 }
                             }
 
+                            // Benchmark output banner
                             AnimatedVisibility(visible = localTestResult.message.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
                                 val isOk = localTestResult.isSuccess == true
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
@@ -3481,7 +3534,7 @@ private fun DataStorageScreen(
                                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                             type = "application/zip"
                                             putExtra(Intent.EXTRA_STREAM, contentUri)
-                                            putExtra(Intent.EXTRA_SUBJECT, "ReelRecall Vault Backup")
+                                            putExtra(Intent.EXTRA_SUBJECT, "Reel Library Vault Backup")
                                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
                                         context.startActivity(
