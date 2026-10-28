@@ -38,6 +38,28 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.EaseInOutCubic
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.window.Dialog
+import com.reelrecall.app.ui.theme.getNeumorphicColors
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -85,97 +107,116 @@ class MainActivity : ComponentActivity() {
             val preferences by settingsViewModel.preferences.collectAsState()
             val isDarkTheme = preferences.themeMode != "OBSIDIAN_LIGHT"
 
+            var showSplashScreen by remember { mutableStateOf(true) }
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(1200)
+                showSplashScreen = false
+            }
+
             ReelRecallTheme(isDarkTheme = isDarkTheme) {
-                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-                val scope = rememberCoroutineScope()
-                var currentTab by remember { mutableIntStateOf(0) } // 0 = Vault, 1 = Settings, 2 = Drawer/Knowledge
+                Box(modifier = Modifier.fillMaxSize()) {
+                    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                    val scope = rememberCoroutineScope()
+                    var currentTab by remember { mutableIntStateOf(0) } // 0 = Vault, 1 = Settings, 2 = Drawer/Knowledge
 
-                val groupedReels by vaultViewModel.groupedReels.collectAsState()
-                val allReels = remember(groupedReels) { groupedReels.flatMap { it.reels } }
+                    val groupedReels by vaultViewModel.groupedReels.collectAsState()
+                    val allReels = remember(groupedReels) { groupedReels.flatMap { it.reels } }
 
-                var showAddReelDialog by remember { mutableStateOf(false) }
-                var showAiAssistantDialog by remember { mutableStateOf(false) }
+                    var showAddReelDialog by remember { mutableStateOf(false) }
+                    var showAiAssistantDialog by remember { mutableStateOf(false) }
 
-                androidx.activity.compose.BackHandler(enabled = drawerState.isOpen) {
-                    scope.launch { drawerState.close() }
-                }
-                androidx.activity.compose.BackHandler(enabled = !drawerState.isOpen && currentTab != 0) {
-                    currentTab = 0
-                }
-
-                ModalNavigationDrawer(
-                    drawerState = drawerState,
-                    drawerContent = {
-                        KnowledgeDrawerContent(
-                            reels = allReels,
-                            onSelectReel = { reel ->
-                                scope.launch { drawerState.close() }
-                                currentTab = 0
-                                vaultViewModel.selectReelForDetail(reel.id)
-                            },
-                            onAddReel = {
-                                showAddReelDialog = true
-                            },
-                            onStartMultiSelect = {
-                                scope.launch { drawerState.close() }
-                                currentTab = 0
-                                vaultViewModel.toggleSelectionMode(true)
-                            },
-                            onToggleViewMode = {
-                                val currentMode = vaultViewModel.viewMode.value
-                                val newMode = if (currentMode == ViewMode.GRID) {
-                                    ViewMode.LIST
-                                } else {
-                                    ViewMode.GRID
-                                }
-                                vaultViewModel.setViewMode(newMode)
-                            },
-                            onReprocessAll = {
-                                scope.launch {
-                                    drawerState.close()
-                                    vaultViewModel.reprocessDemoReelsIfNeeded()
-                                }
-                            },
-                            onClose = { scope.launch { drawerState.close() } }
-                        )
+                    androidx.activity.compose.BackHandler(enabled = drawerState.isOpen) {
+                        scope.launch { drawerState.close() }
                     }
-                ) {
-                    val rootBg = if (isDarkTheme) DarkNeumorphic.background else LightNeumorphic.background
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(rootBg)
-                    ) {
-                        // MAIN CONTENT AREA
-                        when (currentTab) {
-                            0 -> {
-                                VaultScreen(
-                                    viewModel = vaultViewModel,
-                                    onOpenDrawer = { scope.launch { drawerState.open() } },
-                                    onOpenSettings = { currentTab = 1 },
-                                    onAddReel = { showAddReelDialog = true },
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-                            1 -> {
-                                SettingsScreen(
-                                    viewModel = settingsViewModel,
-                                    onBack = { currentTab = 0 },
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-                        }
+                    androidx.activity.compose.BackHandler(enabled = !drawerState.isOpen && currentTab != 0) {
+                        currentTab = 0
+                    }
 
-                        // QUICK ADD REEL URL DIALOG
-                        if (showAddReelDialog) {
-                            AddReelDialog(
-                                onDismiss = { showAddReelDialog = false },
-                                onAddReel = { url ->
-                                    showAddReelDialog = false
-                                    ingestReelUrl(url)
-                                }
+                    ModalNavigationDrawer(
+                        drawerState = drawerState,
+                        drawerContent = {
+                            KnowledgeDrawerContent(
+                                reels = allReels,
+                                isDarkTheme = isDarkTheme,
+                                onSelectReel = { reel ->
+                                    scope.launch { drawerState.close() }
+                                    currentTab = 0
+                                    vaultViewModel.selectReelForDetail(reel.id)
+                                },
+                                onAddReel = {
+                                    showAddReelDialog = true
+                                },
+                                onStartMultiSelect = {
+                                    scope.launch { drawerState.close() }
+                                    currentTab = 0
+                                    vaultViewModel.toggleSelectionMode(true)
+                                },
+                                onToggleViewMode = {
+                                    val currentMode = vaultViewModel.viewMode.value
+                                    val newMode = if (currentMode == ViewMode.GRID) {
+                                        ViewMode.LIST
+                                    } else {
+                                        ViewMode.GRID
+                                    }
+                                    vaultViewModel.setViewMode(newMode)
+                                },
+                                onReprocessAll = {
+                                    scope.launch {
+                                        drawerState.close()
+                                        vaultViewModel.reprocessDemoReelsIfNeeded()
+                                    }
+                                },
+                                onClose = { scope.launch { drawerState.close() } }
                             )
                         }
+                    ) {
+                        val rootBg = if (isDarkTheme) DarkNeumorphic.background else LightNeumorphic.background
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(rootBg)
+                        ) {
+                            // MAIN CONTENT AREA
+                            when (currentTab) {
+                                0 -> {
+                                    VaultScreen(
+                                        viewModel = vaultViewModel,
+                                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                                        onOpenSettings = { currentTab = 1 },
+                                        onAddReel = { showAddReelDialog = true },
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                                1 -> {
+                                    SettingsScreen(
+                                        viewModel = settingsViewModel,
+                                        onBack = { currentTab = 0 },
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
+
+                            // QUICK ADD REEL URL DIALOG
+                            if (showAddReelDialog) {
+                                AddReelDialog(
+                                    isDarkTheme = isDarkTheme,
+                                    onDismiss = { showAddReelDialog = false },
+                                    onAddReel = { url ->
+                                        showAddReelDialog = false
+                                        ingestReelUrl(url)
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // INSTAGRAM STYLE SPLASH SCREEN
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showSplashScreen,
+                        enter = androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(400))
+                    ) {
+                        InstagramStyleSplashScreen(isDarkTheme = isDarkTheme)
                     }
                 }
             }
@@ -240,59 +281,240 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AddReelDialog(
+    isDarkTheme: Boolean = true,
     onDismiss: () -> Unit,
     onAddReel: (String) -> Unit
 ) {
     var urlInput by remember { mutableStateOf("") }
+    val colors = getNeumorphicColors(isDarkTheme)
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = ObsidianCard,
-        shape = RoundedCornerShape(22.dp),
-        title = {
-            Text("Add to Reel Library", color = TextPrimary, fontWeight = FontWeight.Bold)
-        },
-        text = {
-            Column {
-                Text(
-                    "Paste any Instagram Reel link below to extract its takeaways and poster preview:",
-                    color = TextSecondary,
-                    fontSize = 13.sp
-                )
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = colors.surface,
+            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+            shadowElevation = 14.dp,
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .wrapContentHeight()
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header Row with Gradient Instagram Badge + Title
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFFCB045))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Add to Reel Library",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                        Text(
+                            text = "Paste link to summarize & extract takeaways",
+                            fontSize = 11.sp,
+                            color = colors.textSecondary
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(14.dp))
+
                 OutlinedTextField(
                     value = urlInput,
                     onValueChange = { urlInput = it },
-                    placeholder = { Text("https://www.instagram.com/reel/...", color = TextMuted) },
+                    placeholder = {
+                        Text(
+                            "https://www.instagram.com/reel/...",
+                            color = colors.textMuted,
+                            fontSize = 12.sp
+                        )
+                    },
                     singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = ObsidianPill,
-                        unfocusedContainerColor = ObsidianPill,
-                        focusedBorderColor = SparkleOrange,
-                        unfocusedBorderColor = ObsidianPillBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedContainerColor = colors.pillBg,
+                        unfocusedContainerColor = colors.pillBg,
+                        focusedBorderColor = colors.accent,
+                        unfocusedBorderColor = colors.border,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
                 )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onAddReel(urlInput.trim()) },
-                colors = ButtonDefaults.buttonColors(containerColor = SparkleOrange),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Add Reel")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp)
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            color = colors.textSecondary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            if (urlInput.isNotBlank()) {
+                                onAddReel(urlInput.trim())
+                            }
+                        },
+                        enabled = urlInput.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colors.accent,
+                            disabledContainerColor = colors.accent.copy(alpha = 0.35f)
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp)
+                    ) {
+                        Text(
+                            text = "Add Reel",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+fun InstagramStyleSplashScreen(isDarkTheme: Boolean) {
+    val bg = if (isDarkTheme) Color(0xFF0C0E14) else Color(0xFFFFFFFF)
+    val textPrimary = if (isDarkTheme) Color(0xFFF8FAFC) else Color(0xFF0F172A)
+    val textMuted = if (isDarkTheme) Color(0xFF64748B) else Color(0xFF94A3B8)
+
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.95f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "logoScale"
     )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bg),
+        contentAlignment = Alignment.Center
+    ) {
+        // CENTER: App Logo + Name
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(76.dp)
+                    .graphicsLayer(scaleX = scale, scaleY = scale)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                Color(0xFF833AB4),
+                                Color(0xFFFD1D1D),
+                                Color(0xFFFCB045)
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(42.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Reel Library",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = textPrimary,
+                letterSpacing = 0.5.sp
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = "AI-Powered Video Knowledge",
+                fontSize = 12.sp,
+                color = textMuted,
+                fontWeight = FontWeight.Normal
+            )
+        }
+
+        // BOTTOM: "from REEL LIBRARY" footer matching Instagram's opening style
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "from",
+                fontSize = 11.sp,
+                color = textMuted
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "REEL LIBRARY",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isDarkTheme) Color(0xFFE2E8F0) else Color(0xFF1E293B),
+                letterSpacing = 1.5.sp
+            )
+        }
+    }
 }
 
 @Composable

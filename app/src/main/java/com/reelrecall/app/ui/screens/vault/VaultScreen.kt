@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -840,24 +841,6 @@ fun DateSectionHeader(
 
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = colors.pillBg,
-                        border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border),
-                        modifier = Modifier
-                            .height(32.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .clickable(onClick = onSelectAll)
-                    ) {
-                        Text(
-                            text = if (selectedCount == totalCount && totalCount > 0) "Deselect" else "All",
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colors.textSecondary,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
-                        )
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
                         color = colors.accentBg,
                         border = androidx.compose.foundation.BorderStroke(1.dp, colors.accent.copy(alpha = 0.8f)),
                         modifier = Modifier
@@ -865,13 +848,19 @@ fun DateSectionHeader(
                             .clip(RoundedCornerShape(14.dp))
                             .clickable(onClick = onToggleSelectionMode)
                     ) {
-                        Text(
-                            text = "Done",
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.accent,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(horizontal = 14.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Done",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.accent
+                            )
+                        }
                     }
                 } else {
                     Surface(
@@ -945,25 +934,41 @@ fun AppleGlassAddButton(
             .shadow(
                 elevation = 8.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.5f),
-                spotColor = Color.Black.copy(alpha = 0.6f)
+                ambientColor = Color.Black.copy(alpha = if (isDarkTheme) 0.5f else 0.2f),
+                spotColor = Color.Black.copy(alpha = if (isDarkTheme) 0.6f else 0.3f)
             )
             .clip(CircleShape)
             .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = if (isDarkTheme) 0.22f else 0.55f),
-                        Color.White.copy(alpha = if (isDarkTheme) 0.08f else 0.25f)
+                if (isDarkTheme) {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.22f),
+                            Color.White.copy(alpha = 0.08f)
+                        )
                     )
-                )
+                } else {
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF2563EB),
+                            Color(0xFF1D4ED8)
+                        )
+                    )
+                }
             )
             .border(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
-                    listOf(
-                        Color.White.copy(alpha = if (isDarkTheme) 0.55f else 0.85f),
-                        Color.White.copy(alpha = if (isDarkTheme) 0.15f else 0.35f)
-                    )
+                    if (isDarkTheme) {
+                        listOf(
+                            Color.White.copy(alpha = 0.55f),
+                            Color.White.copy(alpha = 0.15f)
+                        )
+                    } else {
+                        listOf(
+                            Color(0xFF60A5FA),
+                            Color(0xFF1D4ED8)
+                        )
+                    }
                 ),
                 shape = CircleShape
             )

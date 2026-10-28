@@ -56,17 +56,17 @@ val DarkNeumorphic = NeumorphicColors(
 )
 
 val LightNeumorphic = NeumorphicColors(
-    background = Color(0xFFE9EDF5),
-    surface = Color(0xFFE9EDF5),
+    background = Color(0xFFF6F8FC),
+    surface = Color(0xFFFFFFFF),
     highlight = Color(0xFFFFFFFF),
-    shadow = Color(0xFFBAC3D4),
-    border = Color(0xFFD8DFEC),
+    shadow = Color(0x180F172A),
+    border = Color(0xFFE2E8F0),
     textPrimary = Color(0xFF0F172A),
     textSecondary = Color(0xFF475569),
-    textMuted = Color(0xFF64748B),
-    pillBg = Color(0xFFDCE2EF),
+    textMuted = Color(0xFF94A3B8),
+    pillBg = Color(0xFFF1F5F9),
     accent = Color(0xFF2563EB),
-    accentBg = Color(0xFFDBEAFE),
+    accentBg = Color(0xFFEFF6FF),
     isDark = false
 )
 
