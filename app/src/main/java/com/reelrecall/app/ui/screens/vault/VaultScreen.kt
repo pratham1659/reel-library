@@ -40,6 +40,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -168,7 +169,10 @@ fun VaultScreen(
 
     var readerModeReel by remember { mutableStateOf<ReelEntity?>(null) }
     var fullTranscriptReel by remember { mutableStateOf<ReelEntity?>(null) }
-    var selectedReelIdForDetail by remember { mutableStateOf<Long?>(null) }
+    val selectedReelIdForDetail by viewModel.selectedReelIdForDetail.collectAsState()
+    val isSelectionMode by viewModel.isSelectionMode.collectAsState()
+    val selectedReelIds by viewModel.selectedReelIds.collectAsState()
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     val searchQuery by viewModel.searchQuery.collectAsState()
     val aiSuggestions by viewModel.aiSearchSuggestions.collectAsState()
@@ -176,6 +180,12 @@ fun VaultScreen(
     BackHandler(enabled = isSearchActive) {
         viewModel.setSearchActive(false)
         viewModel.onSearchQueryChange("")
+    }
+    BackHandler(enabled = isSelectionMode) {
+        viewModel.clearSelection()
+    }
+    BackHandler(enabled = selectedReelIdForDetail != null) {
+        viewModel.selectReelForDetail(null)
     }
 
     Box(
@@ -188,7 +198,7 @@ fun VaultScreen(
                 reelId = selectedReelIdForDetail!!,
                 viewModel = viewModel,
                 colors = colors,
-                onBack = { selectedReelIdForDetail = null }
+                onBack = { viewModel.selectReelForDetail(null) }
             )
         } else {
             // MAIN FEED VIEW (Search Bar expands right here on Home Screen!)
@@ -561,6 +571,8 @@ fun VaultScreen(
                         )
                     }
                 } else {
+                    val allReelIds = remember(groupedReels) { groupedReels.flatMap { it.reels }.map { it.id } }
+
                     when (viewMode) {
                         ViewMode.GRID -> {
                             LazyVerticalGrid(
@@ -569,13 +581,20 @@ fun VaultScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                groupedReels.forEach { group ->
+                                groupedReels.forEachIndexed { groupIndex, group ->
                                     if (group.reels.isNotEmpty()) {
                                         item(span = { GridItemSpan(2) }) {
                                             DateSectionHeader(
                                                 primary = group.primaryHeader,
                                                 secondary = group.secondaryHeader,
-                                                colors = colors
+                                                colors = colors,
+                                                showSelectButton = (groupIndex == 0),
+                                                isSelectionMode = isSelectionMode,
+                                                selectedCount = selectedReelIds.size,
+                                                totalCount = allReelIds.size,
+                                                onToggleSelectionMode = { viewModel.toggleSelectionMode() },
+                                                onSelectAll = { viewModel.selectAllReels(allReelIds) },
+                                                onDeleteSelected = { showDeleteConfirmDialog = true }
                                             )
                                         }
 
@@ -583,7 +602,15 @@ fun VaultScreen(
                                             RecallReelGridCard(
                                                 reel = reel,
                                                 colors = colors,
-                                                onClick = { selectedReelIdForDetail = reel.id }
+                                                isSelectionMode = isSelectionMode,
+                                                isSelected = selectedReelIds.contains(reel.id),
+                                                onClick = {
+                                                    if (isSelectionMode) {
+                                                        viewModel.toggleSelectReel(reel.id)
+                                                    } else {
+                                                        viewModel.selectReelForDetail(reel.id)
+                                                    }
+                                                }
                                             )
                                         }
                                     }
@@ -599,13 +626,20 @@ fun VaultScreen(
                                 verticalArrangement = Arrangement.spacedBy(22.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                groupedReels.forEach { group ->
+                                groupedReels.forEachIndexed { groupIndex, group ->
                                     if (group.reels.isNotEmpty()) {
                                         item {
                                             DateSectionHeader(
                                                 primary = group.primaryHeader,
                                                 secondary = group.secondaryHeader,
-                                                colors = colors
+                                                colors = colors,
+                                                showSelectButton = (groupIndex == 0),
+                                                isSelectionMode = isSelectionMode,
+                                                selectedCount = selectedReelIds.size,
+                                                totalCount = allReelIds.size,
+                                                onToggleSelectionMode = { viewModel.toggleSelectionMode() },
+                                                onSelectAll = { viewModel.selectAllReels(allReelIds) },
+                                                onDeleteSelected = { showDeleteConfirmDialog = true }
                                             )
                                         }
 
@@ -614,7 +648,15 @@ fun VaultScreen(
                                                 reel = reel,
                                                 showTags = preferences.showTagsOnCards,
                                                 colors = colors,
-                                                onOpenReel = { selectedReelIdForDetail = reel.id },
+                                                isSelectionMode = isSelectionMode,
+                                                isSelected = selectedReelIds.contains(reel.id),
+                                                onOpenReel = {
+                                                    if (isSelectionMode) {
+                                                        viewModel.toggleSelectReel(reel.id)
+                                                    } else {
+                                                        viewModel.selectReelForDetail(reel.id)
+                                                    }
+                                                },
                                                 onRetry = { viewModel.retryReel(reel) },
                                                 onDelete = { viewModel.deleteReel(reel.id) }
                                             )
@@ -632,24 +674,55 @@ fun VaultScreen(
             }
         }
 
-        // FLOATING ADD REEL BUTTON IN BOTTOM RIGHT CORNER (NEUMORPHIC)
-        if (selectedReelIdForDetail == null && !isSearchActive) {
-            NeumorphicIconButton(
+        // FLOATING ADD REEL BUTTON IN BOTTOM RIGHT CORNER (Apple Glass Style)
+        if (selectedReelIdForDetail == null && !isSearchActive && !isSelectionMode) {
+            AppleGlassAddButton(
                 onClick = onAddReel,
-                colors = colors,
-                size = 62.dp,
-                elevation = 8.dp,
+                isDarkTheme = isDarkTheme,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    .padding(end = 22.dp, bottom = 26.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Reel",
-                    tint = colors.accent,
+                    .padding(end = 20.dp, bottom = 26.dp)
+            )
+        }
+
+        // BATCH DELETE CONFIRMATION DIALOG
+        if (showDeleteConfirmDialog && selectedReelIds.isNotEmpty()) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showDeleteConfirmDialog = false },
+                title = {
+                    Text(
+                        text = "Delete Selected Reels?",
+                        color = colors.textPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp
                     )
-            }
+                },
+                text = {
+                    Text(
+                        text = "Are you sure you want to permanently delete ${selectedReelIds.size} reel(s) from Reel Library? This action cannot be undone.",
+                        color = colors.textSecondary,
+                        fontSize = 13.5.sp
+                    )
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            showDeleteConfirmDialog = false
+                            viewModel.deleteSelectedReels()
+                        }
+                    ) {
+                        Text("Delete", color = Color(0xFFFF5252), fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                        Text("Cancel", color = colors.textSecondary)
+                    }
+                },
+                containerColor = Color(0xFF1E202B),
+                shape = RoundedCornerShape(18.dp)
+            )
         }
 
         // SORT / FILTER BOTTOM SHEET (Matching Reference Screenshot 2 & 3)
@@ -692,25 +765,216 @@ fun VaultScreen(
 fun DateSectionHeader(
     primary: String,
     secondary: String,
-    colors: NeumorphicColors = getNeumorphicColors(true)
+    colors: NeumorphicColors = getNeumorphicColors(true),
+    showSelectButton: Boolean = false,
+    isSelectionMode: Boolean = false,
+    selectedCount: Int = 0,
+    totalCount: Int = 0,
+    onToggleSelectionMode: () -> Unit = {},
+    onSelectAll: () -> Unit = {},
+    onDeleteSelected: () -> Unit = {}
 ) {
     Row(
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(bottom = 4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = primary,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.textPrimary
+            )
+            Text(
+                text = secondary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Normal,
+                color = colors.textMuted,
+                modifier = Modifier.padding(bottom = 2.dp)
+            )
+        }
+
+        // SELECT BUTTON ROW (In the same row as Today, right below the settings icon!)
+        if (showSelectButton) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (isSelectionMode) {
+                    if (selectedCount > 0) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0x35FF5252),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.7f)),
+                            modifier = Modifier
+                                .height(32.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable(onClick = onDeleteSelected)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete Selected",
+                                    tint = Color(0xFFFF5252),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = "Delete ($selectedCount)",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFFF5252)
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border),
+                        modifier = Modifier
+                            .height(32.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable(onClick = onSelectAll)
+                    ) {
+                        Text(
+                            text = if (selectedCount == totalCount && totalCount > 0) "Deselect" else "All",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = colors.accentBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.accent.copy(alpha = 0.8f)),
+                        modifier = Modifier
+                            .height(32.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable(onClick = onToggleSelectionMode)
+                    ) {
+                        Text(
+                            text = "Done",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.accent,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                        )
+                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = colors.surface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                        modifier = Modifier
+                            .height(32.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable(onClick = onToggleSelectionMode)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = colors.textSecondary,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "Select",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.textPrimary
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GlassTagChip(
+    tag: String,
+    colors: NeumorphicColors,
+    fontSize: androidx.compose.ui.unit.TextUnit = 10.5.sp,
+    paddingHorizontal: androidx.compose.ui.unit.Dp = 8.dp,
+    paddingVertical: androidx.compose.ui.unit.Dp = 3.5.dp
+) {
+    val cleanTag = if (tag.startsWith("#")) tag else "#$tag"
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = colors.pillBg.copy(alpha = 0.85f),
+        border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border.copy(alpha = 0.65f))
     ) {
         Text(
-            text = primary,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = colors.textPrimary
+            text = cleanTag,
+            fontSize = fontSize,
+            color = colors.accent,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = paddingHorizontal, vertical = paddingVertical)
         )
-        Text(
-            text = secondary,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Normal,
-            color = colors.textMuted,
-            modifier = Modifier.padding(bottom = 2.dp)
+    }
+}
+
+@Composable
+fun AppleGlassAddButton(
+    onClick: () -> Unit,
+    isDarkTheme: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(46.dp)
+            .shadow(
+                elevation = 8.dp,
+                shape = CircleShape,
+                ambientColor = Color.Black.copy(alpha = 0.5f),
+                spotColor = Color.Black.copy(alpha = 0.6f)
+            )
+            .clip(CircleShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = if (isDarkTheme) 0.22f else 0.55f),
+                        Color.White.copy(alpha = if (isDarkTheme) 0.08f else 0.25f)
+                    )
+                )
+            )
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    listOf(
+                        Color.White.copy(alpha = if (isDarkTheme) 0.55f else 0.85f),
+                        Color.White.copy(alpha = if (isDarkTheme) 0.15f else 0.35f)
+                    )
+                ),
+                shape = CircleShape
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = "Add Reel",
+            tint = Color.White,
+            modifier = Modifier.size(22.dp)
         )
     }
 }
@@ -764,6 +1028,8 @@ fun RecallReelCard(
     reel: ReelEntity,
     showTags: Boolean = true,
     colors: NeumorphicColors = getNeumorphicColors(true),
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
     onOpenReel: () -> Unit,
     onRetry: () -> Unit,
     onDelete: () -> Unit,
@@ -781,6 +1047,7 @@ fun RecallReelCard(
         modifier = modifier.fillMaxWidth(),
         colors = colors,
         elevation = 7.dp,
+        customBorder = if (isSelectionMode && isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, colors.accent) else null,
         shape = RoundedCornerShape(22.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -843,21 +1110,43 @@ fun RecallReelCard(
                     }
                 }
 
-                // Play Icon Overlay
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .align(Alignment.Center)
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.55f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Play",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
+                // Play Icon Overlay or Selection Checkmark
+                if (!isSelectionMode) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .align(Alignment.Center)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.55f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Play",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(10.dp)
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(if (isSelected) colors.accent else Color.Black.copy(alpha = 0.55f))
+                            .border(1.5.dp, if (isSelected) colors.accent else Color.White.copy(alpha = 0.7f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Selected",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
 
                 // Status Badge in Top Right
@@ -945,7 +1234,7 @@ fun RecallReelCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 4. PROPER TAGS (Shown as neat chips)
+            // 4. PROPER TAGS (Glassmorphic Chip)
             if (showTags && tags.isNotEmpty()) {
                 Row(
                     modifier = Modifier
@@ -954,19 +1243,7 @@ fun RecallReelCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     tags.forEach { tag ->
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = colors.pillBg,
-                            border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border)
-                        ) {
-                            Text(
-                                text = if (tag.startsWith("#")) tag else "#$tag",
-                                fontSize = 11.sp,
-                                color = colors.accent,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
+                        GlassTagChip(tag = tag, colors = colors, fontSize = 11.sp)
                     }
                 }
             }
@@ -1538,6 +1815,8 @@ fun FullTranscriptDialog(
 fun RecallReelGridCard(
     reel: ReelEntity,
     colors: NeumorphicColors,
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
     onClick: () -> Unit
 ) {
     val tags = remember(reel.tagsJson) {
@@ -1553,6 +1832,7 @@ fun RecallReelGridCard(
         onClick = onClick,
         colors = colors,
         elevation = 5.dp,
+        customBorder = if (isSelectionMode && isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, colors.accent) else null,
         shape = RoundedCornerShape(18.dp)
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
@@ -1583,21 +1863,43 @@ fun RecallReelGridCard(
                     }
                 }
 
-                // Play icon overlay
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .align(Alignment.Center)
-                        .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.5f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
+                // Play icon overlay or Selection Checkmark
+                if (!isSelectionMode) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .align(Alignment.Center)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.5f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(7.dp)
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(if (isSelected) colors.accent else Color.Black.copy(alpha = 0.55f))
+                            .border(1.5.dp, if (isSelected) colors.accent else Color.White.copy(alpha = 0.7f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Selected",
+                                tint = Color.White,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                    }
                 }
 
                 // Status pill
@@ -1662,7 +1964,7 @@ fun RecallReelGridCard(
                 )
             }
 
-            // Tags (Smooth horizontally scrolling tag chips with comfortable spacing)
+            // Tags (Exact Glassmorphic chip matching List view!)
             if (tags.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(7.dp))
                 Row(
@@ -1673,20 +1975,13 @@ fun RecallReelGridCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     tags.forEach { tag ->
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = colors.accentBg.copy(alpha = 0.55f),
-                            border = androidx.compose.foundation.BorderStroke(0.7.dp, colors.accent.copy(alpha = 0.4f))
-                        ) {
-                            Text(
-                                text = if (tag.startsWith("#")) tag else "#$tag",
-                                fontSize = 9.5.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = colors.accent,
-                                maxLines = 1,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
+                        GlassTagChip(
+                            tag = tag,
+                            colors = colors,
+                            fontSize = 9.5.sp,
+                            paddingHorizontal = 6.dp,
+                            paddingVertical = 2.dp
+                        )
                     }
                 }
             }

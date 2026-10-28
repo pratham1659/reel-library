@@ -53,6 +53,9 @@ interface ReelDao {
     @Query("DELETE FROM reels WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("DELETE FROM reels WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
     @Query("DELETE FROM reels")
     suspend fun deleteAll()
 

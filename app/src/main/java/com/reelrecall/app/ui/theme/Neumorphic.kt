@@ -83,6 +83,7 @@ fun NeumorphicCard(
     colors: NeumorphicColors,
     elevation: Dp = 6.dp,
     borderWidth: Dp = 1.dp,
+    customBorder: BorderStroke? = null,
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -90,7 +91,7 @@ fun NeumorphicCard(
         Modifier.clickable(onClick = onClick)
     } else Modifier
 
-    val borderStroke = BorderStroke(
+    val borderStroke = customBorder ?: BorderStroke(
         width = borderWidth,
         brush = Brush.linearGradient(
             colors = listOf(

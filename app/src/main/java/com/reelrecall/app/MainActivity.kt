@@ -55,6 +55,7 @@ import com.reelrecall.app.ui.screens.settings.SettingsScreen
 import com.reelrecall.app.ui.screens.settings.SettingsViewModel
 import com.reelrecall.app.ui.screens.vault.VaultScreen
 import com.reelrecall.app.ui.screens.vault.VaultViewModel
+import com.reelrecall.app.data.model.ViewMode
 import com.reelrecall.app.ui.screens.vault.components.KnowledgeDrawerContent
 import com.reelrecall.app.ui.theme.DarkNeumorphic
 import com.reelrecall.app.ui.theme.LightNeumorphic
@@ -109,7 +110,31 @@ class MainActivity : ComponentActivity() {
                             reels = allReels,
                             onSelectReel = { reel ->
                                 scope.launch { drawerState.close() }
-                                openReel(reel.canonicalUrl)
+                                currentTab = 0
+                                vaultViewModel.selectReelForDetail(reel.id)
+                            },
+                            onAddReel = {
+                                showAddReelDialog = true
+                            },
+                            onStartMultiSelect = {
+                                scope.launch { drawerState.close() }
+                                currentTab = 0
+                                vaultViewModel.toggleSelectionMode(true)
+                            },
+                            onToggleViewMode = {
+                                val currentMode = vaultViewModel.viewMode.value
+                                val newMode = if (currentMode == ViewMode.GRID) {
+                                    ViewMode.LIST
+                                } else {
+                                    ViewMode.GRID
+                                }
+                                vaultViewModel.setViewMode(newMode)
+                            },
+                            onReprocessAll = {
+                                scope.launch {
+                                    drawerState.close()
+                                    vaultViewModel.reprocessDemoReelsIfNeeded()
+                                }
                             },
                             onClose = { scope.launch { drawerState.close() } }
                         )
