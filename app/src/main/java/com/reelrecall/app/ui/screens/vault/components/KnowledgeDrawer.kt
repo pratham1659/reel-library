@@ -91,6 +91,7 @@ enum class DrawerFilter {
     ALL,
     READY,
     PROCESSING,
+    FAILED,
     NOTES
 }
 
@@ -123,6 +124,7 @@ fun KnowledgeDrawerContent(
     val totalCount = reels.size
     val readyCount = remember(reels) { reels.count { it.status == IngestionStatus.COMPLETED } }
     val processingCount = remember(reels) { reels.count { it.status != IngestionStatus.COMPLETED && it.status != IngestionStatus.FAILED } }
+    val failedCount = remember(reels) { reels.count { it.status == IngestionStatus.FAILED } }
     val notesCount = remember(reels) { reels.count { !it.userNotes.isNullOrBlank() } }
 
     // Colors according to theme
@@ -152,6 +154,7 @@ fun KnowledgeDrawerContent(
             DrawerFilter.ALL -> list
             DrawerFilter.READY -> list.filter { it.status == IngestionStatus.COMPLETED }
             DrawerFilter.PROCESSING -> list.filter { it.status != IngestionStatus.COMPLETED && it.status != IngestionStatus.FAILED }
+            DrawerFilter.FAILED -> list.filter { it.status == IngestionStatus.FAILED }
             DrawerFilter.NOTES -> list.filter { !it.userNotes.isNullOrBlank() }
         }
 
@@ -341,6 +344,13 @@ fun KnowledgeDrawerContent(
                             selected = selectedFilter == DrawerFilter.PROCESSING,
                             isDark = isDarkTheme,
                             onClick = { selectedFilter = DrawerFilter.PROCESSING }
+                        )
+                        DrawerFilterChip(
+                            label = "Failed",
+                            count = failedCount,
+                            selected = selectedFilter == DrawerFilter.FAILED,
+                            isDark = isDarkTheme,
+                            onClick = { selectedFilter = DrawerFilter.FAILED }
                         )
                         DrawerFilterChip(
                             label = "Notes",
@@ -601,19 +611,95 @@ private fun DrawerFilterChip(
     onClick: () -> Unit
 ) {
     val bgColor = if (isDark) {
-        if (selected) Color(0xFF202336) else Color(0xFF171822)
+        if (selected) {
+            when (label) {
+                "Ready" -> Color(0xFF132819)
+                "Failed" -> Color(0xFF331616)
+                else -> Color(0xFF202336)
+            }
+        } else Color(0xFF171822)
     } else {
-        if (selected) Color(0xFFEFF6FF) else Color(0xFFF1F5F9)
+        if (selected) {
+            when (label) {
+                "Ready" -> Color(0xFFDCFCE7)
+                "Failed" -> Color(0xFFFEE2E2)
+                else -> Color(0xFFEFF6FF)
+            }
+        } else {
+            when (label) {
+                "Ready" -> Color(0xFFF0FDF4)
+                "Failed" -> Color(0xFFFEF2F2)
+                else -> Color(0xFFF1F5F9)
+            }
+        }
     }
+
     val borderColor = if (isDark) {
-        if (selected) ActiveBlue else Color(0xFF272A3A)
+        if (selected) {
+            when (label) {
+                "Ready" -> StatusReady
+                "Failed" -> StatusError
+                else -> ActiveBlue
+            }
+        } else Color(0xFF272A3A)
     } else {
-        if (selected) ActiveBlue else Color(0xFFE2E8F0)
+        if (selected) {
+            when (label) {
+                "Ready" -> Color(0xFF86EFAC)
+                "Failed" -> Color(0xFFFCA5A5)
+                else -> ActiveBlue
+            }
+        } else {
+            when (label) {
+                "Ready" -> Color(0xFFBBF7D0)
+                "Failed" -> Color(0xFFFECACA)
+                else -> Color(0xFFE2E8F0)
+            }
+        }
     }
+
     val labelColor = if (isDark) {
-        if (selected) TextPrimary else TextSecondary
+        if (selected) {
+            when (label) {
+                "Ready" -> StatusReady
+                "Failed" -> StatusError
+                else -> TextPrimary
+            }
+        } else {
+            when (label) {
+                "Ready" -> StatusReady.copy(alpha = 0.85f)
+                "Failed" -> StatusError.copy(alpha = 0.85f)
+                else -> TextSecondary
+            }
+        }
     } else {
-        if (selected) ActiveBlue else Color(0xFF475569)
+        if (selected) {
+            when (label) {
+                "Ready" -> Color(0xFF15803D)
+                "Failed" -> Color(0xFFDC2626)
+                else -> ActiveBlue
+            }
+        } else {
+            when (label) {
+                "Ready" -> Color(0xFF166534)
+                "Failed" -> Color(0xFF991B1B)
+                else -> Color(0xFF475569)
+            }
+        }
+    }
+
+    val countColor = if (selected) {
+        when (label) {
+            "Ready" -> if (isDark) StatusReady else Color(0xFF15803D)
+            "Failed" -> if (isDark) StatusError else Color(0xFFDC2626)
+            else -> ActiveBlue
+        }
+    } else {
+        when (label) {
+            "Ready" -> if (isDark) StatusReady.copy(alpha = 0.7f) else Color(0xFF15803D)
+            "Failed" -> if (isDark) StatusError.copy(alpha = 0.7f) else Color(0xFFDC2626)
+            else -> (if (isDark) TextMuted else Color(0xFF94A3B8))
+        }
     }
 
     Surface(
@@ -642,7 +728,7 @@ private fun DrawerFilterChip(
                 text = "$count",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (selected) ActiveBlue else (if (isDark) TextMuted else Color(0xFF94A3B8))
+                color = countColor
             )
         }
     }
@@ -654,9 +740,9 @@ private fun DrawerReelCard(
     isDark: Boolean = true,
     onClick: () -> Unit
 ) {
-    val cardBg = if (isDark) Color(0xFF181A24) else Color(0xFFFFFFFF)
-    val cardBorder = if (isDark) Color(0xFF242736) else Color(0xFFE2E8F0)
-    val thumbBg = if (isDark) Color(0xFF0F1015) else Color(0xFFF1F5F9)
+    val cardBg = if (isDark) Color(0xFF181A24) else Color(0xFFECEFF5)
+    val cardBorder = if (isDark) Color(0xFF242736) else Color(0xFFDCE2ED)
+    val thumbBg = if (isDark) Color(0xFF0F1015) else Color(0xFFDEE4EE)
     val titleColor = if (isDark) TextPrimary else Color(0xFF0F172A)
     val handleColor = if (isDark) TextMuted else Color(0xFF64748B)
     val dateColor = if (isDark) Color(0xFF6B7280) else Color(0xFF94A3B8)

@@ -143,6 +143,8 @@ import com.reelrecall.app.ui.theme.TextPrimary
 import com.reelrecall.app.ui.theme.TextSecondary
 import kotlinx.serialization.json.Json
 
+val LocalIsDarkTheme = androidx.compose.runtime.staticCompositionLocalOf { true }
+
 @Composable
 fun VaultScreen(
     viewModel: VaultViewModel,
@@ -189,11 +191,12 @@ fun VaultScreen(
         viewModel.selectReelForDetail(null)
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.background)
-    ) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalIsDarkTheme provides isDarkTheme) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(colors.background)
+        ) {
         if (selectedReelIdForDetail != null) {
             ReelDetailScreen(
                 reelId = selectedReelIdForDetail!!,
@@ -761,6 +764,7 @@ fun VaultScreen(
         }
     }
 }
+}
 
 @Composable
 fun DateSectionHeader(
@@ -930,45 +934,29 @@ fun AppleGlassAddButton(
 ) {
     Box(
         modifier = modifier
-            .size(46.dp)
+            .size(52.dp)
             .shadow(
-                elevation = 8.dp,
+                elevation = 12.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = if (isDarkTheme) 0.5f else 0.2f),
-                spotColor = Color.Black.copy(alpha = if (isDarkTheme) 0.6f else 0.3f)
+                ambientColor = Color.Black.copy(alpha = 0.55f),
+                spotColor = Color.Black.copy(alpha = 0.7f)
             )
             .clip(CircleShape)
             .background(
-                if (isDarkTheme) {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.22f),
-                            Color.White.copy(alpha = 0.08f)
-                        )
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF262938),
+                        Color(0xFF13151F)
                     )
-                } else {
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFF2563EB),
-                            Color(0xFF1D4ED8)
-                        )
-                    )
-                }
+                )
             )
             .border(
-                width = 1.dp,
+                width = 1.2.dp,
                 brush = Brush.verticalGradient(
-                    if (isDarkTheme) {
-                        listOf(
-                            Color.White.copy(alpha = 0.55f),
-                            Color.White.copy(alpha = 0.15f)
-                        )
-                    } else {
-                        listOf(
-                            Color(0xFF60A5FA),
-                            Color(0xFF1D4ED8)
-                        )
-                    }
+                    listOf(
+                        Color(0xFF5A617D),
+                        Color(0xFF282C3D)
+                    )
                 ),
                 shape = CircleShape
             )
@@ -979,7 +967,7 @@ fun AppleGlassAddButton(
             imageVector = Icons.Default.Add,
             contentDescription = "Add Reel",
             tint = Color.White,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(24.dp)
         )
     }
 }
@@ -1280,39 +1268,61 @@ fun RecallReelCard(
     }
 }
 
+private data class StatusPillStyle(
+    val label: String,
+    val bg: Color,
+    val fg: Color,
+    val border: Color
+)
+
 @Composable
-fun RecallStatusPill(status: IngestionStatus) {
-    val (label, bg, fg) = when (status) {
-        IngestionStatus.QUEUED -> Triple("Queued", Color(0xFF332712), Color(0xFFFFB74D))
-        IngestionStatus.EXTRACTING -> Triple("Extracting", Color(0xFF0F2C3A), StatusProcessing)
-        IngestionStatus.TRANSCRIBING -> Triple("Transcribing", Color(0xFF0F2C3A), StatusProcessing)
-        IngestionStatus.SUMMARIZING -> Triple("Summarizing", Color(0xFF2E1C0A), SparkleOrange)
-        IngestionStatus.COMPLETED -> Triple("Ready", Color(0xFF122815), StatusReady)
-        IngestionStatus.FAILED -> Triple("Failed", Color(0xFF331515), StatusError)
+fun RecallStatusPill(
+    status: IngestionStatus,
+    isDark: Boolean = LocalIsDarkTheme.current
+) {
+    val style = if (isDark) {
+        when (status) {
+            IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFF332712), Color(0xFFFFB74D), Color(0xFFFFB74D).copy(alpha = 0.35f))
+            IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFF0F2C3A), StatusProcessing, StatusProcessing.copy(alpha = 0.35f))
+            IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFF0F2C3A), StatusProcessing, StatusProcessing.copy(alpha = 0.35f))
+            IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFF2E1C0A), SparkleOrange, SparkleOrange.copy(alpha = 0.35f))
+            IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFF122815), StatusReady, StatusReady.copy(alpha = 0.35f))
+            IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFF331515), StatusError, StatusError.copy(alpha = 0.35f))
+        }
+    } else {
+        // Obsidian Light theme: clean, vibrant, modern light pastel badges with crisp high-contrast text and subtle border
+        when (status) {
+            IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+            IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFFE0F2FE), Color(0xFF0284C7), Color(0xFFBAE6FD))
+            IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFFE0F2FE), Color(0xFF0284C7), Color(0xFFBAE6FD))
+            IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFFFFEDD5), Color(0xFFEA580C), Color(0xFFFED7AA))
+            IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFFDCFCE7), Color(0xFF15803D), Color(0xFF86EFAC))
+            IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFFFEE2E2), Color(0xFFDC2626), Color(0xFFFCA5A5))
+        }
     }
 
     Surface(
         shape = RoundedCornerShape(6.dp),
-        color = bg.copy(alpha = 0.9f),
-        border = androidx.compose.foundation.BorderStroke(0.6.dp, fg.copy(alpha = 0.35f))
+        color = style.bg,
+        border = androidx.compose.foundation.BorderStroke(0.8.dp, style.border)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.dp)
+            horizontalArrangement = Arrangement.spacedBy(3.5.dp)
         ) {
             if (status in listOf(IngestionStatus.EXTRACTING, IngestionStatus.TRANSCRIBING, IngestionStatus.SUMMARIZING)) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(7.dp),
                     strokeWidth = 1.dp,
-                    color = fg
+                    color = style.fg
                 )
             }
             Text(
-                text = label,
+                text = style.label,
                 fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = fg,
+                fontWeight = FontWeight.Bold,
+                color = style.fg,
                 letterSpacing = 0.2.sp
             )
         }
