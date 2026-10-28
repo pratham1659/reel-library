@@ -61,22 +61,8 @@ class ReelIngestWorker(
             val summaryResult = summarizationEngine.summarize(metadata.caption, transcript ?: "")
 
             val summary = summaryResult.getOrElse { originalErr ->
-                // Try Gemini if available and not yet tried
-                val geminiFallback = if (currentPrefs.geminiApiKey.isNotBlank() && summarizationEngine !is com.reelrecall.app.engine.GeminiSummarizerEngine) {
-                    com.reelrecall.app.engine.GeminiSummarizerEngine(currentPrefs.geminiApiKey).summarize(metadata.caption, transcript ?: "").getOrNull()
-                } else null
-
-                // Try Groq if available and not yet tried
-                val groqFallback = if (geminiFallback == null && currentPrefs.groqApiKey.isNotBlank() && summarizationEngine !is com.reelrecall.app.engine.GroqSummarizerEngine) {
-                    com.reelrecall.app.engine.GroqSummarizerEngine(currentPrefs.groqApiKey).summarize(metadata.caption, transcript ?: "").getOrNull()
-                } else null
-
-                geminiFallback
-                    ?: groqFallback
-                    ?: return handleError(reelId, "Sync failed: ${originalErr.message}")
+                return handleError(reelId, "Processing failed: ${originalErr.message}")
             }
-
-            val warning = summaryResult.exceptionOrNull()?.let { "(Fallback: ${it.message})" }
 
             // Step 4: Persist finalized entity in Room DB
             val existing = dao.findByCanonicalUrl(canonicalUrl)
@@ -98,9 +84,9 @@ class ReelIngestWorker(
                     oneLineSummary = summary.one_line_summary,
                     takeawaysJson = Json.encodeToString(summary.actionable_takeaways),
                     tagsJson = Json.encodeToString(summary.tags),
-                    engineUsed = "${transcriptionEngine.name} + ${if (warning != null) "Fallback Engine" else summarizationEngine.name}",
+                    engineUsed = "${transcriptionEngine.name} + ${summarizationEngine.name}",
                     status = IngestionStatus.COMPLETED,
-                    errorMessage = warning
+                    errorMessage = null
                 )
                 dao.update(updated)
             }

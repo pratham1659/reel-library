@@ -486,9 +486,22 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         errorMessage = null
                     )
                     dao.update(updated)
+                } else {
+                    val err = summaryResult.exceptionOrNull()?.message ?: "Processing failed: Summarization returned no data"
+                    val failedReel = reel.copy(
+                        status = IngestionStatus.FAILED,
+                        errorMessage = err
+                    )
+                    dao.update(failedReel)
                 }
             } catch (e: Exception) {
                 android.util.Log.e("ReelRecall", "reprocessReel $id error", e)
+                try {
+                    val r = dao.getReelById(id).first()
+                    if (r != null) {
+                        dao.update(r.copy(status = IngestionStatus.FAILED, errorMessage = e.message ?: "Reprocessing error"))
+                    }
+                } catch (_: Exception) {}
             } finally {
                 isRetryingMap.value = isRetryingMap.value - id
             }

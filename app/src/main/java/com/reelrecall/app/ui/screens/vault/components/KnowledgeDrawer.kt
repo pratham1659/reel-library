@@ -545,7 +545,7 @@ fun KnowledgeDrawerContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Reel Library Engine",
+                    text = "Reel Library Engine v1.0",
                     fontSize = 11.sp,
                     color = textMutedColor
                 )
