@@ -161,7 +161,7 @@ object InstagramExtractor {
 
             Result.success(
                 ExtractedMetadata(
-                    caption = caption?.ifBlank { null } ?: "Instagram Reel shared to ReelRecall.",
+                    caption = caption?.ifBlank { null } ?: "Instagram Reel shared to Reel Library.",
                     creatorHandle = creator ?: "@instagram_creator",
                     videoUrl = videoUrl,
                     thumbnailUrl = thumbnailUrl,

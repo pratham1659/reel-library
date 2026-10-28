@@ -225,7 +225,7 @@ fun AddReelDialog(
         containerColor = ObsidianCard,
         shape = RoundedCornerShape(22.dp),
         title = {
-            Text("Add to ReelRecall", color = TextPrimary, fontWeight = FontWeight.Bold)
+            Text("Add to Reel Library", color = TextPrimary, fontWeight = FontWeight.Bold)
         },
         text = {
             Column {

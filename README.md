@@ -1,4 +1,4 @@
-# ReelRecall (Reel Library) 📱⚡
+# Reel Library 📱⚡
 
 An intelligent, on-device & cloud-accelerated Instagram Reel bookmarking and research vault for Android. Captures reels directly from the Instagram Share sheet, extracts spoken audio transcripts, synthesizes executive takeaways, and tracks real-time cloud telemetry without any demo or mock data.
 
@@ -56,7 +56,7 @@ An intelligent, on-device & cloud-accelerated Instagram Reel bookmarking and res
    ```
 
 2. **Configure API Keys** (Optional, can be entered inside the app):
-   - Launch ReelRecall on your device.
+   - Launch Reel Library on your device.
    - Open **Settings** ➔ **Select Models**.
    - Input your free API keys for:
      - **Groq API Key**: [Groq Cloud Console](https://console.groq.com)

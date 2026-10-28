@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ReelRecall"
+rootProject.name = "Reel Library"
 include(":app")

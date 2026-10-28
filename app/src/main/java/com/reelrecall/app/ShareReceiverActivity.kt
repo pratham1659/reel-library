@@ -72,7 +72,7 @@ class ShareReceiverActivity : ComponentActivity() {
             )
 
 
-            Toast.makeText(applicationContext, "Saving to ReelRecall...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(applicationContext, "Saving to Reel Library...", Toast.LENGTH_SHORT).show()
             finish()
         }
     }
