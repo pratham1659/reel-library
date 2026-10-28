@@ -93,7 +93,7 @@ class GeminiSummarizerEngine(
                 """.trimIndent()
 
                 val cleanKey = apiKey.trim()
-                val candidateModels = listOf("gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-2.5-flash")
+                val candidateModels = listOf("gemini-2.5-flash-preview-05-20", "gemini-2.0-flash", "gemini-1.5-flash-latest")
                 var lastError: Exception? = null
 
                 for (model in candidateModels) {
@@ -186,7 +186,7 @@ class GroqSummarizerEngine(
                     Instructions: If Spoken Audio Transcript is present, prioritize actual spoken tools and advice. If absent, extract details thoroughly from Post Caption. Do not generate generic or matching duplicate content.
                 """.trimIndent()
 
-                val candidateModels = listOf("qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b")
+                val candidateModels = listOf("qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile")
                 var lastError: Exception? = null
 
                 for (model in candidateModels) {
@@ -220,7 +220,7 @@ class GroqSummarizerEngine(
                                     val promptTokens = usage?.get("prompt_tokens")?.jsonPrimitive?.longOrNull ?: 0L
                                     val completionTokens = usage?.get("completion_tokens")?.jsonPrimitive?.longOrNull ?: 0L
                                     if (promptTokens > 0 || completionTokens > 0) {
-                                        onTokensUsed?.invoke(promptTokens, completionTokens, latency, "Groq ($model)")
+                                        onTokensUsed?.invoke(promptTokens, completionTokens, latency, "Groq LPU ~ Qwen")
                                     }
                                 } catch (e: Exception) {
                                     // Non-fatal telemetry parsing

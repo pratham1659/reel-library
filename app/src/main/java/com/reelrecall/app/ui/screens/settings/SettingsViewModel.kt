@@ -101,6 +101,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private val _showLastCallModal = MutableStateFlow(false)
     val showLastCallModal: StateFlow<Boolean> = _showLastCallModal.asStateFlow()
 
+    private val _lastCallModalModel = MutableStateFlow("QWEN")
+    val lastCallModalModel: StateFlow<String> = _lastCallModalModel.asStateFlow()
+
     fun openEndpointModal(result: CloudEndpointTestResult) {
         _selectedEndpointForModal.value = result
     }
@@ -109,13 +112,22 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         _selectedEndpointForModal.value = null
     }
 
-    fun openLastCallModal() {
+    fun openLastCallModal(target: String = "QWEN") {
+        _lastCallModalModel.value = target
         _showLastCallModal.value = true
     }
 
     fun closeLastCallModal() {
         _showLastCallModal.value = false
     }
+
+    // Recent Execution Logs (for Per-Execution History table)
+    val cloudRecentLogs: StateFlow<List<com.reelrecall.app.data.model.TokenUsageEntity>> =
+        repository.getRecentLogs("CLOUD", limit = 100).stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     // Day-wise & Month-wise Consumption Flows
     val cloudDayWiseConsumption: StateFlow<List<com.reelrecall.app.data.model.TokenPeriodAggregate>> =
@@ -350,42 +362,47 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // ==========================================
     // HEALTH CHECK & MODEL TESTING
     // ==========================================
-    fun testCloudConnection(groqKey: String, geminiKey: String) {
+    fun testCloudConnection(groqKey: String = "", geminiKey: String = "") {
         viewModelScope.launch {
-            _cloudTestResult.value = ModelTestResult(isTesting = true, message = "Testing cloud endpoints with live payload...")
+            _cloudTestResult.value = ModelTestResult(isTesting = true, message = "Testing Groq cloud endpoint with live payload...")
 
             val startTime = SystemClock.elapsedRealtime()
             val result = withContext(Dispatchers.IO) {
-                val cleanGroq = groqKey.trim().ifBlank { preferences.value.groqApiKey.trim() }
-                val cleanGemini = geminiKey.trim().ifBlank { preferences.value.geminiApiKey.trim() }
+                val cleanGroq = groqKey.trim()
+                    .removePrefix("Bearer ")
+                    .removePrefix("bearer ")
+                    .removeSurrounding("\"")
+                    .removeSurrounding("'")
+                    .trim()
+                    .ifBlank { preferences.value.groqApiKey.trim() }
 
-                if (cleanGroq.isBlank() && cleanGemini.isBlank()) {
+                if (cleanGroq.isBlank()) {
                     val fallbackEndpoints = listOf(
                         CloudEndpointTestResult(
-                            provider = "Groq LPU",
+                            provider = "Groq LPU ~ Whisper",
                             isSuccess = false,
                             statusCode = 401,
                             statusMessage = "401 No API Key",
                             latencyMs = 0L,
-                            modelName = "llama-3.1-8b-instant",
-                            errorDetails = "No Groq API key provided. Please paste your API key to test live connectivity.\n\nEndpoint: https://api.groq.com/openai/v1/chat/completions\nModel: llama-3.1-8b-instant",
-                            rawResponse = "{\n  \"error\": {\n    \"message\": \"API key is missing or not configured\",\n    \"type\": \"authentication_error\",\n    \"code\": \"missing_api_key\"\n  }\n}"
+                            modelName = "whisper-large-v3-turbo",
+                            errorDetails = "No Groq API key configured. Please paste your API key to test Whisper transcription connectivity.\n\nEndpoint: https://api.groq.com/openai/v1/models/whisper-large-v3-turbo",
+                            rawResponse = "{\n  \"error\": {\n    \"message\": \"API key is missing or not configured\",\n    \"type\": \"authentication_error\"\n  }\n}"
                         ),
                         CloudEndpointTestResult(
-                            provider = "Google Gemini",
+                            provider = "Groq LPU ~ Qwen",
                             isSuccess = false,
                             statusCode = 401,
                             statusMessage = "401 No API Key",
                             latencyMs = 0L,
-                            modelName = "gemini-1.5-flash",
-                            errorDetails = "No Gemini API key provided. Please paste your Google AI Studio API key.\n\nEndpoint: generativelanguage.googleapis.com\nModel: gemini-1.5-flash",
-                            rawResponse = "{\n  \"error\": {\n    \"message\": \"API key is missing or not configured\",\n    \"code\": 401\n  }\n}"
+                            modelName = "qwen/qwen3.8-27b",
+                            errorDetails = "No Groq API key configured. Please paste your API key to test Qwen chat generation connectivity.\n\nEndpoint: https://api.groq.com/openai/v1/chat/completions",
+                            rawResponse = "{\n  \"error\": {\n    \"message\": \"API key is missing or not configured\",\n    \"type\": \"authentication_error\"\n  }\n}"
                         )
                     )
                     return@withContext ModelTestResult(
                         isTesting = false,
                         isSuccess = false,
-                        message = "Missing API keys. Tap an endpoint below to inspect configuration.",
+                        message = "Missing Groq API key. Tap endpoint below to inspect configuration.",
                         statusCode = "401 No Key",
                         endpointResults = fallbackEndpoints
                     )
@@ -393,11 +410,133 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
                 val endpointList = mutableListOf<CloudEndpointTestResult>()
 
-                // 1. High-Efficiency Minimal Payload Test for Groq
-                if (cleanGroq.isNotBlank()) {
-                    val groqStart = SystemClock.elapsedRealtime()
+                // 1. Dynamic Model Discovery on Groq
+                val fetchedChatModels = mutableListOf<String>()
+                val fetchedWhisperModels = mutableListOf<String>()
+                try {
+                    val modelsReq = Request.Builder()
+                        .url("https://api.groq.com/openai/v1/models")
+                        .addHeader("Authorization", "Bearer $cleanGroq")
+                        .build()
+                    httpClient.newCall(modelsReq).execute().use { res ->
+                        val modelsBody = res.body?.string() ?: ""
+                        android.util.Log.d("TEST_CLOUD", "Groq /models (HTTP ${res.code}): $modelsBody")
+                        if (res.isSuccessful) {
+                            val root = Json { ignoreUnknownKeys = true }.decodeFromString<JsonObject>(modelsBody)
+                            val dataArr = root["data"] as? kotlinx.serialization.json.JsonArray
+                            dataArr?.forEach { item ->
+                                (item as? JsonObject)?.get("id")?.let { elem ->
+                                    try {
+                                        val id = elem.jsonPrimitive.content
+                                        if (id.contains("whisper", ignoreCase = true)) {
+                                            fetchedWhisperModels.add(id)
+                                        } else if (!id.contains("embedding", ignoreCase = true)) {
+                                            fetchedChatModels.add(id)
+                                        }
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("TEST_CLOUD", "Failed to fetch Groq models", e)
+                }
+
+                // ========================================================
+                // 2. TEST MODEL 1: Groq LPU ~ Whisper (Audio Transcription)
+                // ========================================================
+                val whisperModel = fetchedWhisperModels.firstOrNull { it.contains("turbo", ignoreCase = true) }
+                    ?: fetchedWhisperModels.firstOrNull()
+                    ?: "whisper-large-v3-turbo"
+
+                val whisperStart = SystemClock.elapsedRealtime()
+                try {
+                    val whisperReq = Request.Builder()
+                        .url("https://api.groq.com/openai/v1/models/$whisperModel")
+                        .addHeader("Authorization", "Bearer $cleanGroq")
+                        .build()
+
+                    httpClient.newCall(whisperReq).execute().use { res ->
+                        val latency = SystemClock.elapsedRealtime() - whisperStart
+                        val bodyStr = res.body?.string() ?: ""
+                        val code = res.code
+                        val statusMsg = if (res.message.isNotBlank()) "$code ${res.message}" else if (res.isSuccessful) "$code OK" else "HTTP $code"
+
+                        android.util.Log.d("TEST_CLOUD", "Groq Whisper ($whisperModel): HTTP $code in ${latency}ms")
+
+                        if (res.isSuccessful) {
+                            repository.recordTokenUsage(
+                                promptTokens = 0L,
+                                completionTokens = 0L,
+                                latencyMs = latency,
+                                statusCode = statusMsg,
+                                provider = "Groq LPU ~ Whisper",
+                                model = whisperModel,
+                                errorMessage = null
+                            )
+                            endpointList.add(
+                                CloudEndpointTestResult(
+                                    provider = "Groq LPU ~ Whisper",
+                                    isSuccess = true,
+                                    statusCode = code,
+                                    statusMessage = statusMsg,
+                                    latencyMs = latency,
+                                    tokensConsumed = 0L,
+                                    promptTokens = 0L,
+                                    completionTokens = 0L,
+                                    modelName = whisperModel,
+                                    rawResponse = bodyStr
+                                )
+                            )
+                        } else {
+                            endpointList.add(
+                                CloudEndpointTestResult(
+                                    provider = "Groq LPU ~ Whisper",
+                                    isSuccess = false,
+                                    statusCode = code,
+                                    statusMessage = statusMsg,
+                                    latencyMs = latency,
+                                    modelName = whisperModel,
+                                    errorDetails = bodyStr,
+                                    rawResponse = bodyStr
+                                )
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    val latency = SystemClock.elapsedRealtime() - whisperStart
+                    endpointList.add(
+                        CloudEndpointTestResult(
+                            provider = "Groq LPU ~ Whisper",
+                            isSuccess = false,
+                            statusCode = 500,
+                            statusMessage = "Connection Failed",
+                            latencyMs = latency,
+                            modelName = whisperModel,
+                            errorDetails = e.message ?: "Network error testing Whisper model",
+                            rawResponse = e.stackTraceToString()
+                        )
+                    )
+                }
+
+                // ========================================================
+                // 3. TEST MODEL 2: Groq LPU ~ Qwen (LLM Generation)
+                // ========================================================
+                val qwenCandidates = mutableListOf<String>()
+                // Prioritize qwen models, then other active Groq chat models
+                qwenCandidates.addAll(fetchedChatModels.filter { it.contains("qwen", ignoreCase = true) })
+                qwenCandidates.addAll(listOf("qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile"))
+                val distinctQwenCandidates = qwenCandidates.distinct()
+
+                val qwenStart = SystemClock.elapsedRealtime()
+                var qwenSuccess = false
+                var lastCode = 0
+                var lastStatusMsg = "Unknown Error"
+                var lastBodyStr = ""
+                var lastModel = distinctQwenCandidates.first()
+
+                for (model in distinctQwenCandidates) {
                     try {
-                        val model = "llama-3.1-8b-instant"
                         val payload = """{"model":"$model","messages":[{"role":"user","content":"hi"}],"max_tokens":1}"""
                         val req = Request.Builder()
                             .url("https://api.groq.com/openai/v1/chat/completions")
@@ -407,12 +546,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                             .build()
 
                         httpClient.newCall(req).execute().use { res ->
-                            val latency = SystemClock.elapsedRealtime() - groqStart
+                            val latency = SystemClock.elapsedRealtime() - qwenStart
                             val bodyStr = res.body?.string() ?: ""
                             val code = res.code
                             val statusMsg = if (res.message.isNotBlank()) "$code ${res.message}" else if (res.isSuccessful) "$code OK" else "HTTP $code"
+                            lastCode = code
+                            lastStatusMsg = statusMsg
+                            lastBodyStr = bodyStr
+                            lastModel = model
+
+                            android.util.Log.d("TEST_CLOUD", "Groq Qwen test ($model): HTTP $code -> $bodyStr")
 
                             if (res.isSuccessful) {
+                                qwenSuccess = true
                                 var promptTok = 0L
                                 var compTok = 0L
                                 try {
@@ -430,14 +576,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                                     completionTokens = compTok,
                                     latencyMs = latency,
                                     statusCode = statusMsg,
-                                    provider = "Groq LPU (Cloud)",
+                                    provider = "Groq LPU ~ Qwen",
                                     model = model,
                                     errorMessage = null
                                 )
 
                                 endpointList.add(
                                     CloudEndpointTestResult(
-                                        provider = "Groq LPU",
+                                        provider = "Groq LPU ~ Qwen",
                                         isSuccess = true,
                                         statusCode = code,
                                         statusMessage = statusMsg,
@@ -449,166 +595,35 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                                         rawResponse = bodyStr
                                     )
                                 )
-                            } else {
-                                repository.recordTokenUsage(
-                                    promptTokens = 0L,
-                                    completionTokens = 0L,
-                                    latencyMs = latency,
-                                    statusCode = statusMsg,
-                                    provider = "Groq LPU (Cloud)",
-                                    model = model,
-                                    errorMessage = bodyStr
-                                )
-                                endpointList.add(
-                                    CloudEndpointTestResult(
-                                        provider = "Groq LPU",
-                                        isSuccess = false,
-                                        statusCode = code,
-                                        statusMessage = statusMsg,
-                                        latencyMs = latency,
-                                        modelName = model,
-                                        errorDetails = bodyStr,
-                                        rawResponse = bodyStr
-                                    )
-                                )
                             }
                         }
+                        if (qwenSuccess) break
                     } catch (e: Exception) {
-                        val latency = SystemClock.elapsedRealtime() - groqStart
-                        endpointList.add(
-                            CloudEndpointTestResult(
-                                provider = "Groq LPU",
-                                isSuccess = false,
-                                statusCode = 0,
-                                statusMessage = "Network Error",
-                                latencyMs = latency,
-                                modelName = "llama-3.1-8b-instant",
-                                errorDetails = e.message ?: "Network Unreachable / Connection Timeout",
-                                rawResponse = e.stackTraceToString()
-                            )
-                        )
+                        android.util.Log.e("TEST_CLOUD", "Groq model $model error", e)
                     }
-                } else {
-                    endpointList.add(
-                        CloudEndpointTestResult(
-                            provider = "Groq LPU",
-                            isSuccess = false,
-                            statusCode = 401,
-                            statusMessage = "401 No Key",
-                            latencyMs = 0L,
-                            modelName = "llama-3.1-8b-instant",
-                            errorDetails = "No Groq API key entered.",
-                            rawResponse = "Error: Missing API key"
-                        )
-                    )
                 }
 
-                // 2. High-Efficiency Minimal Payload Test for Gemini
-                if (cleanGemini.isNotBlank()) {
-                    val geminiStart = SystemClock.elapsedRealtime()
-                    try {
-                        val model = "gemini-1.5-flash"
-                        val payload = """{"contents":[{"parts":[{"text":"hi"}]}],"generationConfig":{"maxOutputTokens":1}}"""
-                        val req = Request.Builder()
-                            .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$cleanGemini")
-                            .addHeader("Content-Type", "application/json")
-                            .post(payload.toRequestBody("application/json".toMediaType()))
-                            .build()
-
-                        httpClient.newCall(req).execute().use { res ->
-                            val latency = SystemClock.elapsedRealtime() - geminiStart
-                            val bodyStr = res.body?.string() ?: ""
-                            val code = res.code
-                            val statusMsg = if (res.message.isNotBlank()) "$code ${res.message}" else if (res.isSuccessful) "$code OK" else "HTTP $code"
-
-                            if (res.isSuccessful) {
-                                var promptTok = 0L
-                                var compTok = 0L
-                                try {
-                                    val root = Json { ignoreUnknownKeys = true }.decodeFromString<JsonObject>(bodyStr)
-                                    val usage = root["usageMetadata"] as? JsonObject
-                                    promptTok = usage?.get("promptTokenCount")?.jsonPrimitive?.longOrNull ?: 1L
-                                    val cand = usage?.get("candidatesTokenCount")?.jsonPrimitive?.longOrNull ?: 0L
-                                    compTok = if (cand > 0) cand else (usage?.get("totalTokenCount")?.jsonPrimitive?.longOrNull ?: 0L) - promptTok
-                                } catch (_: Exception) {
-                                    promptTok = 1L
-                                    compTok = 1L
-                                }
-                                val tokens = (promptTok + compTok).coerceAtLeast(1L)
-                                repository.recordTokenUsage(
-                                    promptTokens = promptTok,
-                                    completionTokens = compTok.coerceAtLeast(0L),
-                                    latencyMs = latency,
-                                    statusCode = statusMsg,
-                                    provider = "Google Gemini (Cloud)",
-                                    model = model,
-                                    errorMessage = null
-                                )
-
-                                endpointList.add(
-                                    CloudEndpointTestResult(
-                                        provider = "Google Gemini",
-                                        isSuccess = true,
-                                        statusCode = code,
-                                        statusMessage = statusMsg,
-                                        latencyMs = latency,
-                                        tokensConsumed = tokens,
-                                        promptTokens = promptTok,
-                                        completionTokens = compTok,
-                                        modelName = model,
-                                        rawResponse = bodyStr
-                                    )
-                                )
-                            } else {
-                                repository.recordTokenUsage(
-                                    promptTokens = 0L,
-                                    completionTokens = 0L,
-                                    latencyMs = latency,
-                                    statusCode = statusMsg,
-                                    provider = "Google Gemini (Cloud)",
-                                    model = model,
-                                    errorMessage = bodyStr
-                                )
-                                endpointList.add(
-                                    CloudEndpointTestResult(
-                                        provider = "Google Gemini",
-                                        isSuccess = false,
-                                        statusCode = code,
-                                        statusMessage = statusMsg,
-                                        latencyMs = latency,
-                                        modelName = model,
-                                        errorDetails = bodyStr,
-                                        rawResponse = bodyStr
-                                    )
-                                )
-                            }
-                        }
-                    } catch (e: Exception) {
-                        val latency = SystemClock.elapsedRealtime() - geminiStart
-                        endpointList.add(
-                            CloudEndpointTestResult(
-                                provider = "Google Gemini",
-                                isSuccess = false,
-                                statusCode = 0,
-                                statusMessage = "Network Error",
-                                latencyMs = latency,
-                                modelName = "gemini-1.5-flash",
-                                errorDetails = e.message ?: "Network Unreachable / Connection Timeout",
-                                rawResponse = e.stackTraceToString()
-                            )
-                        )
-                    }
-                } else {
+                if (!qwenSuccess) {
+                    val latency = SystemClock.elapsedRealtime() - qwenStart
+                    repository.recordTokenUsage(
+                        promptTokens = 0L,
+                        completionTokens = 0L,
+                        latencyMs = latency,
+                        statusCode = lastStatusMsg,
+                        provider = "Groq LPU ~ Qwen",
+                        model = lastModel,
+                        errorMessage = lastBodyStr
+                    )
                     endpointList.add(
                         CloudEndpointTestResult(
-                            provider = "Google Gemini",
+                            provider = "Groq LPU ~ Qwen",
                             isSuccess = false,
-                            statusCode = 401,
-                            statusMessage = "401 No Key",
-                            latencyMs = 0L,
-                            modelName = "gemini-1.5-flash",
-                            errorDetails = "No Gemini API key entered.",
-                            rawResponse = "Error: Missing API key"
+                            statusCode = lastCode,
+                            statusMessage = lastStatusMsg,
+                            latencyMs = latency,
+                            modelName = lastModel,
+                            errorDetails = lastBodyStr,
+                            rawResponse = lastBodyStr
                         )
                     )
                 }
