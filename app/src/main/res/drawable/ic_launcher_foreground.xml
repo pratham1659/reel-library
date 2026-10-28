@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer Rounded Reel Camera Squircle Outline (Pure White) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.2"
+        android:fillColor="#00000000"
+        android:pathData="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" />
+
+    <!-- Center Play/Lens Circle -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.8"
+        android:fillColor="#00000000"
+        android:pathData="M54,42 A12,12 0 1,1 54,66 A12,12 0 1,1 54,42 Z" />
+
+    <!-- Center Play Arrow Glyph -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M51,48 L60,54 L51,60 Z" />
+
+    <!-- Top Right Camera Flash / AI Sparkle Dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M72,37 A2.8,2.8 0 1,1 72,42.6 A2.8,2.8 0 1,1 72,37 Z" />
+</vector>
