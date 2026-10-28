@@ -117,7 +117,7 @@ fun FloatingBottomDock(
                 ) {
                     Icon(
                         imageVector = Icons.Default.School,
-                        contentDescription = "Knowledge",
+                        contentDescription = "Reel Library",
                         tint = if (isVault) TextPrimary else TextMuted,
                         modifier = Modifier.size(20.dp)
                     )

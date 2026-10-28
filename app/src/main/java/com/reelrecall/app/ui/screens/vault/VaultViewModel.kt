@@ -61,6 +61,54 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     val selectedTag = MutableStateFlow<String?>(null)
     val selectedSource = MutableStateFlow<String?>(null)
 
+    val selectedReelIdForDetail = MutableStateFlow<Long?>(null)
+    fun selectReelForDetail(id: Long?) {
+        selectedReelIdForDetail.value = id
+    }
+
+    val isSelectionMode = MutableStateFlow(false)
+    val selectedReelIds = MutableStateFlow<Set<Long>>(emptySet())
+
+    fun toggleSelectionMode(enable: Boolean? = null) {
+        val next = enable ?: !isSelectionMode.value
+        isSelectionMode.value = next
+        if (!next) {
+            selectedReelIds.value = emptySet()
+        }
+    }
+
+    fun toggleSelectReel(id: Long) {
+        val current = selectedReelIds.value.toMutableSet()
+        if (current.contains(id)) {
+            current.remove(id)
+        } else {
+            current.add(id)
+        }
+        selectedReelIds.value = current
+    }
+
+    fun selectAllReels(allIds: List<Long>) {
+        if (selectedReelIds.value.size == allIds.size) {
+            selectedReelIds.value = emptySet()
+        } else {
+            selectedReelIds.value = allIds.toSet()
+        }
+    }
+
+    fun clearSelection() {
+        selectedReelIds.value = emptySet()
+        isSelectionMode.value = false
+    }
+
+    fun deleteSelectedReels() {
+        val idsToDelete = selectedReelIds.value.toList()
+        if (idsToDelete.isEmpty()) return
+        viewModelScope.launch {
+            dao.deleteByIds(idsToDelete)
+            clearSelection()
+        }
+    }
+
     // Dynamic AI Search Suggestions derived from reel content and tags
     val aiSearchSuggestions: StateFlow<List<String>> = dao.getAllReels().map { reels ->
         val tags = mutableSetOf<String>()
