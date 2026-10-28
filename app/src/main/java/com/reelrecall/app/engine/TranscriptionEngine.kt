@@ -30,7 +30,7 @@ class GroqWhisperEngine(
     private val client: OkHttpClient = OkHttpClient()
 ) : TranscriptionEngine {
 
-    override val name: String = "Groq Cloud (Whisper-large-v3-turbo)"
+    override val name: String = "Groq LPU ~ Whisper"
 
     private val json = Json { ignoreUnknownKeys = true }
 

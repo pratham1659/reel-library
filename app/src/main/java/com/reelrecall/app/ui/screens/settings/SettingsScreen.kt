@@ -32,6 +32,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.alpha
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -1010,22 +1011,22 @@ private fun SelectModelsScreen(
 
     val selectedEndpointForModal by viewModel.selectedEndpointForModal.collectAsState()
     val showLastCallModal by viewModel.showLastCallModal.collectAsState()
+    val lastCallModalModel by viewModel.lastCallModalModel.collectAsState()
+    val cloudRecentLogs by viewModel.cloudRecentLogs.collectAsState()
     val cloudDayWise by viewModel.cloudDayWiseConsumption.collectAsState()
     val cloudMonthWise by viewModel.cloudMonthWiseConsumption.collectAsState()
     val localDayWise by viewModel.localDayWiseConsumption.collectAsState()
     val localMonthWise by viewModel.localMonthWiseConsumption.collectAsState()
 
     var groqApiKeyInput by remember { mutableStateOf(preferences.groqApiKey) }
-    var geminiApiKeyInput by remember { mutableStateOf(preferences.geminiApiKey) }
 
-    LaunchedEffect(preferences.groqApiKey, preferences.geminiApiKey) {
+    LaunchedEffect(preferences.groqApiKey) {
         groqApiKeyInput = preferences.groqApiKey
-        geminiApiKeyInput = preferences.geminiApiKey
     }
 
     val isCloudMode = preferences.engineMode != EngineMode.LOCAL_ONLY
-    var selectedTokenApi by remember { mutableStateOf("ALL") } // "ALL", "GEMINI", "GROQ"
-    var keyToClear by remember { mutableStateOf<String?>(null) } // "Groq" or "Gemini"
+    var selectedTokenApi by remember { mutableStateOf("QWEN") } // "QWEN", "WHISPER"
+    var keyToClear by remember { mutableStateOf<String?>(null) }
 
     // Endpoint Diagnostics Modal
     if (selectedEndpointForModal != null) {
@@ -1036,9 +1037,10 @@ private fun SelectModelsScreen(
         )
     }
 
-    // Last Call Telemetry Drawer
+    // Last Call Telemetry Modal
     if (showLastCallModal) {
-        LastCallDetailsDrawer(
+        LastCallDetailsModal(
+            targetModel = lastCallModalModel,
             preferences = preferences,
             colors = colors,
             onDismiss = { viewModel.closeLastCallModal() }
@@ -1047,13 +1049,8 @@ private fun SelectModelsScreen(
 
     // Key Clear Confirmation Dialog
     if (keyToClear != null) {
-        val isGroq = keyToClear == "Groq"
-        val titleText = if (isGroq) "Clear Groq API Key?" else "Clear Google AI Studio Key?"
-        val bodyText = if (isGroq) {
-            "Are you sure you want to remove your Groq API key from the Keystore vault? Cloud audio transcription will be disabled until a key is added."
-        } else {
-            "Are you sure you want to remove your Google AI Studio key from the Keystore vault? Cloud summarization will be disabled until a key is added."
-        }
+        val titleText = "Clear Groq API Key?"
+        val bodyText = "Are you sure you want to remove your Groq API key from the Keystore vault? Cloud audio transcription and summarization will be disabled until a key is added."
 
         AlertDialog(
             onDismissRequest = { keyToClear = null },
@@ -1074,15 +1071,9 @@ private fun SelectModelsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        if (isGroq) {
-                            groqApiKeyInput = ""
-                            viewModel.setGroqApiKey("")
-                            Toast.makeText(context, "Groq key cleared from vault", Toast.LENGTH_SHORT).show()
-                        } else {
-                            geminiApiKeyInput = ""
-                            viewModel.setGeminiApiKey("")
-                            Toast.makeText(context, "Gemini key cleared from vault", Toast.LENGTH_SHORT).show()
-                        }
+                        groqApiKeyInput = ""
+                        viewModel.setGroqApiKey("")
+                        Toast.makeText(context, "Groq key cleared from vault", Toast.LENGTH_SHORT).show()
                         keyToClear = null
                     }
                 ) {
@@ -1179,7 +1170,7 @@ private fun SelectModelsScreen(
                     // OPTION 1: CLOUD API
                     ModelSelectionCard(
                         title = "Cloud API",
-                        subtitle = "Fast processing with free cloud APIs (Groq Whisper + Gemini/Groq LLM).",
+                        subtitle = "Fast processing with Groq Cloud APIs (Whisper audio + LLM summarization).",
                         badge = "Cloud",
                         colors = colors,
                         isSelected = isCloudMode,
@@ -1222,7 +1213,7 @@ private fun SelectModelsScreen(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(text = "Cloud API Credentials", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                                Text(text = "Free tiers from Groq and Google AI Studio", fontSize = 11.sp, color = colors.textSecondary)
+                                Text(text = "Free tier from Groq — Whisper audio + LLM text summarization", fontSize = 11.sp, color = colors.textSecondary)
                             }
                         }
 
@@ -1251,7 +1242,7 @@ private fun SelectModelsScreen(
                                 softWrap = false
                             )
                             Text(
-                                text = "Whisper Large v3 (Audio)",
+                                text = "Whisper Audio + Llama 3.3 Summarization",
                                 fontSize = 10.sp,
                                 color = colors.textSecondary,
                                 maxLines = 1,
@@ -1428,200 +1419,6 @@ private fun SelectModelsScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Gemini Key Input Header with Clear Button
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f, fill = false)) {
-                            Text(
-                                text = "Google AI Studio Key",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                            Text(
-                                text = "Gemini 1.5 Flash (Summary)",
-                                fontSize = 10.sp,
-                                color = colors.textSecondary,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-                        if (geminiApiKeyInput.isNotBlank()) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = StatusError.copy(alpha = 0.12f),
-                                modifier = Modifier.clickable {
-                                    keyToClear = "Gemini"
-                                }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Clear",
-                                        tint = StatusError,
-                                        modifier = Modifier.size(11.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text(
-                                        text = "Clear",
-                                        fontSize = 10.sp,
-                                        color = StatusError,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        softWrap = false
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = geminiApiKeyInput,
-                        onValueChange = {}, // Read-only: direct manual text copying/editing blocked for vault security
-                        readOnly = true,
-                        enabled = isCloudMode,
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("No key stored • Tap Paste to add", color = colors.textMuted, fontSize = 12.sp) },
-                        singleLine = true,
-                        visualTransformation = MaskApiKeyVisualTransformation(visibleChars = 3),
-                        trailingIcon = {
-                            if (geminiApiKeyInput.isBlank()) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = CyanAccent.copy(alpha = 0.15f),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.4f)),
-                                    modifier = Modifier
-                                        .padding(end = 4.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable {
-                                            val clip = clipboardManager.getText()?.text?.trim()
-                                            if (!clip.isNullOrBlank()) {
-                                                geminiApiKeyInput = clip
-                                                viewModel.setGeminiApiKey(clip)
-                                                Toast.makeText(context, "Gemini key securely saved to Keystore vault", Toast.LENGTH_SHORT).show()
-                                            } else {
-                                                Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.ContentPaste,
-                                            contentDescription = "Paste",
-                                            tint = CyanAccent,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "Paste",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = CyanAccent,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                    }
-                                }
-                            } else {
-                                Row(
-                                    modifier = Modifier.padding(end = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Lock,
-                                        contentDescription = "Encrypted in Hardware Keystore",
-                                        tint = CyanAccent,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = CyanAccent,
-                            unfocusedBorderColor = colors.border,
-                            focusedContainerColor = colors.pillBg,
-                            unfocusedContainerColor = colors.pillBg,
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-
-                    // Next Row: Keystore Vault Status & Prominent Redirect Link
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 2.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Security,
-                                contentDescription = null,
-                                tint = colors.textMuted,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Keystore Vault Encrypted",
-                                fontSize = 10.sp,
-                                color = colors.textMuted,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = CyanAccent.copy(alpha = 0.10f),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .clickable {
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey"))
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Cannot open browser", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Get Free Gemini Key",
-                                    fontSize = 10.sp,
-                                    color = CyanAccent,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                                Spacer(modifier = Modifier.width(3.dp))
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                    contentDescription = "Open Google AI Studio",
-                                    tint = CyanAccent,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                            }
-                        }
-                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -1632,7 +1429,7 @@ private fun SelectModelsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedButton(
-                            onClick = { viewModel.testCloudConnection(groqApiKeyInput, geminiApiKeyInput) },
+                            onClick = { viewModel.testCloudConnection(groqApiKeyInput) },
                             enabled = isCloudMode && !cloudTestResult.isTesting,
                             shape = RoundedCornerShape(10.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, if (isCloudMode) CyanAccent else colors.border),
@@ -1742,94 +1539,44 @@ private fun SelectModelsScreen(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                                            .padding(horizontal = 12.dp, vertical = 9.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Column(modifier = Modifier.weight(1f, fill = false)) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(
-                                                    text = ep.provider,
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = colors.textPrimary,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    softWrap = false
-                                                )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text(
-                                                    text = "🔍 Details",
-                                                    fontSize = 9.sp,
-                                                    color = CyanAccent,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                            if (ep.errorDetails != null) {
-                                                Text(
-                                                    text = ep.errorDetails.take(60),
-                                                    fontSize = 10.sp,
-                                                    color = StatusError,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    softWrap = false
-                                                )
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
                                         Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Surface(
-                                                shape = RoundedCornerShape(6.dp),
-                                                color = if (ok) StatusReady.copy(alpha = 0.15f) else StatusError.copy(alpha = 0.15f)
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(20.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(if (ok) StatusReady.copy(alpha = 0.15f) else StatusError.copy(alpha = 0.15f)),
+                                                contentAlignment = Alignment.Center
                                             ) {
-                                                Text(
-                                                    text = ep.statusMessage,
-                                                    color = if (ok) StatusReady else StatusError,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    maxLines = 1,
-                                                    softWrap = false,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                Icon(
+                                                    imageVector = if (ok) Icons.Default.Check else Icons.Default.Close,
+                                                    contentDescription = null,
+                                                    tint = if (ok) StatusReady else StatusError,
+                                                    modifier = Modifier.size(12.dp)
                                                 )
                                             }
-
-                                            Surface(
-                                                shape = RoundedCornerShape(6.dp),
-                                                color = CyanAccent.copy(alpha = 0.15f)
-                                            ) {
-                                                Text(
-                                                    text = "⚡ ${ep.latencyMs}ms",
-                                                    color = CyanAccent,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    maxLines = 1,
-                                                    softWrap = false,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                )
-                                            }
-
-                                            if (ep.tokensConsumed > 0) {
-                                                Surface(
-                                                    shape = RoundedCornerShape(6.dp),
-                                                    color = ElectricIndigo.copy(alpha = 0.15f)
-                                                ) {
-                                                    Text(
-                                                        text = "+${ep.tokensConsumed} tok",
-                                                        color = ElectricIndigo,
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        maxLines = 1,
-                                                        softWrap = false,
-                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                    )
-                                                }
-                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = ep.provider,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
                                         }
+
+                                        Icon(
+                                            imageVector = Icons.Default.ChevronRight,
+                                            contentDescription = "Inspect Details",
+                                            tint = colors.textMuted,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                     }
                                 }
                             }
@@ -1892,29 +1639,23 @@ private fun SelectModelsScreen(
                                     )
                                 }
 
-                                if (preferences.totalTokensUsed > 0L) {
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = colors.surface,
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .clickable { viewModel.resetTokenStats() }
-                                    ) {
-                                        Text(
-                                            text = "Reset",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = colors.textMuted,
-                                            maxLines = 1,
-                                            softWrap = false,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
-                                    }
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = CyanAccent.copy(alpha = 0.12f),
+                                    border = androidx.compose.foundation.BorderStroke(0.8.dp, CyanAccent.copy(alpha = 0.35f))
+                                ) {
+                                    Text(
+                                        text = "Resets daily at 00:00 AM",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = CyanAccent,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp)
+                                    )
                                 }
                             }
 
                             Text(
-                                text = "Select an API provider to inspect real-time usage telemetry",
+                                text = "Select a model to inspect real-time usage telemetry",
                                 fontSize = 10.sp,
                                 color = colors.textSecondary,
                                 modifier = Modifier.padding(top = 2.dp, bottom = 10.dp),
@@ -1923,7 +1664,7 @@ private fun SelectModelsScreen(
                                 softWrap = false
                             )
 
-                            // API Selector Segmented Tabs
+                            // Model Selector Segmented Tabs (Whisper vs Qwen)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1932,10 +1673,10 @@ private fun SelectModelsScreen(
                                     .padding(3.dp),
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
+                                val qwenTokens = preferences.groqQwenTokens.takeIf { it > 0 } ?: preferences.groqTotalTokens
                                 listOf(
-                                    Triple("ALL", "All APIs", preferences.totalTokensUsed),
-                                    Triple("GEMINI", "Gemini", preferences.geminiTotalTokens),
-                                    Triple("GROQ", "Groq LPU", preferences.groqTotalTokens)
+                                    Triple("QWEN", "Groq LPU ~ Qwen", qwenTokens),
+                                    Triple("WHISPER", "Groq LPU ~ Whisper", preferences.groqWhisperTokens)
                                 ).forEach { (id, label, tokens) ->
                                     val isSelected = selectedTokenApi == id
                                     Surface(
@@ -1960,7 +1701,13 @@ private fun SelectModelsScreen(
                                                 softWrap = false
                                             )
                                             Text(
-                                                text = if (tokens > 0) "${java.text.NumberFormat.getIntegerInstance().format(tokens)} tk" else "0 tk",
+                                                text = if (id == "WHISPER" && tokens == 0L && preferences.groqWhisperCalls > 0L) {
+                                                    "${preferences.groqWhisperCalls} calls"
+                                                } else if (tokens > 0) {
+                                                    "${java.text.NumberFormat.getIntegerInstance().format(tokens)} tk"
+                                                } else {
+                                                    "0 tk"
+                                                },
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = if (isSelected) CyanAccent else colors.textMuted,
@@ -1974,28 +1721,21 @@ private fun SelectModelsScreen(
 
                             Spacer(modifier = Modifier.height(10.dp))
 
-                            // Calculate active stats for selected API
+                            // Calculate active stats for selected Model
                             val metrics = when (selectedTokenApi) {
-                                "GEMINI" -> ApiTokenMetrics(
-                                    total = preferences.geminiTotalTokens,
-                                    prompt = preferences.geminiPromptTokens,
-                                    completion = preferences.geminiCompletionTokens,
-                                    calls = preferences.geminiCallsCount,
-                                    label = "Google Gemini (LLM)"
-                                )
-                                "GROQ" -> ApiTokenMetrics(
-                                    total = preferences.groqTotalTokens,
-                                    prompt = preferences.groqPromptTokens,
-                                    completion = preferences.groqCompletionTokens,
-                                    calls = preferences.groqCallsCount,
-                                    label = "Groq LPU (Whisper)"
+                                "WHISPER" -> ApiTokenMetrics(
+                                    total = preferences.groqWhisperTokens,
+                                    prompt = 0L,
+                                    completion = 0L,
+                                    calls = preferences.groqWhisperCalls,
+                                    label = "Groq LPU ~ Whisper (Audio Transcription)"
                                 )
                                 else -> ApiTokenMetrics(
-                                    total = preferences.totalTokensUsed,
-                                    prompt = preferences.totalPromptTokens,
-                                    completion = preferences.totalCompletionTokens,
-                                    calls = (preferences.geminiCallsCount + preferences.groqCallsCount).coerceAtLeast(if (preferences.totalTokensUsed > 0L) 1L else 0L),
-                                    label = "All Cloud Endpoints"
+                                    total = preferences.groqQwenTokens.takeIf { it > 0 } ?: preferences.groqTotalTokens,
+                                    prompt = preferences.groqQwenPromptTokens.takeIf { it > 0 } ?: preferences.groqPromptTokens,
+                                    completion = preferences.groqQwenCompletionTokens.takeIf { it > 0 } ?: preferences.groqCompletionTokens,
+                                    calls = preferences.groqQwenCalls.takeIf { it > 0 } ?: preferences.groqCallsCount,
+                                    label = "Groq LPU ~ Qwen (LLM Generation)"
                                 )
                             }
 
@@ -2145,80 +1885,129 @@ private fun SelectModelsScreen(
                                 }
                             }
 
-                            // Last Call Telemetry (Two-Line Structure for 100% detail visibility)
-                            if (preferences.lastCallTokens > 0L) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = colors.surface.copy(alpha = 0.7f),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.3f)),
+                            // Last Call Telemetry (Permanent Section to monitor previous invocations for selected model)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val isWhisperTab = selectedTokenApi == "WHISPER"
+                            val hasCall = if (isWhisperTab) {
+                                preferences.lastCallWhisperLatencyMs > 0L || preferences.groqWhisperCalls > 0L
+                            } else {
+                                preferences.lastCallQwenLatencyMs > 0L || preferences.lastCallQwenTokens > 0L
+                            }
+                            val providerLabel = if (isWhisperTab) {
+                                preferences.lastCallWhisperProvider.ifBlank { "Groq LPU ~ Whisper" }
+                            } else {
+                                preferences.lastCallQwenProvider.ifBlank { "Groq LPU ~ Qwen" }
+                            }
+                            val statusLabel = if (hasCall) {
+                                val lat = if (isWhisperTab) {
+                                    if (preferences.lastCallWhisperLatencyMs > 0L) "${preferences.lastCallWhisperLatencyMs}ms" else "⚡"
+                                } else {
+                                    if (preferences.lastCallQwenLatencyMs > 0L) "${preferences.lastCallQwenLatencyMs}ms" else "⚡"
+                                }
+                                val code = if (isWhisperTab) {
+                                    preferences.lastCallWhisperStatusCode.ifBlank { "200 OK" }
+                                } else {
+                                    preferences.lastCallQwenStatusCode.ifBlank { "200 OK" }
+                                }
+                                "⚡ $lat • $code"
+                            } else {
+                                "⚡ Standby"
+                            }
+
+                            val tokenText = if (isWhisperTab) {
+                                if (preferences.lastCallWhisperTokens > 0L) "+${preferences.lastCallWhisperTokens} tk consumed" else if (hasCall) "Audio media processed" else "0 tk consumed"
+                            } else {
+                                if (hasCall) "+${preferences.lastCallQwenTokens} tk consumed" else "0 tk consumed"
+                            }
+
+                            val breakdownText = if (isWhisperTab) {
+                                if (hasCall) {
+                                    if (preferences.lastCallWhisperTokens > 0L) {
+                                        "(${preferences.lastCallWhisperPromptTokens} prompt + ${preferences.lastCallWhisperCompletionTokens} output tk)"
+                                    } else {
+                                        "(Model: ${preferences.lastCallWhisperModel.ifBlank { "whisper-large-v3-turbo" }})"
+                                    }
+                                } else {
+                                    "(Awaiting whisper invocation)"
+                                }
+                            } else {
+                                if (hasCall) {
+                                    "(${preferences.lastCallQwenPromptTokens} prompt + ${preferences.lastCallQwenCompletionTokens} output tk)"
+                                } else {
+                                    "(Awaiting cloud invocation)"
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = colors.surface.copy(alpha = 0.7f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.3f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { viewModel.openLastCallModal(if (isWhisperTab) "WHISPER" else "QWEN") }
+                            ) {
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { viewModel.openLastCallModal() }
+                                        .padding(horizontal = 10.dp, vertical = 7.dp)
                                 ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 10.dp, vertical = 7.dp)
+                                    // Line 1: Endpoint provider & Realtime Latency / HTTP Status
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        // Line 1: Endpoint provider & Realtime Latency / HTTP Status
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(
-                                                    text = "Last Call: ${preferences.lastCallProvider.ifBlank { "Cloud API" }}",
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = colors.textPrimary,
-                                                    maxLines = 1,
-                                                    softWrap = false
-                                                )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text(
-                                                    text = "↗ Drawer",
-                                                    fontSize = 9.sp,
-                                                    color = CyanAccent,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
-                                                text = "⚡ ${preferences.lastCallLatencyMs}ms • ${preferences.lastCallStatusCode}",
-                                                fontSize = 10.sp,
+                                                text = "Last Call: $providerLabel",
+                                                fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "↗ Modal",
+                                                fontSize = 9.sp,
                                                 color = CyanAccent,
-                                                maxLines = 1,
-                                                softWrap = false
+                                                fontWeight = FontWeight.Bold
                                             )
                                         }
+                                        Text(
+                                            text = statusLabel,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CyanAccent,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
 
-                                        Spacer(modifier = Modifier.height(3.dp))
+                                    Spacer(modifier = Modifier.height(3.dp))
 
-                                        // Line 2: Token breakdown without truncation
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = "+${preferences.lastCallTokens} tk consumed",
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = StatusReady,
-                                                maxLines = 1,
-                                                softWrap = false
-                                            )
-                                            Text(
-                                                text = "(${preferences.lastCallPromptTokens} prompt + ${preferences.lastCallCompletionTokens} output tk)",
-                                                fontSize = 10.sp,
-                                                color = colors.textSecondary,
-                                                maxLines = 1,
-                                                softWrap = false
-                                            )
-                                        }
+                                    // Line 2: Token breakdown without truncation
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = tokenText,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = if (hasCall) StatusReady else colors.textMuted,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                        Text(
+                                            text = breakdownText,
+                                            fontSize = 10.sp,
+                                            color = colors.textSecondary,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
                                     }
                                 }
                             }
@@ -2227,11 +2016,10 @@ private fun SelectModelsScreen(
                 }
             }
 
-            // CLOUD TOKEN CONSUMPTION TABLE (DAY-WISE & MONTH-WISE)
-            TokenConsumptionTableCard(
-                isCloud = true,
-                dayWiseList = cloudDayWise,
-                monthWiseList = cloudMonthWise,
+            // MODEL EXECUTION HISTORY TABLE (PER-REQUEST CALLS & RED HIGHLIGHT ABOVE AVERAGE)
+            ModelExecutionHistoryTableCard(
+                recentLogs = cloudRecentLogs,
+                initialModel = selectedTokenApi,
                 colors = colors
             )
         } else {
@@ -2913,7 +2701,10 @@ private fun EndpointDetailsDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = false
+        )
     ) {
         Surface(
             shape = RoundedCornerShape(22.dp),
@@ -3051,8 +2842,9 @@ private fun EndpointDetailsDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
+                        val isWhisper = result.provider.contains("Whisper", ignoreCase = true)
                         Text(
-                            text = "Token Consumption",
+                            text = if (isWhisper) "Audio Transcription Telemetry" else "Token Consumption Breakdown",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = colors.textPrimary
@@ -3062,17 +2854,35 @@ private fun EndpointDetailsDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column {
-                                Text("Prompt Tokens", fontSize = 10.sp, color = colors.textMuted)
-                                Text("${result.promptTokens} tk", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                                Text(if (isWhisper) "Input Type" else "Prompt", fontSize = 10.sp, color = colors.textMuted)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (isWhisper) "Audio Media" else "${result.promptTokens} tk",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary
+                                )
                             }
-                            Column {
-                                Text("Output Tokens", fontSize = 10.sp, color = colors.textMuted)
-                                Text("${result.completionTokens} tk", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ElectricIndigo)
+                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(if (isWhisper) "Output Type" else "Output", fontSize = 10.sp, color = colors.textMuted)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (isWhisper) "Transcript" else "${result.completionTokens} tk",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ElectricIndigo
+                                )
                             }
-                            Column {
-                                Text("Total Tokens", fontSize = 10.sp, color = colors.textMuted)
-                                Text("${result.tokensConsumed} tk", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = StatusReady)
+                            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                                Text(if (isWhisper) "Live Status" else "Total", fontSize = 10.sp, color = colors.textMuted)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (isWhisper) "Online" else "+${result.tokensConsumed} tk",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = StatusReady
+                                )
                             }
                         }
                     }
@@ -3154,170 +2964,669 @@ private fun EndpointDetailsDialog(
 }
 
 @Composable
-private fun LastCallDetailsDrawer(
+private fun LastCallDetailsModal(
+    targetModel: String, // "QWEN" or "WHISPER"
     preferences: AppPreferences,
     colors: NeumorphicColors,
     onDismiss: () -> Unit
 ) {
+    val isWhisper = targetModel == "WHISPER"
+    val statusCode = if (isWhisper) {
+        preferences.lastCallWhisperStatusCode.ifBlank { "200 OK" }
+    } else {
+        preferences.lastCallQwenStatusCode.ifBlank { "200 OK" }
+    }
+    val isSuccess = !statusCode.startsWith("4") && !statusCode.startsWith("5")
+    val hasCall = if (isWhisper) {
+        preferences.lastCallWhisperLatencyMs > 0L || preferences.groqWhisperCalls > 0L
+    } else {
+        preferences.lastCallQwenLatencyMs > 0L || preferences.lastCallQwenTokens > 0L
+    }
+    val latencyMs = if (isWhisper) preferences.lastCallWhisperLatencyMs else preferences.lastCallQwenLatencyMs
+    val provider = if (isWhisper) preferences.lastCallWhisperProvider.ifBlank { "Groq LPU ~ Whisper" } else preferences.lastCallQwenProvider.ifBlank { "Groq LPU ~ Qwen" }
+    val model = if (isWhisper) preferences.lastCallWhisperModel.ifBlank { "whisper-large-v3-turbo" } else preferences.lastCallQwenModel.ifBlank { "qwen/qwen3.8-27b" }
+
+    val promptTokens = if (isWhisper) preferences.lastCallWhisperPromptTokens else preferences.lastCallQwenPromptTokens
+    val compTokens = if (isWhisper) preferences.lastCallWhisperCompletionTokens else preferences.lastCallQwenCompletionTokens
+    val totalTokens = if (isWhisper) preferences.lastCallWhisperTokens else preferences.lastCallQwenTokens
+
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = false
+        )
     ) {
-        Box(
+        Surface(
+            shape = RoundedCornerShape(22.dp),
+            color = colors.surface,
+            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable(onClick = onDismiss),
-            contentAlignment = Alignment.BottomCenter
+                .fillMaxWidth(0.92f)
+                .padding(vertical = 24.dp)
         ) {
-            Surface(
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                color = colors.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(enabled = false) {}
+                    .padding(20.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // Header: Icon + Title/Subtitle + Close 'X' Button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Drawer Drag Handle
-                    Box(
-                        modifier = Modifier
-                            .width(38.dp)
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(colors.border)
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(CyanAccent.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isWhisper) Icons.Default.GraphicEq else Icons.Default.FlashOn,
+                                contentDescription = null,
+                                tint = CyanAccent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "$provider Last Call",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                            Text(
+                                text = if (isWhisper) "Audio transcription endpoint telemetry" else "LLM summarization & chat telemetry",
+                                fontSize = 11.sp,
+                                color = colors.textSecondary,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = colors.textMuted)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Status Code & Latency Cards (Balanced 2-Column Row)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Status Code
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (!hasCall) colors.border.copy(alpha = 0.4f)
+                            else if (isSuccess) StatusReady.copy(alpha = 0.35f)
+                            else StatusError.copy(alpha = 0.35f)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text("STATUS CODE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.textMuted)
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = if (hasCall) statusCode else "Standby",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (!hasCall) colors.textPrimary else if (isSuccess) StatusReady else StatusError,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // Latency
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.3f)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text("LATENCY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.textMuted)
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = if (hasCall && latencyMs > 0L) "⚡ $latencyMs ms" else "⚡ Ready",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CyanAccent,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Model Endpoint Row
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = colors.pillBg,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Text("Model Endpoint", fontSize = 11.sp, color = colors.textSecondary)
+                        Text(
+                            text = model,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Telemetry details: Token breakdown or Audio Telemetry
+                if (isWhisper && totalTokens == 0L) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.6f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = "Last Call Telemetry",
-                                fontSize = 17.sp,
+                                text = "Audio Transcription Telemetry",
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = colors.textPrimary
                             )
-                            Text(
-                                text = "Real-time stats from the most recent cloud invocation",
-                                fontSize = 11.sp,
-                                color = colors.textSecondary
-                            )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = CyanAccent.copy(alpha = 0.15f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.4f))
-                        ) {
-                            Text(
-                                text = preferences.lastCallStatusCode.ifBlank { "200 OK" },
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = CyanAccent,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Metrics Grid
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = colors.pillBg,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("ENDPOINT", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.textMuted)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = preferences.lastCallProvider.ifBlank { "Cloud API" },
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.textPrimary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = colors.pillBg,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("LATENCY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.textMuted)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "⚡ ${preferences.lastCallLatencyMs} ms",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = CyanAccent
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Token Breakdown Grid
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = colors.pillBg,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.5f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Text("Token Consumption Breakdown", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
                             Spacer(modifier = Modifier.height(10.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Column {
-                                    Text("Prompt (Input)", fontSize = 10.sp, color = colors.textMuted)
-                                    Text("${preferences.lastCallPromptTokens} tk", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                                    Text("Input Type", fontSize = 10.sp, color = colors.textMuted)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text("Audio Media", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
                                 }
-                                Column {
-                                    Text("Output (Generation)", fontSize = 10.sp, color = colors.textMuted)
-                                    Text("${preferences.lastCallCompletionTokens} tk", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ElectricIndigo)
+                                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Output Type", fontSize = 10.sp, color = colors.textMuted)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text("Transcript", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ElectricIndigo)
                                 }
-                                Column {
-                                    Text("Total Consumed", fontSize = 10.sp, color = colors.textMuted)
-                                    Text("+${preferences.lastCallTokens} tk", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = StatusReady)
+                                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                                    Text("Live Status", fontSize = 10.sp, color = colors.textMuted)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(if (isSuccess) "Online" else "Error", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isSuccess) StatusReady else StatusError)
                                 }
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    // Close Drawer Button
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier.fillMaxWidth(),
+                } else {
+                    Surface(
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.accentBg)
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.6f)),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Close Drawer", color = colors.accent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Token Consumption Breakdown",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalAlignment = Alignment.Start
+                                ) {
+                                    Text("Prompt", fontSize = 10.sp, color = colors.textMuted)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "$promptTokens tk",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textPrimary
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("Output", fontSize = 10.sp, color = colors.textMuted)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "$compTokens tk",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = ElectricIndigo
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalAlignment = Alignment.End
+                                ) {
+                                    Text("Total Consumed", fontSize = 10.sp, color = colors.textMuted)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "+$totalTokens tk",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = StatusReady
+                                    )
+                                }
+                            }
+                        }
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Close Button
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanAccent)
+                ) {
+                    Text("Close Telemetry", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModelExecutionHistoryTableCard(
+    recentLogs: List<com.reelrecall.app.data.model.TokenUsageEntity>,
+    initialModel: String = "QWEN",
+    colors: NeumorphicColors
+) {
+    var selectedModelTab by remember { mutableStateOf(initialModel) } // "QWEN" or "WHISPER"
+    var currentPage by remember { mutableStateOf(0) }
+    val pageSize = 7
+
+    LaunchedEffect(initialModel) {
+        if (initialModel.isNotBlank()) {
+            selectedModelTab = initialModel
+            currentPage = 0
+        }
+    }
+
+    val qwenLogs = remember(recentLogs) {
+        recentLogs.filter { log ->
+            log.provider.contains("Qwen", ignoreCase = true) ||
+            log.payloadSnippet?.contains("qwen", ignoreCase = true) == true ||
+            (!log.provider.contains("Whisper", ignoreCase = true) && (log.payloadSnippet?.contains("whisper", ignoreCase = true) != true))
+        }
+    }
+
+    val whisperLogs = remember(recentLogs) {
+        recentLogs.filter { log ->
+            log.provider.contains("Whisper", ignoreCase = true) ||
+            log.payloadSnippet?.contains("whisper", ignoreCase = true) == true
+        }
+    }
+
+    val activeLogs = if (selectedModelTab == "WHISPER") whisperLogs else qwenLogs
+    val activeModelName = if (selectedModelTab == "WHISPER") "Groq LPU ~ Whisper" else "Groq LPU ~ Qwen"
+
+    // Calculate average token consumption across calls with tokens > 0
+    val avgTokens = remember(activeLogs) {
+        val positive = activeLogs.map { it.totalTokens }.filter { it > 0 }
+        if (positive.isNotEmpty()) positive.average() else 0.0
+    }
+
+    val totalPages = if (activeLogs.isEmpty()) 1 else (activeLogs.size + pageSize - 1) / pageSize
+    val safePage = currentPage.coerceIn(0, (totalPages - 1).coerceAtLeast(0))
+    val displayLogs = remember(activeLogs, safePage) {
+        val start = safePage * pageSize
+        val end = (start + pageSize).coerceAtMost(activeLogs.size)
+        if (start < activeLogs.size) activeLogs.subList(start, end) else emptyList()
+    }
+
+    val timeFormat = remember { java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US) }
+
+    NeumorphicCard(colors = colors) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            // Header: Model Execution History (No reset wording)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(CyanAccent.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Storage,
+                            contentDescription = null,
+                            tint = CyanAccent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Model Execution History",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                        Text(
+                            text = if (avgTokens > 0) {
+                                "Model: $activeModelName • Red indicates above avg (${avgTokens.toInt()} tk)"
+                            } else {
+                                "Model: $activeModelName • Per-request call telemetry"
+                            },
+                            fontSize = 11.sp,
+                            color = colors.textSecondary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Model Switcher Tabs (Qwen vs Whisper)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(colors.pillBg)
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                listOf(
+                    Pair("QWEN", "Groq LPU ~ Qwen"),
+                    Pair("WHISPER", "Groq LPU ~ Whisper")
+                ).forEach { (id, label) ->
+                    val isSelected = selectedModelTab == id
+                    val count = if (id == "WHISPER") whisperLogs.size else qwenLogs.size
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isSelected) CyanAccent.copy(alpha = 0.18f) else Color.Transparent,
+                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.5f)) else null,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                selectedModelTab = id
+                                currentPage = 0
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(vertical = 7.dp, horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = label,
+                                fontSize = 11.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) CyanAccent else colors.textSecondary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (isSelected) CyanAccent.copy(alpha = 0.25f) else colors.surface
+                            ) {
+                                Text(
+                                    text = "$count",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) CyanAccent else colors.textMuted,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Active Model Name & Average call consumption indicator
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Model: $activeModelName",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = CyanAccent
+                )
+                if (avgTokens > 0) {
+                    Text(
+                        text = "Avg: ${avgTokens.toInt()} tk/call • Highlighted red if > avg",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = colors.textSecondary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Table Content
+            if (activeLogs.isEmpty()) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = colors.pillBg,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "No execution logs recorded yet for $activeModelName. Tap 'Test Cloud' above to run live payload.",
+                        fontSize = 11.sp,
+                        color = colors.textMuted,
+                        modifier = Modifier.padding(14.dp)
+                    )
+                }
+            } else {
+                // Table Header Row: Time, Status, Latency, Prompt, Output, Total (tk)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = colors.pillBg,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Time", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(1.1f))
+                        Text("Status", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Text("Latency", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        Text("Prompt", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        Text("Output", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        Text("Total (tk)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = CyanAccent, modifier = Modifier.weight(1.2f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Table Rows
+                displayLogs.forEach { log ->
+                    val isOk = !log.statusCode.startsWith("4") && !log.statusCode.startsWith("5")
+                    val isAboveAvg = avgTokens > 0 && log.totalTokens > avgTokens
+
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = if (isAboveAvg) Color(0xFFEF4444).copy(alpha = 0.08f) else colors.pillBg.copy(alpha = 0.5f),
+                        border = if (isAboveAvg) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.45f)) else null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 7.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Time (Only the time: HH:mm:ss)
+                            Text(
+                                text = timeFormat.format(java.util.Date(log.timestamp)),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.textPrimary,
+                                modifier = Modifier.weight(1.1f),
+                                maxLines = 1,
+                                softWrap = false
+                            )
+
+                            // Status
+                            Text(
+                                text = if (isOk) "200" else log.statusCode.take(3),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isOk) StatusReady else StatusError,
+                                modifier = Modifier.weight(0.9f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+
+                            // Latency
+                            Text(
+                                text = if (log.latencyMs > 0) "${log.latencyMs}ms" else "-",
+                                fontSize = 10.sp,
+                                color = colors.textSecondary,
+                                modifier = Modifier.weight(0.9f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+
+                            // Prompt
+                            Text(
+                                text = if (log.promptTokens > 0) "${log.promptTokens}" else "-",
+                                fontSize = 10.sp,
+                                color = colors.textSecondary,
+                                modifier = Modifier.weight(0.9f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+
+                            // Output
+                            Text(
+                                text = if (log.completionTokens > 0) "${log.completionTokens}" else "-",
+                                fontSize = 10.sp,
+                                color = colors.textSecondary,
+                                modifier = Modifier.weight(0.9f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+
+                            // Total (tk) with Red Highlighting if Above Average
+                            Row(
+                                modifier = Modifier.weight(1.2f),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (isAboveAvg) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = Color(0xFFEF4444).copy(alpha = 0.2f),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.8f))
+                                    ) {
+                                        Text(
+                                            text = "+${log.totalTokens}",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = Color(0xFFEF4444),
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = if (log.totalTokens > 0) "+${log.totalTokens}" else "Audio",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (log.totalTokens > 0) CyanAccent else colors.textMuted,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Pagination Controls
+                if (totalPages > 1) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { if (safePage > 0) currentPage = safePage - 1 },
+                            enabled = safePage > 0,
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (safePage > 0) CyanAccent else colors.border),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = CyanAccent)
+                        ) {
+                            Text("Previous", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Text(
+                            text = "Page ${safePage + 1} of $totalPages • ${activeLogs.size} calls",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = colors.textSecondary
+                        )
+
+                        OutlinedButton(
+                            onClick = { if (safePage < totalPages - 1) currentPage = safePage + 1 },
+                            enabled = safePage < totalPages - 1,
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (safePage < totalPages - 1) CyanAccent else colors.border),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = CyanAccent)
+                        ) {
+                            Text("Next", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }
@@ -3332,7 +3641,20 @@ private fun TokenConsumptionTableCard(
     colors: NeumorphicColors
 ) {
     var selectedTab by remember { mutableStateOf("DAY") } // "DAY" or "MONTH"
+    var currentDayPage by remember { mutableStateOf(0) }
+    val dayPageSize = 7
+
     val activeList = if (selectedTab == "DAY") dayWiseList else monthWiseList
+    val totalDayPages = if (dayWiseList.isEmpty()) 1 else (dayWiseList.size + dayPageSize - 1) / dayPageSize
+    val safeDayPage = currentDayPage.coerceIn(0, (totalDayPages - 1).coerceAtLeast(0))
+
+    val displayList = if (selectedTab == "DAY") {
+        val start = safeDayPage * dayPageSize
+        val end = (start + dayPageSize).coerceAtMost(dayWiseList.size)
+        if (start < dayWiseList.size) dayWiseList.subList(start, end) else emptyList()
+    } else {
+        monthWiseList
+    }
 
     NeumorphicCard(colors = colors) {
         Column(modifier = Modifier.padding(18.dp)) {
@@ -3366,7 +3688,7 @@ private fun TokenConsumptionTableCard(
                             color = colors.textPrimary
                         )
                         Text(
-                            text = if (isCloud) "Resets daily at 1:00 AM • Historical log preserved" else "Offline on-device inference consumption",
+                            text = if (isCloud) "Resets daily at midnight • Historical log preserved" else "Offline on-device inference consumption",
                             fontSize = 11.sp,
                             color = colors.textSecondary
                         )
@@ -3464,9 +3786,9 @@ private fun TokenConsumptionTableCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Table Rows
+                // Table Rows (Paginated to 7 days for Day-wise)
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    activeList.forEach { row ->
+                    displayList.forEach { row ->
                         Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = colors.surface,
@@ -3517,6 +3839,109 @@ private fun TokenConsumptionTableCard(
                                     modifier = Modifier.weight(1.2f),
                                     textAlign = androidx.compose.ui.text.style.TextAlign.End
                                 )
+                            }
+                        }
+                    }
+                }
+
+                // Day-wise 7-Day Pagination Controls
+                if (selectedTab == "DAY" && dayWiseList.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 7.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val canGoPrev = safeDayPage > 0
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (canGoPrev) (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.12f) else colors.border.copy(alpha = 0.1f),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    0.8.dp,
+                                    if (canGoPrev) (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.4f) else colors.border.copy(alpha = 0.2f)
+                                ),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable(enabled = canGoPrev) {
+                                        if (canGoPrev) currentDayPage = safeDayPage - 1
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Previous Page",
+                                        tint = if (canGoPrev) (if (isCloud) CyanAccent else ElectricIndigo) else colors.textMuted.copy(alpha = 0.4f),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = "Prev",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (canGoPrev) (if (isCloud) CyanAccent else ElectricIndigo) else colors.textMuted.copy(alpha = 0.4f)
+                                    )
+                                }
+                            }
+
+                            val startIdx = safeDayPage * dayPageSize + 1
+                            val endIdx = (startIdx + dayPageSize - 1).coerceAtMost(dayWiseList.size)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Page ${safeDayPage + 1} of $totalDayPages",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = "Days $startIdx–$endIdx of ${dayWiseList.size} logged",
+                                    fontSize = 9.5.sp,
+                                    color = colors.textSecondary
+                                )
+                            }
+
+                            val canGoNext = safeDayPage < totalDayPages - 1
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (canGoNext) (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.12f) else colors.border.copy(alpha = 0.1f),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    0.8.dp,
+                                    if (canGoNext) (if (isCloud) CyanAccent else ElectricIndigo).copy(alpha = 0.4f) else colors.border.copy(alpha = 0.2f)
+                                ),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable(enabled = canGoNext) {
+                                        if (canGoNext) currentDayPage = safeDayPage + 1
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "Next",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (canGoNext) (if (isCloud) CyanAccent else ElectricIndigo) else colors.textMuted.copy(alpha = 0.4f)
+                                    )
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = "Next Page",
+                                        tint = if (canGoNext) (if (isCloud) CyanAccent else ElectricIndigo) else colors.textMuted.copy(alpha = 0.4f),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                }
                             }
                         }
                     }

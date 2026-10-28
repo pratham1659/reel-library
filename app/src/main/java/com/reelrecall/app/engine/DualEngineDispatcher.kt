@@ -71,12 +71,10 @@ class DualEngineDispatcher(
 
         return when (prefs.engineMode) {
             EngineMode.CLOUD_ONLY -> {
-                if (prefs.geminiApiKey.isNotBlank()) {
-                    GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
-                } else if (prefs.groqApiKey.isNotBlank()) {
+                if (prefs.groqApiKey.isNotBlank()) {
                     GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
                 } else {
-                    FailingSummarizerEngine("Cloud API keys missing. Please configure Groq or Gemini API key in Settings.")
+                    FailingSummarizerEngine("Cloud API key missing. Please configure your Groq API key in Settings.")
                 }
             }
 
@@ -90,9 +88,7 @@ class DualEngineDispatcher(
             }
 
             EngineMode.AUTO_HYBRID -> {
-                if (isOnline && prefs.geminiApiKey.isNotBlank()) {
-                    GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
-                } else if (isOnline && prefs.groqApiKey.isNotBlank()) {
+                if (isOnline && prefs.groqApiKey.isNotBlank()) {
                     GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
                 } else {
                     val modelFile = prefs.llmModelPath?.let { File(it) }
