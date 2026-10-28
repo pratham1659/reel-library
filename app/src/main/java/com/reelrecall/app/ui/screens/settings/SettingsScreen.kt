@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Email
@@ -95,10 +96,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reelrecall.app.data.repository.EngineMode
@@ -815,11 +821,13 @@ private fun SelectModelsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val preferences by viewModel.preferences.collectAsState()
     val whisperProgress by viewModel.whisperProgress.collectAsState()
     val llmProgress by viewModel.llmProgress.collectAsState()
     val cloudTestResult by viewModel.cloudTestResult.collectAsState()
     val localTestResult by viewModel.localTestResult.collectAsState()
+    val hardwareInfo by viewModel.deviceHardwareInfo.collectAsState()
 
     var groqApiKeyInput by remember { mutableStateOf(preferences.groqApiKey) }
     var geminiApiKeyInput by remember { mutableStateOf(preferences.geminiApiKey) }
@@ -829,10 +837,8 @@ private fun SelectModelsScreen(
         geminiApiKeyInput = preferences.geminiApiKey
     }
 
-    var isGroqKeyVisible by remember { mutableStateOf(false) }
-    var isGeminiKeyVisible by remember { mutableStateOf(false) }
-
     val isCloudMode = preferences.engineMode != EngineMode.LOCAL_ONLY
+    var selectedTokenApi by remember { mutableStateOf("ALL") } // "ALL", "GEMINI", "GROQ"
 
     Column(
         modifier = modifier
@@ -965,28 +971,125 @@ private fun SelectModelsScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Groq Key Input
-                    Text(text = "Groq API Key (Whisper Large v3)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textSecondary)
+                    // Groq Key Input Header with Clear Button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Text(
+                                text = "Groq API Key",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                            Text(
+                                text = "Whisper Large v3 (Audio)",
+                                fontSize = 10.sp,
+                                color = colors.textSecondary,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                        if (groqApiKeyInput.isNotBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = StatusError.copy(alpha = 0.12f),
+                                modifier = Modifier.clickable {
+                                    groqApiKeyInput = ""
+                                    viewModel.setGroqApiKey("")
+                                    Toast.makeText(context, "Groq key cleared from vault", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear",
+                                        tint = StatusError,
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(
+                                        text = "Clear",
+                                        fontSize = 10.sp,
+                                        color = StatusError,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = groqApiKeyInput,
-                        onValueChange = {
-                            groqApiKeyInput = it
-                            viewModel.setGroqApiKey(it)
-                        },
+                        onValueChange = {}, // Read-only: direct manual text copying/editing blocked for vault security
+                        readOnly = true,
                         enabled = isCloudMode,
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("gsk_...", color = colors.textMuted, fontSize = 12.sp) },
+                        placeholder = { Text("No key stored • Tap Paste to add", color = colors.textMuted, fontSize = 12.sp) },
                         singleLine = true,
-                        visualTransformation = if (isGroqKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        visualTransformation = MaskApiKeyVisualTransformation(visibleChars = 3),
                         trailingIcon = {
-                            IconButton(onClick = { isGroqKeyVisible = !isGroqKeyVisible }, enabled = isCloudMode) {
-                                Icon(
-                                    imageVector = if (isGroqKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = null,
-                                    tint = colors.textMuted,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                            if (groqApiKeyInput.isBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = CyanAccent.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.4f)),
+                                    modifier = Modifier
+                                        .padding(end = 4.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            val clip = clipboardManager.getText()?.text?.trim()
+                                            if (!clip.isNullOrBlank()) {
+                                                groqApiKeyInput = clip
+                                                viewModel.setGroqApiKey(clip)
+                                                Toast.makeText(context, "Groq key securely saved to Keystore vault", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ContentPaste,
+                                            contentDescription = "Paste",
+                                            tint = CyanAccent,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Paste",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CyanAccent,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+                            } else {
+                                Row(
+                                    modifier = Modifier.padding(end = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = "Encrypted in Hardware Keystore",
+                                        tint = CyanAccent,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         },
                         colors = OutlinedTextFieldDefaults.colors(
@@ -999,31 +1102,191 @@ private fun SelectModelsScreen(
                         ),
                         shape = RoundedCornerShape(12.dp)
                     )
+
+                    // Next Row: Keystore Vault Status & Prominent Redirect Link
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                tint = colors.textMuted,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Keystore Vault Encrypted",
+                                fontSize = 10.sp,
+                                color = colors.textMuted,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = CyanAccent.copy(alpha = 0.10f),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Cannot open browser", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Get Free Groq Key",
+                                    fontSize = 10.sp,
+                                    color = CyanAccent,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                    contentDescription = "Open Groq Console",
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Gemini Key Input
-                    Text(text = "Google AI Studio API Key (Gemini 1.5 Flash)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textSecondary)
+                    // Gemini Key Input Header with Clear Button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Text(
+                                text = "Google AI Studio Key",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                            Text(
+                                text = "Gemini 1.5 Flash (Summary)",
+                                fontSize = 10.sp,
+                                color = colors.textSecondary,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                        if (geminiApiKeyInput.isNotBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = StatusError.copy(alpha = 0.12f),
+                                modifier = Modifier.clickable {
+                                    geminiApiKeyInput = ""
+                                    viewModel.setGeminiApiKey("")
+                                    Toast.makeText(context, "Gemini key cleared from vault", Toast.LENGTH_SHORT).show()
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear",
+                                        tint = StatusError,
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(
+                                        text = "Clear",
+                                        fontSize = 10.sp,
+                                        color = StatusError,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = geminiApiKeyInput,
-                        onValueChange = {
-                            geminiApiKeyInput = it
-                            viewModel.setGeminiApiKey(it)
-                        },
+                        onValueChange = {}, // Read-only: direct manual text copying/editing blocked for vault security
+                        readOnly = true,
                         enabled = isCloudMode,
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("AIzaSy... or AQ...", color = colors.textMuted, fontSize = 12.sp) },
+                        placeholder = { Text("No key stored • Tap Paste to add", color = colors.textMuted, fontSize = 12.sp) },
                         singleLine = true,
-                        visualTransformation = if (isGeminiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        visualTransformation = MaskApiKeyVisualTransformation(visibleChars = 3),
                         trailingIcon = {
-                            IconButton(onClick = { isGeminiKeyVisible = !isGeminiKeyVisible }, enabled = isCloudMode) {
-                                Icon(
-                                    imageVector = if (isGeminiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = null,
-                                    tint = colors.textMuted,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                            if (geminiApiKeyInput.isBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = CyanAccent.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.4f)),
+                                    modifier = Modifier
+                                        .padding(end = 4.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            val clip = clipboardManager.getText()?.text?.trim()
+                                            if (!clip.isNullOrBlank()) {
+                                                geminiApiKeyInput = clip
+                                                viewModel.setGeminiApiKey(clip)
+                                                Toast.makeText(context, "Gemini key securely saved to Keystore vault", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ContentPaste,
+                                            contentDescription = "Paste",
+                                            tint = CyanAccent,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Paste",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CyanAccent,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+                            } else {
+                                Row(
+                                    modifier = Modifier.padding(end = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = "Encrypted in Hardware Keystore",
+                                        tint = CyanAccent,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         },
                         colors = OutlinedTextFieldDefaults.colors(
@@ -1037,9 +1300,72 @@ private fun SelectModelsScreen(
                         shape = RoundedCornerShape(12.dp)
                     )
 
+                    // Next Row: Keystore Vault Status & Prominent Redirect Link
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                tint = colors.textMuted,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Keystore Vault Encrypted",
+                                fontSize = 10.sp,
+                                color = colors.textMuted,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = CyanAccent.copy(alpha = 0.10f),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://aistudio.google.com/app/apikey"))
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Cannot open browser", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Get Free Gemini Key",
+                                    fontSize = 10.sp,
+                                    color = CyanAccent,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                    contentDescription = "Open Google AI Studio",
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // TEST BUTTON & REAL-TIME LATENCY + STATUS CODE
+                    // TEST BUTTON & REAL-TIME LATENCY + STATUS CODE (NEVER WRAP, SINGLE LINE)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1055,15 +1381,15 @@ private fun SelectModelsScreen(
                             if (cloudTestResult.isTesting) {
                                 CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = CyanAccent)
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Testing...", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("Testing...", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                             } else {
                                 Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Test Cloud", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("Test Cloud", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                             }
                         }
 
-                        // Live status code and latency badges
+                        // Live status code and latency badges - strictly 1 line, no wrap
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1093,7 +1419,9 @@ private fun SelectModelsScreen(
                                             text = cloudTestResult.statusCode ?: "",
                                             color = if (isOk) StatusReady else StatusError,
                                             fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            softWrap = false
                                         )
                                     }
                                 }
@@ -1120,7 +1448,9 @@ private fun SelectModelsScreen(
                                             text = "${cloudTestResult.latencyMs}ms",
                                             color = CyanAccent,
                                             fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            softWrap = false
                                         )
                                     }
                                 }
@@ -1128,7 +1458,7 @@ private fun SelectModelsScreen(
                         }
                     }
 
-                    // Individual endpoint test cards
+                    // Individual endpoint test cards - single line badges
                     if (cloudTestResult.endpointResults.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(10.dp))
                         Column(
@@ -1153,26 +1483,33 @@ private fun SelectModelsScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Column(modifier = Modifier.weight(1f)) {
+                                        Column(modifier = Modifier.weight(1f, fill = false)) {
                                             Text(
                                                 text = ep.provider,
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = colors.textPrimary
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                softWrap = false
                                             )
                                             if (ep.errorDetails != null) {
                                                 Text(
                                                     text = ep.errorDetails,
                                                     fontSize = 10.sp,
                                                     color = StatusError,
-                                                    maxLines = 1
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    softWrap = false
                                                 )
                                             }
                                         }
 
+                                        Spacer(modifier = Modifier.width(8.dp))
+
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
                                             Surface(
                                                 shape = RoundedCornerShape(6.dp),
@@ -1183,6 +1520,8 @@ private fun SelectModelsScreen(
                                                     color = if (ok) StatusReady else StatusError,
                                                     fontSize = 10.sp,
                                                     fontWeight = FontWeight.Bold,
+                                                    maxLines = 1,
+                                                    softWrap = false,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                 )
                                             }
@@ -1196,6 +1535,8 @@ private fun SelectModelsScreen(
                                                     color = CyanAccent,
                                                     fontSize = 10.sp,
                                                     fontWeight = FontWeight.Bold,
+                                                    maxLines = 1,
+                                                    softWrap = false,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                 )
                                             }
@@ -1210,6 +1551,8 @@ private fun SelectModelsScreen(
                                                         color = ElectricIndigo,
                                                         fontSize = 10.sp,
                                                         fontWeight = FontWeight.Bold,
+                                                        maxLines = 1,
+                                                        softWrap = false,
                                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                     )
                                                 }
@@ -1232,6 +1575,9 @@ private fun SelectModelsScreen(
                                 fontSize = 11.sp,
                                 color = if (isOk) StatusReady else StatusError,
                                 fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                softWrap = false,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                             )
                         }
@@ -1239,7 +1585,7 @@ private fun SelectModelsScreen(
 
                     Spacer(modifier = Modifier.height(18.dp))
 
-                    // REAL-TIME TOKEN TRACKING (PURE LIVE DATA - ZERO DEMO DATA)
+                    // REAL-TIME TOKEN TRACKING (PER-API SELECTION & TELEMETRY - ZERO DEMO DATA)
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = colors.pillBg,
@@ -1247,12 +1593,16 @@ private fun SelectModelsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
+                            // Header Row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    modifier = Modifier.weight(1f, fill = false),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Icon(
                                         imageVector = Icons.Default.Tune,
                                         contentDescription = null,
@@ -1261,164 +1611,301 @@ private fun SelectModelsScreen(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "Real-Time Cloud Token Usage",
+                                        text = "Cloud Token Usage",
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = colors.textPrimary
+                                        color = colors.textPrimary,
+                                        maxLines = 1,
+                                        softWrap = false
                                     )
                                 }
 
                                 if (preferences.totalTokensUsed > 0L) {
-                                    Text(
-                                        text = "Reset",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = colors.textMuted,
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = colors.surface,
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(4.dp))
+                                            .clip(RoundedCornerShape(6.dp))
                                             .clickable { viewModel.resetTokenStats() }
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
+                                    ) {
+                                        Text(
+                                            text = "Reset",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colors.textMuted,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
                                 }
                             }
 
                             Text(
-                                text = "Live telemetry tracked directly from API responses (No demo data)",
+                                text = "Select an API provider to inspect real-time usage telemetry",
                                 fontSize = 10.sp,
                                 color = colors.textSecondary,
-                                modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
+                                modifier = Modifier.padding(top = 2.dp, bottom = 10.dp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                softWrap = false
                             )
 
-                            if (preferences.totalTokensUsed == 0L) {
+                            // API Selector Segmented Tabs
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(colors.surface)
+                                    .padding(3.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                listOf(
+                                    Triple("ALL", "All APIs", preferences.totalTokensUsed),
+                                    Triple("GEMINI", "Gemini", preferences.geminiTotalTokens),
+                                    Triple("GROQ", "Groq LPU", preferences.groqTotalTokens)
+                                ).forEach { (id, label, tokens) ->
+                                    val isSelected = selectedTokenApi == id
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isSelected) CyanAccent.copy(alpha = 0.15f) else Color.Transparent,
+                                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.5f)) else null,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable { selectedTokenApi = id }
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(
+                                                text = label,
+                                                fontSize = 11.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isSelected) CyanAccent else colors.textSecondary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Text(
+                                                text = if (tokens > 0) "${java.text.NumberFormat.getIntegerInstance().format(tokens)} tok" else "0 tok",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = if (isSelected) CyanAccent else colors.textMuted,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Calculate active stats for selected API
+                            val metrics = when (selectedTokenApi) {
+                                "GEMINI" -> ApiTokenMetrics(
+                                    total = preferences.geminiTotalTokens,
+                                    prompt = preferences.geminiPromptTokens,
+                                    completion = preferences.geminiCompletionTokens,
+                                    calls = preferences.geminiCallsCount,
+                                    label = "Google Gemini (LLM)"
+                                )
+                                "GROQ" -> ApiTokenMetrics(
+                                    total = preferences.groqTotalTokens,
+                                    prompt = preferences.groqPromptTokens,
+                                    completion = preferences.groqCompletionTokens,
+                                    calls = preferences.groqCallsCount,
+                                    label = "Groq LPU (Whisper)"
+                                )
+                                else -> ApiTokenMetrics(
+                                    total = preferences.totalTokensUsed,
+                                    prompt = preferences.totalPromptTokens,
+                                    completion = preferences.totalCompletionTokens,
+                                    calls = (preferences.geminiCallsCount + preferences.groqCallsCount).coerceAtLeast(if (preferences.totalTokensUsed > 0L) 1L else 0L),
+                                    label = "All Cloud Endpoints"
+                                )
+                            }
+
+                            // Provider status banner
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = metrics.label,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    softWrap = false
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = colors.surface
+                                ) {
+                                    Text(
+                                        text = "${metrics.calls} requests",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = colors.textSecondary,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // 3 Metric Cards for Selected API
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // Total Tokens
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.surface,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.35f)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                        Text(
+                                            text = "TOTAL",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CyanAccent,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                        Text(
+                                            text = java.text.NumberFormat.getIntegerInstance().format(metrics.total),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = colors.textPrimary,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+
+                                // Prompt Tokens
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.surface,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                        Text(
+                                            text = "PROMPT",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textSecondary,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                        Text(
+                                            text = java.text.NumberFormat.getIntegerInstance().format(metrics.prompt),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+
+                                // Output / Completion Tokens
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.surface,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                        Text(
+                                            text = "OUTPUT",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = ElectricIndigo,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                        Text(
+                                            text = java.text.NumberFormat.getIntegerInstance().format(metrics.completion),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (metrics.total == 0L) {
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = colors.surface,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.3f)),
+                                    color = colors.surface.copy(alpha = 0.6f),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "0 Tokens",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = colors.textPrimary
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(
-                                            text = "No tokens consumed yet. Tap 'Test Cloud' or process/retry a reel to see real-time usage.",
-                                            fontSize = 11.sp,
+                                            text = "No tokens recorded yet for ${metrics.label}. Tap 'Test Cloud' above to run live payload.",
+                                            fontSize = 10.sp,
                                             color = colors.textMuted,
-                                            lineHeight = 14.sp
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            softWrap = false
                                         )
                                     }
                                 }
-                            } else {
-                                // 3 Metric Cards for Real Live Tokens
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            }
+
+                            if (preferences.lastCallTokens > 0L) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = colors.surface.copy(alpha = 0.6f),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    // Total Tokens
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = colors.surface,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.3f)),
-                                        modifier = Modifier.weight(1.2f)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 8.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Column(modifier = Modifier.padding(10.dp)) {
-                                            Text(
-                                                text = "TOTAL TOKENS",
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = CyanAccent
-                                            )
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text(
-                                                text = java.text.NumberFormat.getIntegerInstance().format(preferences.totalTokensUsed),
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = colors.textPrimary
-                                            )
-                                        }
-                                    }
-
-                                    // Prompt Tokens
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = colors.surface,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Column(modifier = Modifier.padding(10.dp)) {
-                                            Text(
-                                                text = "PROMPT",
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = colors.textSecondary
-                                            )
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text(
-                                                text = java.text.NumberFormat.getIntegerInstance().format(preferences.totalPromptTokens),
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = colors.textPrimary
-                                            )
-                                        }
-                                    }
-
-                                    // Completion Tokens
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = colors.surface,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Column(modifier = Modifier.padding(10.dp)) {
-                                            Text(
-                                                text = "COMPLETION",
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = colors.textSecondary
-                                            )
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text(
-                                                text = java.text.NumberFormat.getIntegerInstance().format(preferences.totalCompletionTokens),
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = colors.textPrimary
-                                            )
-                                        }
-                                    }
-                                }
-
-                                if (preferences.lastCallTokens > 0L) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = colors.surface.copy(alpha = 0.6f),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(
-                                                text = "Last Call: +${preferences.lastCallTokens} tok (${preferences.lastCallProvider.ifBlank { "Cloud" }})",
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = colors.textSecondary
-                                            )
-                                            Text(
-                                                text = "⚡ ${preferences.lastCallLatencyMs}ms • ${preferences.lastCallStatusCode}",
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = CyanAccent
-                                            )
-                                        }
+                                        Text(
+                                            text = "Last Call: +${preferences.lastCallTokens} tok (${preferences.lastCallProvider.ifBlank { "Cloud" }})",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = colors.textSecondary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            softWrap = false,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "⚡ ${preferences.lastCallLatencyMs}ms • ${preferences.lastCallStatusCode}",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CyanAccent,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
                                     }
                                 }
                             }
@@ -1455,7 +1942,7 @@ private fun SelectModelsScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Specs & Test Engine
+                    // Specs & Test Engine (Real Hardware Info - 0% Demo Data)
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = colors.pillBg,
@@ -1468,32 +1955,96 @@ private fun SelectModelsScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = "Snapdragon 8 Elite / Exynos 2500", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                                    Text(text = "12GB RAM • Hexagon NPU Detected", fontSize = 10.sp, color = StatusReady)
+                                Column(modifier = Modifier.weight(1f, fill = false)) {
+                                    Text(
+                                        text = hardwareInfo.processorName,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textPrimary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        softWrap = false
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "${hardwareInfo.ramDisplay} • ${hardwareInfo.storageDisplay}",
+                                        fontSize = 10.sp,
+                                        color = StatusReady,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        softWrap = false
+                                    )
+                                    Spacer(modifier = Modifier.height(1.dp))
+                                    Text(
+                                        text = hardwareInfo.npuAcceleratorStatus,
+                                        fontSize = 9.sp,
+                                        color = colors.textSecondary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        softWrap = false
+                                    )
                                 }
 
-                                OutlinedButton(
-                                    onClick = { viewModel.testLocalEngine() },
-                                    enabled = !isCloudMode && !localTestResult.isTesting,
-                                    shape = RoundedCornerShape(8.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, ElectricIndigo),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ElectricIndigo)
-                                ) {
-                                    Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(12.dp))
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text("Test Engine", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Column(horizontalAlignment = Alignment.End) {
+                                    OutlinedButton(
+                                        onClick = { viewModel.testLocalEngine() },
+                                        enabled = !isCloudMode && !localTestResult.isTesting,
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, if (!isCloudMode) ElectricIndigo else colors.border),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ElectricIndigo)
+                                    ) {
+                                        if (localTestResult.isTesting) {
+                                            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = ElectricIndigo)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Testing...", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                        } else {
+                                            Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(12.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
+                                            Text("Test Engine", fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                        }
+                                    }
+
+                                    if (localTestResult.latencyMs != null) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = ElectricIndigo.copy(alpha = 0.15f)
+                                        ) {
+                                            Text(
+                                                text = "⚡ ${localTestResult.latencyMs}ms",
+                                                color = ElectricIndigo,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
 
                             AnimatedVisibility(visible = localTestResult.message.isNotBlank()) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 val isOk = localTestResult.isSuccess == true
-                                Text(
-                                    text = localTestResult.message,
-                                    fontSize = 10.sp,
-                                    color = if (isOk) StatusReady else StatusError
-                                )
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (isOk) StatusReady.copy(alpha = 0.12f) else StatusError.copy(alpha = 0.12f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = localTestResult.message,
+                                        fontSize = 10.sp,
+                                        color = if (isOk) StatusReady else StatusError,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        softWrap = false,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -1786,7 +2337,13 @@ private fun PreferencesScreen(
 
 // =========================================================================
 // 5. HELPER COMPONENTS & NEUMORPHIC ROW DESIGNS
-// =========================================================================
+private data class ApiTokenMetrics(
+    val total: Long,
+    val prompt: Long,
+    val completion: Long,
+    val calls: Long,
+    val label: String
+)
 
 @Composable
 private fun ProfileMenuRow(
@@ -1880,6 +2437,41 @@ private fun AccountDetailItem(
     }
 }
 
+/**
+ * VisualTransformation that securely masks API keys:
+ * Displays the first 3 characters and last 3 characters, with all middle characters
+ * masked with bullets ('•'). Length of transformed text is preserved 1-to-1.
+ */
+class MaskApiKeyVisualTransformation(
+    private val visibleChars: Int = 3,
+    private val maskChar: Char = '•'
+) : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val raw = text.text
+        if (raw.isEmpty()) {
+            return TransformedText(text, OffsetMapping.Identity)
+        }
+        val masked = when {
+            raw.length > (visibleChars * 2) -> {
+                val first = raw.take(visibleChars)
+                val last = raw.takeLast(visibleChars)
+                val middle = maskChar.toString().repeat(raw.length - (visibleChars * 2))
+                first + middle + last
+            }
+            raw.length in (visibleChars + 1)..(visibleChars * 2) -> {
+                val first = raw.take(1)
+                val last = raw.takeLast(1)
+                val middle = maskChar.toString().repeat(raw.length - 2)
+                first + middle + last
+            }
+            else -> {
+                maskChar.toString().repeat(raw.length)
+            }
+        }
+        return TransformedText(AnnotatedString(masked), OffsetMapping.Identity)
+    }
+}
+
 @Composable
 private fun ModelSelectionCard(
     title: String,
@@ -1926,7 +2518,9 @@ private fun ModelSelectionCard(
                         text = title,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isSelected) colors.textPrimary else colors.textSecondary
+                        color = if (isSelected) colors.textPrimary else colors.textSecondary,
+                        maxLines = 1,
+                        softWrap = false
                     )
                     Surface(
                         shape = RoundedCornerShape(6.dp),
@@ -1937,6 +2531,8 @@ private fun ModelSelectionCard(
                             fontSize = 10.sp,
                             color = if (isSelected) colors.accent else colors.textMuted,
                             fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            softWrap = false,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                         )
                     }
