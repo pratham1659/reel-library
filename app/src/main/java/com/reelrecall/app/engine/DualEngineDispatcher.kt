@@ -79,36 +79,36 @@ class DualEngineDispatcher(
             EngineMode.CLOUD_ONLY -> {
                 if (prefs.groqApiKey.isNotBlank()) {
                     GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
+                } else if (prefs.geminiApiKey.isNotBlank()) {
+                    GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
                 } else {
-                    FailingSummarizerEngine("Cloud API key missing. Please configure your Groq API key in Settings.")
+                    FailingSummarizerEngine("Cloud API key missing. Please configure your Groq or Gemini API key in Settings.")
                 }
             }
 
             EngineMode.LOCAL_ONLY -> {
                 val llmFile = File(context.filesDir, "gemma-2-2b-it-gpu.bin")
-                if (!llmFile.exists()) {
-                    try {
-                        llmFile.writeText("gemma-2-2b-weights-v1")
-                    } catch (e: Exception) {
-                        // Ignore fallback creation error
-                    }
-                }
-                LocalMediaPipeSummarizerEngine(llmFile, onTokensUsed = onTokensUsed)
+                LocalMediaPipeSummarizerEngine(
+                    modelFile = llmFile,
+                    onTokensUsed = onTokensUsed,
+                    geminiApiKey = prefs.geminiApiKey.ifBlank { null },
+                    groqApiKey = prefs.groqApiKey.ifBlank { null }
+                )
             }
 
             EngineMode.AUTO_HYBRID -> {
                 if (isOnline && prefs.groqApiKey.isNotBlank()) {
                     GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
+                } else if (isOnline && prefs.geminiApiKey.isNotBlank()) {
+                    GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
                 } else {
                     val llmFile = File(context.filesDir, "gemma-2-2b-it-gpu.bin")
-                    if (!llmFile.exists()) {
-                        try {
-                            llmFile.writeText("gemma-2-2b-weights-v1")
-                        } catch (e: Exception) {
-                            // Ignore fallback creation error
-                        }
-                    }
-                    LocalMediaPipeSummarizerEngine(llmFile, onTokensUsed = onTokensUsed)
+                    LocalMediaPipeSummarizerEngine(
+                        modelFile = llmFile,
+                        onTokensUsed = onTokensUsed,
+                        geminiApiKey = prefs.geminiApiKey.ifBlank { null },
+                        groqApiKey = prefs.groqApiKey.ifBlank { null }
+                    )
                 }
             }
         }

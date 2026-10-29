@@ -389,16 +389,13 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             for (reel in allReels) {
                 val hasOldBogusTranscript = reel.transcript?.contains("likes") == true ||
                                            reel.transcript?.contains("comments - ") == true ||
-                                           reel.transcript?.contains("top three principles", ignoreCase = true) == true
+                                           reel.transcript?.contains("Transcription generated on-device via Whisper", ignoreCase = true) == true
 
-                val isGenericOrDemo = reel.title?.contains("3 Rules for 120 FPS", ignoreCase = true) == true ||
-                                     reel.title?.contains("Key Architectural Insights", ignoreCase = true) == true ||
-                                     reel.title?.contains("Android Performance", ignoreCase = true) == true ||
-                                     reel.title?.contains("Building High Performance", ignoreCase = true) == true ||
-                                     reel.title?.contains("Comprehensive Resource List", ignoreCase = true) == true ||
-                                     reel.title?.contains("Save Time And Money Tool", ignoreCase = true) == true ||
-                                     reel.creatorHandle?.contains("&#") == true ||
-                                     reel.transcript.isNullOrBlank()
+                val isGenericOrDemo = reel.creatorHandle?.contains("&#") == true ||
+                                     reel.title.isNullOrBlank() ||
+                                     reel.oneLineSummary.isNullOrBlank() ||
+                                     reel.takeawaysJson.isNullOrBlank() ||
+                                     reel.takeawaysJson == "[]"
 
                 val needsOptimization = hasOldBogusTranscript || isGenericOrDemo
 
@@ -426,9 +423,10 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         Regex("(@[a-zA-Z0-9._]+)").find(cleanHandle)?.value ?: cleanHandle
                     } else cleanHandle
 
-                    // Step 2: Transcribe real audio if audioFile is present
-                    val realTranscript = if (metadata?.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
-                        transcriber.transcribe(metadata.audioFile).getOrNull()?.trim()?.ifBlank { null }
+                    // Step 2: Transcribe real audio if audioFile is present and has real content
+                    val audioFile = metadata?.audioFile
+                    val realTranscript = if (audioFile != null && audioFile.exists() && audioFile.length() > 0) {
+                        transcriber.transcribe(audioFile).getOrNull()?.trim()?.ifBlank { null }
                     } else null
 
                     android.util.Log.d("ReelLibrary", "Reel ${reel.id} extracted transcript: ${realTranscript?.take(80) ?: "None"}")
@@ -508,10 +506,15 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         Regex("(@[a-zA-Z0-9._]+)").find(cleanHandle)?.value ?: cleanHandle
                     } else cleanHandle
 
-                    val realTranscript = if (!reel.transcript.isNullOrBlank()) {
-                        reel.transcript
-                    } else if (metadata?.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
-                        transcriber.transcribe(metadata.audioFile).getOrNull()?.trim()?.ifBlank { null }
+                    val hasBogus = reel.transcript?.contains("Transcription generated on-device via Whisper", ignoreCase = true) == true ||
+                                   reel.transcript?.contains("likes", ignoreCase = true) == true ||
+                                   reel.transcript?.contains("comments - ", ignoreCase = true) == true
+                    val validExisting = if (hasBogus) null else reel.transcript
+                    val audioFile = metadata?.audioFile
+                    val realTranscript = if (!validExisting.isNullOrBlank()) {
+                        validExisting
+                    } else if (audioFile != null && audioFile.exists() && audioFile.length() > 0) {
+                        transcriber.transcribe(audioFile).getOrNull()?.trim()?.ifBlank { null }
                     } else {
                         null
                     }

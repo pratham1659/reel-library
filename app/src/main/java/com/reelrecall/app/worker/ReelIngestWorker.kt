@@ -78,10 +78,14 @@ class ReelIngestWorker(
                 android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
             }
 
-            if (durationMs > 60_000L) {
-                // RULE: Long Reel (> 1 min) -> Save all extracted details without consuming AI summarization tokens
+            val shouldSkipAiForDuration = durationMs > 60_000L && currentPrefs.engineMode == com.reelrecall.app.data.repository.EngineMode.CLOUD_ONLY
+
+            if (shouldSkipAiForDuration) {
+                // RULE: Long Reel (> 1 min) in Cloud Mode -> Save all extracted details without consuming paid/free API rate limits
                 if (existing != null) {
-                    val fallbackTitle = cleanCaption?.take(60)?.ifBlank { null }
+                    val sanitizedCaption = cleanCaption?.replace(Regex("""(?i)^(comment|type|drop|dm|send)\s+["']?[a-zA-Z0-9_-]+["']?\s+(and|to|for|&).*?([.!?\n]|$)"""), "")?.trim()
+                    val fallbackTitle = sanitizedCaption?.take(60)?.ifBlank { null }
+                        ?: cleanCaption?.take(60)?.ifBlank { null }
                         ?: "Instagram Reel by ${cleanHandle ?: "@creator"}"
                     val updated = existing.copy(
                         creatorHandle = cleanHandle ?: existing.creatorHandle,
