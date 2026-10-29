@@ -5840,11 +5840,6 @@ private fun DataStorageScreen(
                         colors = colors
                     )
                     AccountDetailItem(
-                        label = "AI Weights (Whisper & Gemma)",
-                        value = if (preferences.isWhisperModelDownloaded || preferences.isLlmModelDownloaded) "1.54 GB" else "0 MB (Cloud Mode)",
-                        colors = colors
-                    )
-                    AccountDetailItem(
                         label = "Reel Cache & Thumbnails",
                         value = "38.4 MB",
                         colors = colors

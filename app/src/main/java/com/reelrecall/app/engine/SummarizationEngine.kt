@@ -58,17 +58,18 @@ class GeminiSummarizerEngine(
 
                 val cleanCaption = android.text.Html.fromHtml(caption ?: "", android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
                 val cleanTranscript = transcript.trim()
+                val hasSpokenTranscript = cleanTranscript.isNotBlank() && !cleanTranscript.equals("Not available", ignoreCase = true)
 
                 val promptText = """
                     You are an expert executive research intelligence analyst. Deeply analyze this Instagram Reel and extract high-value insights.
 
                     PRIMARY SOURCES:
-                    - Spoken Audio Transcript: ${if (cleanTranscript.isNotBlank()) cleanTranscript else "None (No spoken voiceover detected; extract all insights from post caption)"}
+                    - Spoken Audio Transcript: ${if (hasSpokenTranscript) cleanTranscript else "Not available (No spoken voiceover detected; extract all insights from post caption)"}
                     - Post Caption: ${if (cleanCaption.isNotBlank()) cleanCaption else "None"}
 
                     INSTRUCTIONS:
-                    1. If Spoken Audio Transcript is present, prioritize the actual spoken facts, mentioned platforms, websites, frameworks, numbers, or rules.
-                    2. If Spoken Audio Transcript is absent, extract all deep details, context, steps, and value directly from the Post Caption.
+                    1. If Spoken Audio Transcript is present and available, prioritize the actual spoken facts, mentioned platforms, websites, frameworks, numbers, or rules.
+                    2. If Spoken Audio Transcript is absent or Not available, focus 100% on extracting all deep details, context, steps, and value directly from the Post Caption.
                     3. Do NOT produce generic, vague, or placeholder text (never say "Resource List" or "Save Time And Money"). Make every summary distinct and specific to what this reel actually teaches.
                     4. Always return valid, well-formed JSON matching this schema:
                     {
@@ -180,13 +181,32 @@ class GroqSummarizerEngine(
                 val cleanCaption = android.text.Html.fromHtml(caption ?: "", android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
                 val cleanTranscript = transcript.trim()
 
+                val hasSpokenTranscript = cleanTranscript.isNotBlank() && !cleanTranscript.equals("Not available", ignoreCase = true)
+
                 val systemPrompt = "You are an executive research analyst. Generate pure JSON for an Instagram Reel with keys: 'title' (specific, 4-7 words), 'one_line_summary' (detailed 2-3 sentence executive briefing), 'actionable_takeaways' (array of 4-6 granular bullet strings referencing tools/steps), and 'tags' (array of 3-5 specific strings without #)."
-                val userContent = """
-                    Spoken Audio Transcript: ${if (cleanTranscript.isNotBlank()) cleanTranscript else "None (No spoken voiceover detected; extract all details from post caption)"}
-                    Post Caption: ${if (cleanCaption.isNotBlank()) cleanCaption else "None"}
-                    
-                    Instructions: If Spoken Audio Transcript is present, prioritize actual spoken tools and advice. If absent, extract details thoroughly from Post Caption. Do not generate generic or matching duplicate content.
-                """.trimIndent()
+                val userContent = if (hasSpokenTranscript) {
+                    """
+                    PRIMARY SOURCE - SPOKEN AUDIO TRANSCRIPT:
+                    $cleanTranscript
+
+                    SECONDARY SOURCE - POST CAPTION:
+                    ${if (cleanCaption.isNotBlank()) cleanCaption else "None"}
+
+                    INSTRUCTIONS:
+                    1. Focus primarily on what is spoken in the audio transcript. Generate the title, summary, and takeaways directly based on spoken words, tools, and instructions.
+                    2. Cross-reference with the caption for links or spelling.
+                    """.trimIndent()
+                } else {
+                    """
+                    PRIMARY SOURCE - POST CAPTION (Spoken Audio Transcript is Not Available):
+                    ${if (cleanCaption.isNotBlank()) cleanCaption else "Instagram Reel"}
+
+                    INSTRUCTIONS:
+                    1. Spoken audio transcript is NOT available for this reel.
+                    2. Focus 100% on deeply analyzing the Post Caption. Extract all context, steps, workflows, tools, and takeaways directly from the caption.
+                    3. Make the title and summary distinct and specific based on the caption text.
+                    """.trimIndent()
+                }
 
                 val candidateModels = listOf("qwen/qwen3.8-27b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant")
                 var lastError: Exception? = null
@@ -295,7 +315,8 @@ class LocalMediaPipeSummarizerEngine(
             // Clean input sources
             val cleanCaption = android.text.Html.fromHtml(caption ?: "", android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
             val cleanTranscript = transcript.trim()
-            val content = (cleanTranscript.ifBlank { cleanCaption }).trim()
+            val hasSpokenTranscript = cleanTranscript.isNotBlank() && !cleanTranscript.equals("Not available", ignoreCase = true)
+            val content = (if (hasSpokenTranscript) cleanTranscript else cleanCaption).trim()
 
             if (content.isBlank()) {
                 return@withContext Result.failure(
@@ -321,11 +342,11 @@ class LocalMediaPipeSummarizerEngine(
                         <start_of_turn>user
                         You are an executive research analyst. Deeply analyze this Instagram Reel and extract high-value insights.
 
-                        Spoken Audio Transcript: ${if (cleanTranscript.isNotBlank()) cleanTranscript else "None (Extract from post caption)"}
+                        Spoken Audio Transcript: ${if (hasSpokenTranscript) cleanTranscript else "Not available (Extract from post caption)"}
                         Post Caption: ${if (cleanCaption.isNotBlank()) cleanCaption else "None"}
 
                         Instructions:
-                        1. Prioritize real tools, websites, commands, steps, and practical insights.
+                        1. ${if (hasSpokenTranscript) "Prioritize real tools, websites, and steps spoken in the audio transcript." else "Spoken transcript is not available. Extract all tools, websites, and steps directly from the Post Caption."}
                         2. Return pure valid JSON strictly matching this schema:
                         {
                           "title": "Distinct, punchy title (4 to 7 words)",

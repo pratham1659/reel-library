@@ -22,6 +22,7 @@ object InstagramExtractor {
     private val OG_TITLE_REGEX = """<meta property="og:title" content="([^"]*)"\s*/?>""".toRegex()
     private val OG_DESC_REGEX = """<meta property="og:description" content="([^"]*)"\s*/?>""".toRegex()
     private val OG_VIDEO_REGEX = """<meta property="og:video" content="([^"]*)"\s*/?>""".toRegex()
+    private val OG_VIDEO_SECURE_REGEX = """<meta property="og:video:secure_url" content="([^"]*)"\s*/?>""".toRegex()
     private val OG_IMAGE_REGEX = """<meta property="og:image" content="([^"]*)"\s*/?>""".toRegex()
     private val TWITTER_IMAGE_REGEX = """<meta name="twitter:image" content="([^"]*)"\s*/?>""".toRegex()
     private val TWITTER_TITLE_REGEX = """<meta name="twitter:title" content="([^"]*)"\s*/?>""".toRegex()
@@ -95,8 +96,21 @@ object InstagramExtractor {
                         caption = keywords
                     }
 
-                    val videoMatch = OG_VIDEO_REGEX.find(html)
+                    val videoMatch = OG_VIDEO_REGEX.find(html) ?: OG_VIDEO_SECURE_REGEX.find(html)
                     videoUrl = videoMatch?.groupValues?.get(1)?.replace("&amp;", "&")
+
+                    if (videoUrl.isNullOrBlank()) {
+                        val jsonVideoMatch = Regex("""["']video_url["']\s*:\s*["'](https:[^"'\s\\]+[\s\S]*?)["']""").find(html)
+                            ?: Regex("""(https:[\\/]+[a-zA-Z0-9.\-_\\/]+?\.mp4[a-zA-Z0-9.\-_?&=%\\/]*)""").find(html)
+                        if (jsonVideoMatch != null) {
+                            videoUrl = jsonVideoMatch.groupValues[1]
+                                .replace("\\/", "/")
+                                .replace("\\u0025", "%")
+                                .replace("\\u0026", "&")
+                                .replace("&amp;", "&")
+                                .replace("\\", "")
+                        }
+                    }
                 }
             }
 
@@ -117,6 +131,8 @@ object InstagramExtractor {
                         if (embedRes.isSuccessful) {
                             val embedHtml = embedRes.body?.string() ?: ""
                             val match = Regex("""video_url[^\"]*?[\\:\"]+(https:[^\"]+?\.mp4[^\"]*)""").find(embedHtml)
+                                ?: Regex("""["']video_url["']\s*:\s*["'](https:[^"'\s\\]+[\s\S]*?)["']""").find(embedHtml)
+                                ?: Regex("""(https:[\\/]+[a-zA-Z0-9.\-_\\/]+?\.mp4[a-zA-Z0-9.\-_?&=%\\/]*)""").find(embedHtml)
                             if (match != null) {
                                 val rawMatched = match.groupValues[1]
                                 val unescaped = rawMatched

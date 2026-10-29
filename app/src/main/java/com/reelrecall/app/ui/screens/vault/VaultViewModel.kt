@@ -436,14 +436,20 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
                     // Step 2: Transcribe real audio if audioFile is present and has real content
                     val audioFile = metadata?.audioFile
-                    val realTranscript = if (audioFile != null && audioFile.exists() && audioFile.length() > 0) {
+                    val freshTranscribed = if (audioFile != null && audioFile.exists() && audioFile.length() > 0) {
                         transcriber.transcribe(audioFile).getOrNull()?.trim()?.ifBlank { null }
                     } else null
 
-                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} extracted transcript: ${realTranscript?.take(80) ?: "None"}")
+                    val realTranscript = when {
+                        !freshTranscribed.isNullOrBlank() -> freshTranscribed
+                        !reel.transcript.isNullOrBlank() && !hasOldBogusTranscript && !reel.transcript.equals("Not available", ignoreCase = true) -> reel.transcript
+                        else -> "Not available"
+                    }
+
+                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} extracted transcript: ${realTranscript.take(80)}")
 
                     // Step 3: Summarize using rich caption + real audio transcript
-                    val summaryResult = summarizer.summarize(cleanCaption, realTranscript ?: "")
+                    val summaryResult = summarizer.summarize(cleanCaption, if (realTranscript == "Not available") "" else realTranscript)
                     val summary = summaryResult.getOrNull()
                     android.util.Log.d("ReelLibrary", "Reel ${reel.id} summary: success=${summaryResult.isSuccess}, title='${summary?.title}'")
 
@@ -527,15 +533,17 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                                    reel.transcript?.contains("comments - ", ignoreCase = true) == true
                     val validExisting = if (hasBogus) null else reel.transcript
                     val audioFile = metadata?.audioFile
-                    val realTranscript = if (!validExisting.isNullOrBlank()) {
-                        validExisting
-                    } else if (audioFile != null && audioFile.exists() && audioFile.length() > 0) {
+                    val freshTranscribed = if (audioFile != null && audioFile.exists() && audioFile.length() > 0) {
                         transcriber.transcribe(audioFile).getOrNull()?.trim()?.ifBlank { null }
-                    } else {
-                        null
+                    } else null
+
+                    val realTranscript = when {
+                        !freshTranscribed.isNullOrBlank() -> freshTranscribed
+                        !validExisting.isNullOrBlank() && !validExisting.equals("Not available", ignoreCase = true) -> validExisting
+                        else -> "Not available"
                     }
 
-                    val summaryResult = summarizer.summarize(cleanCaption, realTranscript ?: "")
+                    val summaryResult = summarizer.summarize(cleanCaption, if (realTranscript == "Not available") "" else realTranscript)
                     val summary = summaryResult.getOrNull()
 
                     if (summary != null) {
