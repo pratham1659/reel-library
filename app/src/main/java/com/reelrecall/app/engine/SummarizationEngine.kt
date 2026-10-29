@@ -282,7 +282,7 @@ class LocalMediaPipeSummarizerEngine(
             if (!targetFile.exists() || targetFile.length() < 50_000_000L) {
                 return@withContext Result.failure(
                     IllegalStateException(
-                        "Local LLM weights (${targetFile.name}) not found. Please download Gemma 2B under Local Models in Settings to run offline summarization."
+                        "On-device LLM weights are not installed. Please configure a Groq or Gemini API key in Settings -> Cloud AI Providers to summarize reels."
                     )
                 )
             }

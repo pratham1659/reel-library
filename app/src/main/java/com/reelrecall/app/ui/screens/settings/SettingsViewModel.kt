@@ -41,6 +41,7 @@ import java.util.concurrent.TimeUnit
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import android.widget.Toast
 
 data class DownloadProgressState(
     val isDownloading: Boolean = false,
@@ -83,8 +84,23 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         .build()
 
     init {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.checkAndPerformDailyResetIfNeeded()
+
+            // Purge any stale dummy/mock placeholder files (< 50MB) and ensure preferences are clean
+            try {
+                val filesDir = getApplication<Application>().filesDir
+                val whisperFile = File(filesDir, "whisper-base.bin")
+                if (whisperFile.exists() && whisperFile.length() < 10_000_000L) {
+                    whisperFile.delete()
+                    repository.setLocalModelStatus(isWhisper = true, isDownloaded = false, path = null)
+                }
+                val llmFile = File(filesDir, "gemma-2-2b-it-gpu.bin")
+                if (llmFile.exists() && llmFile.length() < 50_000_000L) {
+                    llmFile.delete()
+                    repository.setLocalModelStatus(isWhisper = false, isDownloaded = false, path = null)
+                }
+            } catch (_: Exception) {}
         }
     }
 
@@ -254,51 +270,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
 
     // ==========================================
-    // LOCAL MODEL DOWNLOAD SIMULATION & CACHING
+    // LOCAL MODEL DOWNLOAD & CACHING
     // ==========================================
     fun startWhisperDownload() {
-        if (_whisperProgress.value.isDownloading) return
-
-        viewModelScope.launch(Dispatchers.IO) {
-            val totalBytes = 140L * 1024 * 1024 // 140 MB
-            _whisperProgress.value = DownloadProgressState(
-                isDownloading = true,
-                progress = 0.05f,
-                downloadedBytes = 7L * 1024 * 1024,
-                totalBytes = totalBytes,
-                speedText = "14.2 MB/s"
-            )
-
-            val steps = 20
-            val targetFile = File(getApplication<Application>().filesDir, "whisper-base.bin")
-
-            for (i in 1..steps) {
-                delay(120) // Smooth visual progress over ~2.5 seconds
-                val currentFraction = i.toFloat() / steps
-                val currentBytes = (totalBytes * currentFraction).toLong()
-                val speed = (13.5 + (i % 3) * 0.8)
-                _whisperProgress.value = DownloadProgressState(
-                    isDownloading = true,
-                    progress = currentFraction,
-                    downloadedBytes = currentBytes,
-                    totalBytes = totalBytes,
-                    speedText = String.format("%.1f MB/s", speed)
-                )
-            }
-
-            // Write model weight placeholder file
-            try {
-                FileOutputStream(targetFile).use { it.write("whisper-base-model-weights-v1".toByteArray()) }
-            } catch (e: Exception) {
-                // Ignore fallback
-            }
-
-            _whisperProgress.value = DownloadProgressState(isDownloading = false, progress = 1.0f)
-            repository.setLocalModelStatus(
-                isWhisper = true,
-                isDownloaded = true,
-                path = targetFile.absolutePath
-            )
+        viewModelScope.launch(Dispatchers.Main) {
+            Toast.makeText(
+                getApplication<Application>(),
+                "On-device Whisper model repository is not configured. Please configure Groq or Gemini in Settings -> Cloud AI Providers.",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -312,48 +292,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun startLlmDownload() {
-        if (_llmProgress.value.isDownloading) return
-
-        viewModelScope.launch(Dispatchers.IO) {
-            val totalBytes = 1400L * 1024 * 1024 // 1.4 GB
-            _llmProgress.value = DownloadProgressState(
-                isDownloading = true,
-                progress = 0.03f,
-                downloadedBytes = 42L * 1024 * 1024,
-                totalBytes = totalBytes,
-                speedText = "28.5 MB/s"
-            )
-
-            val steps = 30
-            val targetFile = File(getApplication<Application>().filesDir, "gemma-2-2b-it-gpu.bin")
-
-            for (i in 1..steps) {
-                delay(100) // Smooth visual progress over ~3 seconds
-                val currentFraction = i.toFloat() / steps
-                val currentBytes = (totalBytes * currentFraction).toLong()
-                val speed = (26.0 + (i % 4) * 1.2)
-                _llmProgress.value = DownloadProgressState(
-                    isDownloading = true,
-                    progress = currentFraction,
-                    downloadedBytes = currentBytes,
-                    totalBytes = totalBytes,
-                    speedText = String.format("%.1f MB/s", speed)
-                )
-            }
-
-            // Write model weight placeholder file
-            try {
-                FileOutputStream(targetFile).use { it.write("gemma-2-2b-weights-v1".toByteArray()) }
-            } catch (e: Exception) {
-                // Ignore fallback
-            }
-
-            _llmProgress.value = DownloadProgressState(isDownloading = false, progress = 1.0f)
-            repository.setLocalModelStatus(
-                isWhisper = false,
-                isDownloaded = true,
-                path = targetFile.absolutePath
-            )
+        viewModelScope.launch(Dispatchers.Main) {
+            Toast.makeText(
+                getApplication<Application>(),
+                "On-device Gemma/Qwen LLM repository is not configured. Please configure Groq or Gemini in Settings -> Cloud AI Providers.",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -696,18 +640,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val whisperFile = File(getApplication<Application>().filesDir, "whisper-base.bin")
             val llmFile = File(getApplication<Application>().filesDir, "gemma-2-2b-it-gpu.bin")
 
-            val hasWhisper = currentPrefs.isWhisperModelDownloaded || whisperFile.exists()
-            val hasLlm = currentPrefs.isLlmModelDownloaded || llmFile.exists()
-
-            // Auto-ensure files exist if marked downloaded or for local testing
-            try {
-                if (hasWhisper && !whisperFile.exists()) {
-                    whisperFile.writeText("whisper-base-model-weights-v1")
-                }
-                if (hasLlm && !llmFile.exists()) {
-                    llmFile.writeText("gemma-2-2b-weights-v1")
-                }
-            } catch (_: Exception) {}
+            val hasWhisper = currentPrefs.isWhisperModelDownloaded && whisperFile.exists() && whisperFile.length() > 10_000_000L
+            val hasLlm = currentPrefs.isLlmModelDownloaded && llmFile.exists() && llmFile.length() > 50_000_000L
 
             val whisperLatency = (elapsedLatency / 2L + 8L).coerceAtLeast(12L)
             val gemmaLatency = (elapsedLatency * 2L + 16L).coerceAtLeast(38L)
@@ -720,7 +654,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 statusCode = if (hasWhisper) "200 Ready" else "404 No Weights",
                 provider = "On-Device Whisper Base",
                 model = "whisper.cpp-base",
-                errorMessage = if (hasWhisper) null else "Model weights not found. Download below."
+                errorMessage = if (hasWhisper) null else "Model weights not installed on this device."
             )
 
             // Record Gemma LLM Benchmark Log
@@ -731,7 +665,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 statusCode = if (hasLlm) "200 Ready" else "404 No Weights",
                 provider = "On-Device Gemma 2B",
                 model = "gemma-2-2b-it-gpu",
-                errorMessage = if (hasLlm) null else "Model weights not found. Download below."
+                errorMessage = if (hasLlm) null else "Model weights not installed on this device."
             )
 
             val endpointList = listOf(
@@ -739,27 +673,27 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     provider = "On-Device Whisper (Audio)",
                     isSuccess = hasWhisper,
                     statusCode = if (hasWhisper) 200 else 404,
-                    statusMessage = if (hasWhisper) "200 Ready (NPU/CPU)" else "404 Not Downloaded",
+                    statusMessage = if (hasWhisper) "200 Ready (NPU/CPU)" else "404 Not Installed",
                     latencyMs = whisperLatency,
                     tokensConsumed = 0L,
                     promptTokens = 0L,
                     completionTokens = 0L,
                     modelName = "whisper.cpp-base",
-                    errorDetails = if (hasWhisper) null else "Whisper Base model weights not downloaded. Tap Download below to install weights into internal storage.",
-                    rawResponse = "{\n  \"model\": \"whisper-base.bin\",\n  \"engine\": \"whisper.cpp\",\n  \"architecture\": \"Transformer\",\n  \"hardware\": \"${hardware.processorName}\",\n  \"cores\": ${hardware.coreCount},\n  \"quantization\": \"q5_1\",\n  \"status\": \"${if (hasWhisper) "READY" else "PENDING_DOWNLOAD"}\"\n}"
+                    errorDetails = if (hasWhisper) null else "Whisper Base model weights are not installed on this device. Configure a Groq API key in Settings for cloud transcription.",
+                    rawResponse = "{\n  \"model\": \"whisper-base.bin\",\n  \"engine\": \"whisper.cpp\",\n  \"architecture\": \"Transformer\",\n  \"hardware\": \"${hardware.processorName}\",\n  \"cores\": ${hardware.coreCount},\n  \"quantization\": \"q5_1\",\n  \"status\": \"${if (hasWhisper) "READY" else "NOT_INSTALLED"}\"\n}"
                 ),
                 CloudEndpointTestResult(
                     provider = "On-Device Gemma (LLM)",
                     isSuccess = hasLlm,
                     statusCode = if (hasLlm) 200 else 404,
-                    statusMessage = if (hasLlm) "200 Ready (NPU/GPU)" else "404 Not Downloaded",
+                    statusMessage = if (hasLlm) "200 Ready (NPU/GPU)" else "404 Not Installed",
                     latencyMs = gemmaLatency,
                     tokensConsumed = 160L,
                     promptTokens = 128L,
                     completionTokens = 32L,
                     modelName = "gemma-2-2b-it-gpu",
-                    errorDetails = if (hasLlm) null else "Gemma 2B model weights not downloaded. Tap Download below to install weights into internal storage.",
-                    rawResponse = "{\n  \"model\": \"gemma-2-2b-it-gpu.bin\",\n  \"engine\": \"MediaPipe GenAI\",\n  \"parameters\": \"2.6B\",\n  \"ram\": \"${hardware.ramDisplay}\",\n  \"execution\": \"GPU/NPU Delegate\",\n  \"context_tokens\": 2048,\n  \"status\": \"${if (hasLlm) "READY" else "PENDING_DOWNLOAD"}\"\n}"
+                    errorDetails = if (hasLlm) null else "Gemma 2B model weights are not installed on this device. Configure Groq or Gemini API key in Settings for cloud summarization.",
+                    rawResponse = "{\n  \"model\": \"gemma-2-2b-it-gpu.bin\",\n  \"engine\": \"MediaPipe GenAI\",\n  \"parameters\": \"2.6B\",\n  \"ram\": \"${hardware.ramDisplay}\",\n  \"execution\": \"GPU/NPU Delegate\",\n  \"context_tokens\": 2048,\n  \"status\": \"${if (hasLlm) "READY" else "NOT_INSTALLED"}\"\n}"
                 )
             )
 
@@ -767,7 +701,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val summaryMsg = if (allOk) {
                 "Local Engine Verified: NPU Ready • FP16 Latency ${elapsedLatency}ms • 100% Offline"
             } else {
-                "NPU/CPU Benchmark: ${elapsedLatency}ms • ${hardware.coreCount} Cores Ready • Download weights below"
+                "Local Engine: Model weights not installed on device. Configure Groq or Gemini in Cloud AI Settings."
             }
 
             _localTestResult.value = ModelTestResult(

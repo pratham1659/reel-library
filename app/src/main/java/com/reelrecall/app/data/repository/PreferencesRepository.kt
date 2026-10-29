@@ -266,13 +266,17 @@ class PreferencesRepository(private val context: Context) {
         val whisperStatus = preferences[PreferencesKeys.LAST_CALL_WHISPER_STATUS_CODE] ?: (if (lastProvider.contains("Whisper", ignoreCase = true)) lastStatus else "200 OK")
         val whisperProvider = preferences[PreferencesKeys.LAST_CALL_WHISPER_PROVIDER] ?: "Groq LPU ~ Whisper"
         val whisperModel = preferences[PreferencesKeys.LAST_CALL_WHISPER_MODEL] ?: "whisper-large-v3-turbo"
+        val whisperFile = java.io.File(context.filesDir, "whisper-base.bin")
+        val llmFile = java.io.File(context.filesDir, "gemma-2-2b-it-gpu.bin")
+        val isWhisperReal = (preferences[PreferencesKeys.IS_WHISPER_DOWNLOADED] ?: false) && whisperFile.exists() && whisperFile.length() > 10_000_000L
+        val isLlmReal = (preferences[PreferencesKeys.IS_LLM_DOWNLOADED] ?: false) && llmFile.exists() && llmFile.length() > 50_000_000L
 
         AppPreferences(
             engineMode = mode,
             groqApiKey = groqKey,
             geminiApiKey = geminiKey,
-            isWhisperModelDownloaded = preferences[PreferencesKeys.IS_WHISPER_DOWNLOADED] ?: false,
-            isLlmModelDownloaded = preferences[PreferencesKeys.IS_LLM_DOWNLOADED] ?: false,
+            isWhisperModelDownloaded = isWhisperReal,
+            isLlmModelDownloaded = isLlmReal,
             whisperModelPath = preferences[PreferencesKeys.WHISPER_PATH],
             llmModelPath = preferences[PreferencesKeys.LLM_PATH],
             showTagsOnCards = preferences[PreferencesKeys.SHOW_TAGS_ON_CARDS] ?: true,

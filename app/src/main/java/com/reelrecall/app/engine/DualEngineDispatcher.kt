@@ -44,7 +44,11 @@ class DualEngineDispatcher(
 
             EngineMode.LOCAL_ONLY -> {
                 val whisperFile = File(context.filesDir, "whisper-base.bin")
-                LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
+                if (!whisperFile.exists() || whisperFile.length() < 10_000_000L) {
+                    FailingTranscriptionEngine("On-device Whisper model weights are not installed on this device.")
+                } else {
+                    LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
+                }
             }
 
             EngineMode.AUTO_HYBRID -> {
@@ -52,7 +56,11 @@ class DualEngineDispatcher(
                     GroqWhisperEngine(prefs.groqApiKey)
                 } else {
                     val whisperFile = File(context.filesDir, "whisper-base.bin")
-                    LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
+                    if (!whisperFile.exists() || whisperFile.length() < 10_000_000L) {
+                        FailingTranscriptionEngine("Cloud transcription requires a Groq API key (on-device Whisper weights are not installed).")
+                    } else {
+                        LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
+                    }
                 }
             }
         }
@@ -74,10 +82,14 @@ class DualEngineDispatcher(
 
             EngineMode.LOCAL_ONLY -> {
                 val llmFile = File(context.filesDir, "gemma-2-2b-it-gpu.bin")
-                LocalMediaPipeSummarizerEngine(
-                    modelFile = llmFile,
-                    onTokensUsed = onTokensUsed
-                )
+                if (!llmFile.exists() || llmFile.length() < 50_000_000L) {
+                    FailingSummarizerEngine("On-device LLM weights are not installed. Please configure a Groq or Gemini API key in Settings -> Cloud AI Providers.")
+                } else {
+                    LocalMediaPipeSummarizerEngine(
+                        modelFile = llmFile,
+                        onTokensUsed = onTokensUsed
+                    )
+                }
             }
 
             EngineMode.AUTO_HYBRID -> {
@@ -87,10 +99,14 @@ class DualEngineDispatcher(
                     GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
                 } else {
                     val llmFile = File(context.filesDir, "gemma-2-2b-it-gpu.bin")
-                    LocalMediaPipeSummarizerEngine(
-                        modelFile = llmFile,
-                        onTokensUsed = onTokensUsed
-                    )
+                    if (!llmFile.exists() || llmFile.length() < 50_000_000L) {
+                        FailingSummarizerEngine("Cloud API key missing and on-device LLM weights are not installed. Please configure a Groq or Gemini API key in Settings.")
+                    } else {
+                        LocalMediaPipeSummarizerEngine(
+                            modelFile = llmFile,
+                            onTokensUsed = onTokensUsed
+                        )
+                    }
                 }
             }
         }
