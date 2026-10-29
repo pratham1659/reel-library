@@ -7,7 +7,7 @@ An intelligent, on-device & cloud-accelerated Instagram Reel bookmarking and res
 ## 🌟 Key Highlights
 
 - **Dual-Engine Architecture**:
-  - **Cloud-Fast Mode**: Sub-second speech transcription via Groq Cloud Whisper (`whisper-large-v3-turbo`) and executive summarization via Google Gemini (`gemini-3.5-flash-lite`) and Groq (`qwen/qwen3.8-27b`).
+  - **Cloud-Fast Mode**: Sub-second speech transcription via Groq Cloud Whisper (`whisper-large-v3-turbo`) and executive summarization via Groq (`qwen/qwen3.8-27b`).
   - **Local On-Device Mode**: 100% offline, privacy-first processing leveraging device CPU/NPU (Gemma 2B + Whisper.cpp).
   - **Auto-Hybrid Fallback**: Dynamically routes requests based on real-time network availability.
 - **Real-Time Cloud Telemetry & Live Token Tracking**:
@@ -58,9 +58,8 @@ An intelligent, on-device & cloud-accelerated Instagram Reel bookmarking and res
 2. **Configure API Keys** (Optional, can be entered inside the app):
    - Launch Reel Library on your device.
    - Open **Settings** ➔ **Select Models**.
-   - Input your free API keys for:
+   - Input your free API key:
      - **Groq API Key**: [Groq Cloud Console](https://console.groq.com)
-     - **Google Gemini API Key**: [Google AI Studio](https://aistudio.google.com)
    - Tap **Test Cloud** to verify connectivity, live latency, and token consumption.
 
 3. **Build and Run**:

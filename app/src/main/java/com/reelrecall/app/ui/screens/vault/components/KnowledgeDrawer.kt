@@ -539,38 +539,8 @@ fun KnowledgeDrawerContent(
                     }
                 } else {
                     val drawerScrollState = rememberLazyListState()
-                    var visibleDrawerLimit by remember { mutableStateOf(8) }
-                    var isLoadingMoreDrawer by remember { mutableStateOf(false) }
 
-                    // Reset pagination if filtered list changes
-                    LaunchedEffect(filteredReels) {
-                        visibleDrawerLimit = 8
-                    }
-
-                    val displayedReels = remember(filteredReels, visibleDrawerLimit) {
-                        filteredReels.take(visibleDrawerLimit)
-                    }
-                    val hasMoreDrawer = visibleDrawerLimit < filteredReels.size
-
-                    val shouldLoadMoreDrawer by remember {
-                        derivedStateOf {
-                            val layoutInfo = drawerScrollState.layoutInfo
-                            val total = layoutInfo.totalItemsCount
-                            val lastVisible = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
-                            total > 0 && lastVisible >= (total - 1) && hasMoreDrawer
-                        }
-                    }
-
-                    LaunchedEffect(shouldLoadMoreDrawer) {
-                        if (shouldLoadMoreDrawer && !isLoadingMoreDrawer) {
-                            isLoadingMoreDrawer = true
-                            delay(200)
-                            visibleDrawerLimit += 8
-                            isLoadingMoreDrawer = false
-                        }
-                    }
-
-                    // Reels List with progressive lazy loading
+                    // Reels List using native Compose LazyColumn virtualization
                     LazyColumn(
                         state = drawerScrollState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -579,7 +549,7 @@ fun KnowledgeDrawerContent(
                             .fillMaxWidth()
                             .weight(1f)
                     ) {
-                        items(displayedReels, key = { it.id }) { reel ->
+                        items(filteredReels, key = { it.id }) { reel ->
                             DrawerReelCard(
                                 reel = reel,
                                 isDark = isDarkTheme,
@@ -588,48 +558,6 @@ fun KnowledgeDrawerContent(
                                     onSelectReel(reel)
                                 }
                             )
-                        }
-
-                        if (isLoadingMoreDrawer) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 12.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(14.dp),
-                                            strokeWidth = 2.dp,
-                                            color = ActiveBlue
-                                        )
-                                        Text(
-                                            text = "Loading more reels...",
-                                            fontSize = 11.sp,
-                                            color = textMutedColor
-                                        )
-                                    }
-                                }
-                            }
-                        } else if (!hasMoreDrawer && filteredReels.size > 8) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "All ${filteredReels.size} reels loaded",
-                                        fontSize = 11.sp,
-                                        color = textMutedColor
-                                    )
-                                }
-                            }
                         }
                     }
                 }

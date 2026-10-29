@@ -4,81 +4,195 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKeys
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Hardware-backed Android Keystore vault for API keys and sensitive credentials.
+ * Hardware-backed Android Keystore vault for Groq API keys and sensitive credentials.
  * Utilizes EncryptedSharedPreferences with AES256-GCM encryption so that
  * raw API keys are never stored as plain-text on the filesystem.
+ *
+ * If hardware Keystore encounters an exception, an in-memory session vault is used
+ * rather than writing unencrypted credentials to disk.
  */
-class SecureKeyVault private constructor(context: Context) {
+class SecureKeyVault internal constructor(
+    context: Context,
+    encryptedPrefsSupplier: ((Context) -> SharedPreferences?)? = null,
+    private val legacyPrefsResolver: ((name: String) -> SharedPreferences?)? = null
+) {
 
-    private val sharedPreferences: SharedPreferences by lazy {
-        try {
+    private val appContext = context.applicationContext
+    internal val inMemoryFallback = ConcurrentHashMap<String, String>()
+
+    private val sharedPreferences: SharedPreferences? by lazy {
+        val prefs = if (encryptedPrefsSupplier != null) {
+            encryptedPrefsSupplier(appContext)
+        } else {
+            createProductionEncryptedPrefs(appContext)
+        }
+
+        if (prefs != null) {
+            performSafeMigration(prefs)
+            cleanupLegacyPlaintextFiles()
+        }
+
+        prefs
+    }
+
+    private fun createProductionEncryptedPrefs(context: Context): SharedPreferences? {
+        return try {
             val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
-            val prefs = EncryptedSharedPreferences.create(
+            EncryptedSharedPreferences.create(
                 PREFS_FILENAME,
                 masterKeyAlias,
-                context.applicationContext,
+                context,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
-            // Migrate key from legacy encrypted vault if new vault is empty
-            if (prefs.getString(KEY_GROQ_API, "").isNullOrBlank()) {
-                try {
-                    val oldPrefs = EncryptedSharedPreferences.create(
-                        "reel_recall_vault_encrypted",
-                        masterKeyAlias,
-                        context.applicationContext,
-                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                    )
-                    val oldGroq = oldPrefs.getString(KEY_GROQ_API, "") ?: ""
-                    val oldGemini = oldPrefs.getString(KEY_GEMINI_API, "") ?: ""
-                    if (oldGroq.isNotBlank()) prefs.edit().putString(KEY_GROQ_API, oldGroq).apply()
-                    if (oldGemini.isNotBlank()) prefs.edit().putString(KEY_GEMINI_API, oldGemini).apply()
-                } catch (ignored: Exception) {}
+        } catch (_: Exception) {
+            // Hardware Keystore unavailable or crypto initialization failed.
+            // Degrade to in-memory session storage; never persist unencrypted keys to disk.
+            null
+        }
+    }
+
+    private fun resolveLegacyStore(name: String): SharedPreferences? {
+        if (legacyPrefsResolver != null) {
+            return legacyPrefsResolver.invoke(name)
+        }
+        return if (name == "reel_recall_vault_encrypted") {
+            try {
+                val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+                EncryptedSharedPreferences.create(
+                    name,
+                    masterKeyAlias,
+                    appContext,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            } catch (_: Exception) {
+                null
             }
-            prefs
-        } catch (e: Exception) {
-            // Fallback for devices or test environments with Keystore issues
-            val fallback = context.applicationContext.getSharedPreferences("reel_library_secure_fallback", Context.MODE_PRIVATE)
-            val oldFallback = context.applicationContext.getSharedPreferences("reel_recall_secure_fallback", Context.MODE_PRIVATE)
-            if (fallback.all.isEmpty() && oldFallback.all.isNotEmpty()) {
-                val ed = fallback.edit()
-                oldFallback.all.forEach { (k, v) -> if (v is String) ed.putString(k, v) }
-                ed.apply()
+        } else {
+            try {
+                appContext.getSharedPreferences(name, Context.MODE_PRIVATE)
+            } catch (_: Exception) {
+                null
             }
-            fallback
+        }
+    }
+
+    /**
+     * Atomically migrates existing keys from legacy encrypted or plaintext stores.
+     * Guarantees that a legacy source is NEVER wiped unless the key has been
+     * successfully written and committed to the encrypted destination.
+     */
+    internal fun performSafeMigration(targetPrefs: SharedPreferences) {
+        val existingKey = targetPrefs.getString(KEY_GROQ_API, "")
+        if (!existingKey.isNullOrBlank()) {
+            // Target vault already possesses a valid key. Mark migration complete.
+            if (!targetPrefs.getBoolean(KEY_MIGRATION_DONE, false)) {
+                targetPrefs.edit().putBoolean(KEY_MIGRATION_DONE, true).commit()
+            }
+            return
+        }
+
+        // Search supported legacy formats in priority order
+        val legacyKey = findLegacyKey()
+        if (legacyKey != null && legacyKey.key.isNotBlank()) {
+            val success = targetPrefs.edit()
+                .putString(KEY_GROQ_API, legacyKey.key)
+                .putBoolean(KEY_MIGRATION_DONE, true)
+                .commit()
+
+            if (success) {
+                // Wipe source legacy store only after confirmed persistence in target vault
+                legacyKey.sourcePrefs.edit().remove(KEY_GROQ_API).commit()
+            }
+        } else {
+            targetPrefs.edit().putBoolean(KEY_MIGRATION_DONE, true).commit()
+        }
+    }
+
+    private data class LegacyKeyCandidate(val key: String, val sourcePrefs: SharedPreferences)
+
+    private fun findLegacyKey(): LegacyKeyCandidate? {
+        val candidateStores = listOf(
+            "reel_recall_vault_encrypted",
+            "reel_library_secure_fallback",
+            "reel_recall_secure_fallback"
+        )
+        for (storeName in candidateStores) {
+            val store = resolveLegacyStore(storeName) ?: continue
+            val k = store.getString(KEY_GROQ_API, "")
+            if (!k.isNullOrBlank()) {
+                return LegacyKeyCandidate(k, store)
+            }
+        }
+        return null
+    }
+
+    /**
+     * Wipes legacy plaintext fallback files from disk.
+     * Only invoked after the encrypted vault is operational and migration has verified.
+     * Touches strictly the intended fallback SharedPreferences and no other files.
+     */
+    internal fun cleanupLegacyPlaintextFiles() {
+        listOf(
+            "reel_library_secure_fallback",
+            "reel_recall_secure_fallback"
+        ).forEach { storeName ->
+            try {
+                resolveLegacyStore(storeName)?.edit()?.clear()?.commit()
+            } catch (_: Exception) {}
         }
     }
 
     fun getGroqApiKey(): String {
-        return sharedPreferences.getString(KEY_GROQ_API, "") ?: ""
+        return sharedPreferences?.getString(KEY_GROQ_API, "")?.ifBlank { null }
+            ?: inMemoryFallback[KEY_GROQ_API]
+            ?: ""
     }
 
     fun setGroqApiKey(key: String) {
-        sharedPreferences.edit().putString(KEY_GROQ_API, key.trim()).apply()
+        val trimmed = key.trim()
+        if (trimmed.isBlank()) {
+            deleteGroqApiKey()
+        } else {
+            sharedPreferences?.edit()?.putString(KEY_GROQ_API, trimmed)?.commit()
+            inMemoryFallback[KEY_GROQ_API] = trimmed
+        }
     }
 
-    fun getGeminiApiKey(): String {
-        return sharedPreferences.getString(KEY_GEMINI_API, "") ?: ""
-    }
-
-    fun setGeminiApiKey(key: String) {
-        sharedPreferences.edit().putString(KEY_GEMINI_API, key.trim()).apply()
+    fun deleteGroqApiKey() {
+        sharedPreferences?.edit()?.remove(KEY_GROQ_API)?.commit()
+        inMemoryFallback.remove(KEY_GROQ_API)
+        wipeKeyFromAllLocations(KEY_GROQ_API)
     }
 
     fun clearAllKeys() {
-        sharedPreferences.edit()
-            .remove(KEY_GROQ_API)
-            .remove(KEY_GEMINI_API)
-            .apply()
+        deleteGroqApiKey()
+    }
+
+    /**
+     * Synchronously purges a key from the current encrypted vault, legacy encrypted vault,
+     * and legacy fallback files to prevent resurrecting deleted keys.
+     */
+    private fun wipeKeyFromAllLocations(keyName: String) {
+        listOf(
+            "reel_recall_vault_encrypted",
+            "reel_library_secure_fallback",
+            "reel_recall_secure_fallback"
+        ).forEach { storeName ->
+            try {
+                resolveLegacyStore(storeName)?.edit()?.remove(keyName)?.commit()
+            } catch (_: Exception) {}
+        }
     }
 
     companion object {
-        private const val PREFS_FILENAME = "reel_library_vault_encrypted"
-        private const val KEY_GROQ_API = "vault_groq_api_key"
-        private const val KEY_GEMINI_API = "vault_gemini_api_key"
+        internal const val PREFS_FILENAME = "reel_library_vault_encrypted"
+        internal const val KEY_GROQ_API = "vault_groq_api_key"
+        internal const val KEY_MIGRATION_DONE = "vault_migration_completed"
 
         @Volatile
         private var INSTANCE: SecureKeyVault? = null
@@ -87,6 +201,21 @@ class SecureKeyVault private constructor(context: Context) {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: SecureKeyVault(context.applicationContext).also { INSTANCE = it }
             }
+        }
+
+        /**
+         * Test helper to create an instance with custom suppliers.
+         */
+        internal fun createForTesting(
+            context: Context,
+            encryptedPrefsSupplier: ((Context) -> SharedPreferences?)?,
+            legacyPrefsResolver: ((name: String) -> SharedPreferences?)? = null
+        ): SecureKeyVault {
+            return SecureKeyVault(context.applicationContext, encryptedPrefsSupplier, legacyPrefsResolver)
+        }
+
+        internal fun resetInstanceForTesting() {
+            INSTANCE = null
         }
     }
 }

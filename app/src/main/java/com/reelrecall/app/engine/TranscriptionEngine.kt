@@ -38,6 +38,10 @@ class GroqWhisperEngine(
     private val onAudioTranscribed: ((audioSeconds: Long, wordsTranscribed: Long, latencyMs: Long) -> Unit)? = null
 ) : TranscriptionEngine {
 
+    companion object {
+        const val MAX_GROQ_AUDIO_BYTES: Long = 25L * 1024L * 1024L // 26,214,400 bytes
+    }
+
     override val name: String = "Groq LPU ~ Whisper"
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -51,6 +55,13 @@ class GroqWhisperEngine(
 
             if (!audioFile.exists() || audioFile.length() <= 0L) {
                 return@withContext Result.failure(IllegalStateException("No valid audio stream available for transcription."))
+            }
+
+            // Groq Cloud hard upload limit is 25 MB (26,214,400 bytes)
+            if (audioFile.length() > MAX_GROQ_AUDIO_BYTES) {
+                return@withContext Result.failure(
+                    IllegalStateException("Audio file exceeds Groq maximum upload limit (25 MB). Size: ${audioFile.length() / (1024 * 1024)} MB")
+                )
             }
 
             val mediaType = if (audioFile.name.endsWith(".mp4", ignoreCase = true)) {

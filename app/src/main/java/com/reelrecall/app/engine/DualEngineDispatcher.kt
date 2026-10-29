@@ -96,10 +96,8 @@ class DualEngineDispatcher(
             EngineMode.CLOUD_ONLY -> {
                 if (prefs.groqApiKey.isNotBlank()) {
                     GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
-                } else if (prefs.geminiApiKey.isNotBlank()) {
-                    GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
                 } else {
-                    FailingSummarizerEngine("Engine Mode is set to CLOUD_ONLY: Cloud API key (Groq or Gemini) is missing. Local fallback is strictly disallowed.")
+                    FailingSummarizerEngine("Engine Mode is set to CLOUD_ONLY: Groq API key is missing. Local fallback is strictly disallowed.")
                 }
             }
 
@@ -119,11 +117,9 @@ class DualEngineDispatcher(
                 val isOnline = isNetworkAvailable()
                 if (isOnline && prefs.groqApiKey.isNotBlank()) {
                     GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
-                } else if (isOnline && prefs.geminiApiKey.isNotBlank()) {
-                    GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
                 } else {
                     if (!llmFile.exists() || llmFile.length() < 50_000_000L) {
-                        FailingSummarizerEngine("Summarization unavailable: Cloud API key missing and on-device LLM weights are not installed.")
+                        FailingSummarizerEngine("Summarization unavailable: Groq API key missing and on-device LLM weights are not installed.")
                     } else {
                         LocalMediaPipeSummarizerEngine(
                             context = context,

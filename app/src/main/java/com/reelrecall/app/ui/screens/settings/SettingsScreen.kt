@@ -324,7 +324,7 @@ private fun ProfileMainScreen(
                 NeumorphicDivider(colors = colors)
 
                 // 4. Models & API (Opens Models & API Subscreen)
-                val isApiKeySet = preferences.groqApiKey.isNotBlank() || preferences.geminiApiKey.isNotBlank()
+                val isApiKeySet = preferences.groqApiKey.isNotBlank()
                 val apiBadgeText = when {
                     !isApiKeySet -> "API Not Set"
                     cloudTestResult.isSuccess == true -> "API Ready"
@@ -1064,7 +1064,7 @@ private fun SelectModelsScreen(
 
     var selectedTokenApi by remember { mutableStateOf("QWEN") } // "QWEN", "WHISPER"
     var selectedLocalTokenApi by remember { mutableStateOf("GEMMA") } // "GEMMA", "WHISPER_LOCAL"
-    var keyToClear by remember { mutableStateOf<String?>(null) }
+    var keyToDelete by remember { mutableStateOf<String?>(null) }
 
     // Endpoint Diagnostics Modal
     if (selectedEndpointForModal != null) {
@@ -1085,19 +1085,29 @@ private fun SelectModelsScreen(
         )
     }
 
-    // Key Clear Confirmation Dialog
-    if (keyToClear != null) {
-        val titleText = "Clear Groq API Key?"
-        val bodyText = "Are you sure you want to remove your Groq API key from the Keystore vault? Cloud audio transcription and summarization will be disabled until a key is added."
+    // Key Delete Confirmation Dialog
+    if (keyToDelete != null) {
+        val titleText = "Delete Groq API Key?"
+        val bodyText = "Are you sure you want to completely delete your Groq API key from the Keystore vault? Cloud audio transcription and summarization will be disabled until a key is added."
 
         AlertDialog(
-            onDismissRequest = { keyToClear = null },
+            onDismissRequest = { keyToDelete = null },
             title = {
-                Text(
-                    text = titleText,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.textPrimary
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        tint = StatusError,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = titleText,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
+                        fontSize = 17.sp
+                    )
+                }
             },
             text = {
                 Text(
@@ -1110,20 +1120,20 @@ private fun SelectModelsScreen(
                 TextButton(
                     onClick = {
                         groqApiKeyInput = ""
-                        viewModel.setGroqApiKey("")
-                        Toast.makeText(context, "Groq key cleared from vault", Toast.LENGTH_SHORT).show()
-                        keyToClear = null
+                        viewModel.deleteGroqApiKey()
+                        Toast.makeText(context, "Groq key completely deleted from vault", Toast.LENGTH_SHORT).show()
+                        keyToDelete = null
                     }
                 ) {
                     Text(
-                        text = "Clear Key",
+                        text = "Delete Key",
                         color = StatusError,
                         fontWeight = FontWeight.Bold
                     )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { keyToClear = null }) {
+                TextButton(onClick = { keyToDelete = null }) {
                     Text("Cancel", color = colors.textMuted)
                 }
             },
@@ -1314,7 +1324,7 @@ private fun SelectModelsScreen(
                                 shape = RoundedCornerShape(6.dp),
                                 color = StatusError.copy(alpha = 0.12f),
                                 modifier = Modifier.clickable {
-                                    keyToClear = "Groq"
+                                    keyToDelete = "Groq"
                                 }
                             ) {
                                 Row(
@@ -1322,14 +1332,14 @@ private fun SelectModelsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Clear",
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete",
                                         tint = StatusError,
                                         modifier = Modifier.size(11.dp)
                                     )
                                     Spacer(modifier = Modifier.width(3.dp))
                                     Text(
-                                        text = "Clear",
+                                        text = "Delete",
                                         fontSize = 10.sp,
                                         color = StatusError,
                                         fontWeight = FontWeight.Bold,

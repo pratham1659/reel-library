@@ -44,7 +44,7 @@ data class ReelEntity(
     val oneLineSummary: String? = null,
     val takeawaysJson: String = "[]", // Serialized List<String>
     val tagsJson: String = "[]",      // Serialized List<String>
-    val engineUsed: String? = null,   // "Cloud (Groq + Gemini)" or "Local (Whisper + Gemma)"
+    val engineUsed: String? = null,   // "Cloud (Groq LPU)" or "Local (Whisper + Gemma)"
     val status: IngestionStatus = IngestionStatus.QUEUED,
     val errorMessage: String? = null,
     val userNotes: String? = null,

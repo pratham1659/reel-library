@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -28,13 +31,72 @@ android {
         }
     }
 
+    val keystorePropertiesFile = rootProject.file("keystore.properties")
+    val keystoreProperties = Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    }
+
+    val isReleaseTaskRequested = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+
+    signingConfigs {
+        create("release") {
+            val resolvedStoreFile: File? = when {
+                keystorePropertiesFile.exists() && !keystoreProperties.getProperty("storeFile").isNullOrBlank() -> {
+                    val rawPath = keystoreProperties.getProperty("storeFile").removePrefix("../")
+                    rootProject.file(rawPath)
+                }
+                !System.getenv("RELEASE_STORE_FILE").isNullOrBlank() -> {
+                    rootProject.file(System.getenv("RELEASE_STORE_FILE")!!)
+                }
+                rootProject.file("release.keystore").exists() -> {
+                    rootProject.file("release.keystore")
+                }
+                else -> null
+            }
+
+            val resolvedStorePassword = keystoreProperties.getProperty("storePassword")
+                ?: System.getenv("RELEASE_STORE_PASSWORD")
+                ?: System.getenv("KEYSTORE_PASSWORD")
+
+            val resolvedKeyAlias = keystoreProperties.getProperty("keyAlias")
+                ?: System.getenv("RELEASE_KEY_ALIAS")
+                ?: System.getenv("KEY_ALIAS")
+
+            val resolvedKeyPassword = keystoreProperties.getProperty("keyPassword")
+                ?: System.getenv("RELEASE_KEY_PASSWORD")
+                ?: System.getenv("KEY_PASSWORD")
+
+            if (resolvedStoreFile != null && resolvedStoreFile.exists() &&
+                !resolvedStorePassword.isNullOrBlank() &&
+                !resolvedKeyAlias.isNullOrBlank() &&
+                !resolvedKeyPassword.isNullOrBlank()
+            ) {
+                storeFile = resolvedStoreFile
+                storePassword = resolvedStorePassword
+                keyAlias = resolvedKeyAlias
+                keyPassword = resolvedKeyPassword
+            } else if (isReleaseTaskRequested) {
+                throw GradleException(
+                    "Production release signing failure: Production keystore and credentials are required for Release builds. " +
+                    "Configure keystore.properties or environment variables (RELEASE_STORE_FILE, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD). " +
+                    "Silent fallback to debug signing is strictly disallowed."
+                )
+            } else {
+                // Point to non-existent file for non-release tasks so release cannot accidentally build with debug keys
+                storeFile = file("missing-release.keystore")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isDebuggable = false
         }
         release {
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -45,6 +107,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 
 

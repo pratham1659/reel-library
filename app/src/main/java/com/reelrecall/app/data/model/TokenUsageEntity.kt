@@ -11,7 +11,7 @@ data class TokenUsageEntity(
     val dateString: String, // e.g., "2026-10-28"
     val monthString: String, // e.g., "2026-10"
     val engineType: String, // "CLOUD" or "LOCAL"
-    val provider: String, // "Groq LPU (Whisper)", "Google Gemini (LLM)", "Local Whisper", "Local Gemma"
+    val provider: String, // "Groq LPU (Whisper)", "Groq LPU (Qwen)", "Local Whisper", "Local Gemma"
     val promptTokens: Long = 0L,
     val completionTokens: Long = 0L,
     val totalTokens: Long = 0L,
