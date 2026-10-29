@@ -116,28 +116,75 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    val isAiSearchEnabled = MutableStateFlow(false)
+
+    fun toggleAiSearch() {
+        isAiSearchEnabled.value = !isAiSearchEnabled.value
+    }
+
     // Dynamic AI Search Suggestions derived from reel content and tags
-    val aiSearchSuggestions: StateFlow<List<String>> = dao.getAllReels().map { reels ->
-        val tags = mutableSetOf<String>()
-        reels.forEach { reel ->
-            try {
-                val list = Json.decodeFromString<List<String>>(reel.tagsJson)
-                tags.addAll(list.map { if (it.startsWith("#")) it else "#$it" })
-            } catch (_: Exception) {}
+    val aiSearchSuggestions: StateFlow<List<String>> = combine(
+        dao.getAllReels(),
+        searchQuery,
+        isAiSearchEnabled
+    ) { reels, query, aiEnabled ->
+        if (!aiEnabled) {
+            emptyList()
+        } else {
+            val q = query.trim().lowercase()
+            val tagFrequency = mutableMapOf<String, Int>()
+
+            // If user typed something, first prioritize tags from reels matching query
+            if (q.isNotEmpty()) {
+                val cleanQ = q.removePrefix("#").removePrefix("@")
+                reels.filter { reel ->
+                    reel.title?.contains(cleanQ, ignoreCase = true) == true ||
+                    reel.caption?.contains(cleanQ, ignoreCase = true) == true ||
+                    reel.oneLineSummary?.contains(cleanQ, ignoreCase = true) == true ||
+                    reel.transcript?.contains(cleanQ, ignoreCase = true) == true ||
+                    reel.tagsJson.contains(cleanQ, ignoreCase = true)
+                }.forEach { matchingReel ->
+                    try {
+                        val tags = Json.decodeFromString<List<String>>(matchingReel.tagsJson)
+                        tags.forEach { tag ->
+                            val formatted = if (tag.startsWith("#")) tag else "#$tag"
+                            tagFrequency[formatted] = (tagFrequency[formatted] ?: 0) + 3 // Higher weight
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+
+            // Also collect tags from all reels
+            reels.forEach { reel ->
+                try {
+                    val tags = Json.decodeFromString<List<String>>(reel.tagsJson)
+                    tags.forEach { tag ->
+                        val formatted = if (tag.startsWith("#")) tag else "#$tag"
+                        tagFrequency[formatted] = (tagFrequency[formatted] ?: 0) + 1
+                    }
+                } catch (_: Exception) {}
+            }
+
+            if (q.isNotEmpty()) {
+                val cleanQ = q.removePrefix("#").removePrefix("@")
+                // Sort tags: those containing query first, then by frequency
+                val sorted = tagFrequency.keys.sortedWith(
+                    compareByDescending<String> { it.contains(cleanQ, ignoreCase = true) }
+                        .thenByDescending { tagFrequency[it] ?: 0 }
+                )
+                sorted.take(10)
+            } else {
+                // Top frequent tags across vault + standard defaults
+                val defaultAi = listOf("#AI", "#Coding", "#Tech", "#Tools", "#Design", "#Productivity")
+                (tagFrequency.entries.sortedByDescending { it.value }.map { it.key } + defaultAi)
+                    .distinct()
+                    .take(10)
+            }
         }
-        val defaultAi = listOf(
-            "AI & Models",
-            "Performance",
-            "Android",
-            "Takeaways",
-            "Coding",
-            "Architecture"
-        )
-        (tags.toList() + defaultAi).distinct().take(10)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Comprehensive real-time multi-field search across titles, summaries, tags, context, notes & handles
-    private val rawReelsFlow = combine(dao.getAllReels(), searchQuery) { allReels, query ->
+    private val rawReelsFlow = combine(dao.getAllReels(), searchQuery, isAiSearchEnabled) { allReels, query, aiEnabled ->
         val q = query.trim()
         if (q.isBlank()) {
             allReels
@@ -146,20 +193,26 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             allReels.filter { reel ->
                 terms.all { term ->
                     val cleanTerm = term.removePrefix("#").removePrefix("@")
-                    (reel.title?.contains(term, ignoreCase = true) == true) ||
-                    (reel.title?.contains(cleanTerm, ignoreCase = true) == true) ||
-                    (reel.oneLineSummary?.contains(term, ignoreCase = true) == true) ||
-                    (reel.oneLineSummary?.contains(cleanTerm, ignoreCase = true) == true) ||
-                    (reel.tagsJson.contains(term, ignoreCase = true)) ||
-                    (reel.tagsJson.contains(cleanTerm, ignoreCase = true)) ||
-                    (reel.takeawaysJson.contains(term, ignoreCase = true)) ||
-                    (reel.takeawaysJson.contains(cleanTerm, ignoreCase = true)) ||
-                    (reel.caption?.contains(term, ignoreCase = true) == true) ||
-                    (reel.transcript?.contains(term, ignoreCase = true) == true) ||
-                    (reel.userNotes?.contains(term, ignoreCase = true) == true) ||
-                    (reel.creatorHandle?.contains(term, ignoreCase = true) == true) ||
-                    (reel.creatorHandle?.contains(cleanTerm, ignoreCase = true) == true) ||
-                    (reel.canonicalUrl.contains(term, ignoreCase = true))
+                    val basicMatch = (reel.title?.contains(term, ignoreCase = true) == true) ||
+                        (reel.title?.contains(cleanTerm, ignoreCase = true) == true) ||
+                        (reel.caption?.contains(term, ignoreCase = true) == true) ||
+                        (reel.userNotes?.contains(term, ignoreCase = true) == true) ||
+                        (reel.creatorHandle?.contains(term, ignoreCase = true) == true) ||
+                        (reel.creatorHandle?.contains(cleanTerm, ignoreCase = true) == true) ||
+                        (reel.canonicalUrl.contains(term, ignoreCase = true))
+
+                    if (aiEnabled) {
+                        basicMatch ||
+                        (reel.oneLineSummary?.contains(term, ignoreCase = true) == true) ||
+                        (reel.oneLineSummary?.contains(cleanTerm, ignoreCase = true) == true) ||
+                        (reel.tagsJson.contains(term, ignoreCase = true)) ||
+                        (reel.tagsJson.contains(cleanTerm, ignoreCase = true)) ||
+                        (reel.takeawaysJson.contains(term, ignoreCase = true)) ||
+                        (reel.takeawaysJson.contains(cleanTerm, ignoreCase = true)) ||
+                        (reel.transcript?.contains(term, ignoreCase = true) == true)
+                    } else {
+                        basicMatch
+                    }
                 }
             }
         }

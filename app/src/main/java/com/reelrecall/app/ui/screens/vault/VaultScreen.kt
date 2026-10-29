@@ -186,6 +186,7 @@ fun VaultScreen(
 
     val searchQuery by viewModel.searchQuery.collectAsState()
     val aiSuggestions by viewModel.aiSearchSuggestions.collectAsState()
+    val isAiSearchEnabled by viewModel.isAiSearchEnabled.collectAsState()
 
     BackHandler(enabled = isSearchActive) {
         viewModel.setSearchActive(false)
@@ -414,15 +415,16 @@ fun VaultScreen(
                                         Spacer(modifier = Modifier.width(6.dp))
                                     }
 
-                                    // AI BADGE / BUTTON INSIDE SEARCH BAR
+                                    // AI BADGE / BUTTON INSIDE SEARCH BAR (Toggle AI Recommendation & Search)
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
-                                        color = colors.accentBg,
-                                        border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.5f)),
+                                        color = if (isAiSearchEnabled) colors.accentBg else colors.pillBg,
+                                        border = BorderStroke(
+                                            1.dp,
+                                            if (isAiSearchEnabled) colors.accent else colors.border
+                                        ),
                                         modifier = Modifier.clickable {
-                                            // Rotate through AI suggestions
-                                            val next = aiSuggestions.firstOrNull { !searchQuery.contains(it.removePrefix("#"), ignoreCase = true) } ?: "AI"
-                                            viewModel.onSearchQueryChange(next.removePrefix("#"))
+                                            viewModel.toggleAiSearch()
                                         }
                                     ) {
                                         Row(
@@ -432,15 +434,15 @@ fun VaultScreen(
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.AutoAwesome,
-                                                contentDescription = "AI Assistant",
-                                                tint = SparkleOrange,
+                                                contentDescription = if (isAiSearchEnabled) "AI Search ON" else "AI Search OFF",
+                                                tint = if (isAiSearchEnabled) SparkleOrange else colors.textMuted,
                                                 modifier = Modifier.size(13.dp)
                                             )
                                             Text(
-                                                text = "AI",
+                                                text = if (isAiSearchEnabled) "AI ON" else "AI",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.ExtraBold,
-                                                color = colors.accent
+                                                color = if (isAiSearchEnabled) colors.accent else colors.textMuted
                                             )
                                         }
                                     }
@@ -448,59 +450,67 @@ fun VaultScreen(
                             }
                         }
 
-                        // AI SEARCH SUGGESTIONS CHIPS
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        // AI SEARCH SUGGESTIONS CHIPS (Recommends search tags when AI Search is active)
+                        AnimatedVisibility(
+                            visible = isAiSearchEnabled && aiSuggestions.isNotEmpty(),
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                modifier = Modifier.padding(end = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = null,
-                                    tint = SparkleOrange,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Text(
-                                    text = "AI Suggests:",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SparkleOrange
-                                )
-                            }
-
-                            aiSuggestions.forEach { suggestion ->
-                                val clean = suggestion.removePrefix("#")
-                                val isSelected = searchQuery.equals(clean, ignoreCase = true) || searchQuery.equals(suggestion, ignoreCase = true)
-                                Surface(
-                                    onClick = {
-                                        if (isSelected) {
-                                            viewModel.onSearchQueryChange("")
-                                        } else {
-                                            viewModel.onSearchQueryChange(clean)
-                                        }
-                                    },
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = if (isSelected) colors.accent else colors.pillBg,
-                                    border = BorderStroke(
-                                        width = 0.8.dp,
-                                        color = if (isSelected) colors.accent else colors.border
-                                    )
+                            Column {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = suggestion,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = if (isSelected) Color.White else colors.textPrimary,
-                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                        modifier = Modifier.padding(end = 4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = SparkleOrange,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Text(
+                                            text = if (searchQuery.isNotBlank()) "Recommended Tags:" else "AI Suggests:",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = SparkleOrange
+                                        )
+                                    }
+
+                                    aiSuggestions.forEach { suggestion ->
+                                        val clean = suggestion.removePrefix("#")
+                                        val isSelected = searchQuery.equals(clean, ignoreCase = true) || searchQuery.equals(suggestion, ignoreCase = true)
+                                        Surface(
+                                            onClick = {
+                                                if (isSelected) {
+                                                    viewModel.onSearchQueryChange("")
+                                                } else {
+                                                    viewModel.onSearchQueryChange(clean)
+                                                }
+                                            },
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (isSelected) colors.accent else colors.pillBg,
+                                            border = BorderStroke(
+                                                width = 0.8.dp,
+                                                color = if (isSelected) colors.accent else colors.border
+                                            )
+                                        ) {
+                                            Text(
+                                                text = suggestion,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = if (isSelected) Color.White else colors.textPrimary,
+                                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1547,6 +1557,7 @@ fun SearchKnowledgeView(
     onClose: () -> Unit
 ) {
     val query by viewModel.searchQuery.collectAsState()
+    val isAiSearchEnabled by viewModel.isAiSearchEnabled.collectAsState()
 
     Column(
         modifier = Modifier
@@ -1597,12 +1608,14 @@ fun SearchKnowledgeView(
                                 Icon(Icons.Default.Clear, contentDescription = "Clear", tint = TextMuted)
                             }
                         }
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = "AI Search",
-                            tint = SparkleOrange,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        IconButton(onClick = { viewModel.toggleAiSearch() }) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = if (isAiSearchEnabled) "AI Search ON" else "AI Search OFF",
+                                tint = if (isAiSearchEnabled) SparkleOrange else TextMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 },
                 singleLine = true,
