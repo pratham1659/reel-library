@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.alpha
@@ -54,6 +55,7 @@ import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Palette
@@ -1615,43 +1617,23 @@ private fun SelectModelsScreen(
                             // Header Row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.weight(1f, fill = false),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Tune,
-                                        contentDescription = null,
-                                        tint = CyanAccent,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Cloud Token Usage",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = colors.textPrimary,
-                                        maxLines = 1,
-                                        softWrap = false
-                                    )
-                                }
-
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = CyanAccent.copy(alpha = 0.12f),
-                                    border = androidx.compose.foundation.BorderStroke(0.8.dp, CyanAccent.copy(alpha = 0.35f))
-                                ) {
-                                    Text(
-                                        text = "Resets daily at 00:00 AM",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = CyanAccent,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp)
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = null,
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Cloud Token Usage",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
 
                             Text(
@@ -1728,14 +1710,14 @@ private fun SelectModelsScreen(
                                     prompt = 0L,
                                     completion = 0L,
                                     calls = preferences.groqWhisperCalls,
-                                    label = "Groq LPU ~ Whisper (Audio Transcription)"
+                                    label = "Groq LPU ~ Whisper"
                                 )
                                 else -> ApiTokenMetrics(
                                     total = preferences.groqQwenTokens.takeIf { it > 0 } ?: preferences.groqTotalTokens,
                                     prompt = preferences.groqQwenPromptTokens.takeIf { it > 0 } ?: preferences.groqPromptTokens,
                                     completion = preferences.groqQwenCompletionTokens.takeIf { it > 0 } ?: preferences.groqCompletionTokens,
                                     calls = preferences.groqQwenCalls.takeIf { it > 0 } ?: preferences.groqCallsCount,
-                                    label = "Groq LPU ~ Qwen (LLM Generation)"
+                                    label = "Groq LPU ~ Qwen"
                                 )
                             }
 
@@ -1752,14 +1734,15 @@ private fun SelectModelsScreen(
                                     color = colors.textPrimary,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    softWrap = false
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
                                     color = colors.surface
                                 ) {
                                     Text(
-                                        text = "${metrics.calls} requests",
+                                        text = "${metrics.calls} reqs",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Medium,
                                         color = colors.textSecondary,
@@ -1915,26 +1898,26 @@ private fun SelectModelsScreen(
                             }
 
                             val tokenText = if (isWhisperTab) {
-                                if (preferences.lastCallWhisperTokens > 0L) "+${preferences.lastCallWhisperTokens} tk consumed" else if (hasCall) "Audio media processed" else "0 tk consumed"
+                                if (preferences.lastCallWhisperTokens > 0L) "+${preferences.lastCallWhisperTokens} tk" else if (hasCall) "Audio transcribed" else "0 tk"
                             } else {
-                                if (hasCall) "+${preferences.lastCallQwenTokens} tk consumed" else "0 tk consumed"
+                                if (hasCall) "+${preferences.lastCallQwenTokens} tk" else "0 tk"
                             }
 
                             val breakdownText = if (isWhisperTab) {
                                 if (hasCall) {
                                     if (preferences.lastCallWhisperTokens > 0L) {
-                                        "(${preferences.lastCallWhisperPromptTokens} prompt + ${preferences.lastCallWhisperCompletionTokens} output tk)"
+                                        "(${preferences.lastCallWhisperPromptTokens} in + ${preferences.lastCallWhisperCompletionTokens} out)"
                                     } else {
-                                        "(Model: ${preferences.lastCallWhisperModel.ifBlank { "whisper-large-v3-turbo" }})"
+                                        "whisper-v3-turbo"
                                     }
                                 } else {
-                                    "(Awaiting whisper invocation)"
+                                    "Standby"
                                 }
                             } else {
                                 if (hasCall) {
-                                    "(${preferences.lastCallQwenPromptTokens} prompt + ${preferences.lastCallQwenCompletionTokens} output tk)"
+                                    "(${preferences.lastCallQwenPromptTokens} in + ${preferences.lastCallQwenCompletionTokens} out)"
                                 } else {
-                                    "(Awaiting cloud invocation)"
+                                    "Standby"
                                 }
                             }
 
@@ -1950,7 +1933,7 @@ private fun SelectModelsScreen(
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 10.dp, vertical = 7.dp)
+                                        .padding(horizontal = 10.dp, vertical = 8.dp)
                                 ) {
                                     // Line 1: Endpoint provider & Realtime Latency / HTTP Status
                                     Row(
@@ -1958,23 +1941,36 @@ private fun SelectModelsScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Row(
+                                            modifier = Modifier.weight(1f, fill = false),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
                                             Text(
-                                                text = "Last Call: $providerLabel",
+                                                text = if (isWhisperTab) "Last Call: Whisper" else "Last Call: Qwen",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = colors.textPrimary,
                                                 maxLines = 1,
                                                 softWrap = false
                                             )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(
-                                                text = "↗ Modal",
-                                                fontSize = 9.sp,
-                                                color = CyanAccent,
-                                                fontWeight = FontWeight.Bold
-                                            )
+                                            Spacer(modifier = Modifier.width(5.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = CyanAccent.copy(alpha = 0.15f)
+                                            ) {
+                                                Text(
+                                                    text = "Details ↗",
+                                                    fontSize = 8.5.sp,
+                                                    color = CyanAccent,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                                    softWrap = false
+                                                )
+                                            }
                                         }
+
+                                        Spacer(modifier = Modifier.width(6.dp))
+
                                         Text(
                                             text = statusLabel,
                                             fontSize = 10.sp,
@@ -1985,7 +1981,7 @@ private fun SelectModelsScreen(
                                         )
                                     }
 
-                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
 
                                     // Line 2: Token breakdown without truncation
                                     Row(
@@ -2001,9 +1997,10 @@ private fun SelectModelsScreen(
                                             maxLines = 1,
                                             softWrap = false
                                         )
+                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text(
                                             text = breakdownText,
-                                            fontSize = 10.sp,
+                                            fontSize = 9.5.sp,
                                             color = colors.textSecondary,
                                             maxLines = 1,
                                             softWrap = false
@@ -2719,44 +2716,42 @@ private fun EndpointDetailsDialog(
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Header
+                // Header: Status Icon + Title (No cross button)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (result.isSuccess) StatusReady.copy(alpha = 0.15f) else StatusError.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (result.isSuccess) Icons.Default.Check else Icons.Default.Close,
-                                contentDescription = null,
-                                tint = if (result.isSuccess) StatusReady else StatusError,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "${result.provider} Details",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary
-                            )
-                            Text(
-                                text = "Full scale endpoint diagnostic telemetry",
-                                fontSize = 11.sp,
-                                color = colors.textSecondary
-                            )
-                        }
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (result.isSuccess) StatusReady.copy(alpha = 0.15f) else StatusError.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (result.isSuccess) Icons.Default.Check else Icons.Default.Close,
+                            contentDescription = null,
+                            tint = if (result.isSuccess) StatusReady else StatusError,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = colors.textMuted)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "${result.provider} Details",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "Full scale endpoint diagnostic telemetry",
+                            fontSize = 11.sp,
+                            color = colors.textSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
 
@@ -3010,51 +3005,42 @@ private fun LastCallDetailsModal(
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Header: Icon + Title/Subtitle + Close 'X' Button
+                // Header: Icon + Title/Subtitle (No cross button)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f, fill = false)
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(CyanAccent.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(CyanAccent.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (isWhisper) Icons.Default.GraphicEq else Icons.Default.FlashOn,
-                                contentDescription = null,
-                                tint = CyanAccent,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "$provider Last Call",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                            Text(
-                                text = if (isWhisper) "Audio transcription endpoint telemetry" else "LLM summarization & chat telemetry",
-                                fontSize = 11.sp,
-                                color = colors.textSecondary,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
+                        Icon(
+                            imageVector = if (isWhisper) Icons.Default.GraphicEq else Icons.Default.FlashOn,
+                            contentDescription = null,
+                            tint = CyanAccent,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = colors.textMuted)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "$provider Last Call",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = if (isWhisper) "Audio transcription endpoint telemetry" else "LLM summarization & chat telemetry",
+                            fontSize = 11.sp,
+                            color = colors.textSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
 
@@ -3262,6 +3248,7 @@ private fun ModelExecutionHistoryTableCard(
 ) {
     var selectedModelTab by remember { mutableStateOf(initialModel) } // "QWEN" or "WHISPER"
     var currentPage by remember { mutableStateOf(0) }
+    var selectedLogForModal by remember { mutableStateOf<com.reelrecall.app.data.model.TokenUsageEntity?>(null) }
     val pageSize = 7
 
     LaunchedEffect(initialModel) {
@@ -3271,27 +3258,53 @@ private fun ModelExecutionHistoryTableCard(
         }
     }
 
-    val qwenLogs = remember(recentLogs) {
-        recentLogs.filter { log ->
-            log.provider.contains("Qwen", ignoreCase = true) ||
-            log.payloadSnippet?.contains("qwen", ignoreCase = true) == true ||
-            (!log.provider.contains("Whisper", ignoreCase = true) && (log.payloadSnippet?.contains("whisper", ignoreCase = true) != true))
-        }
-    }
-
+    // Strictly isolate Whisper logs (any whisper audio transcription call or audio requests)
     val whisperLogs = remember(recentLogs) {
         recentLogs.filter { log ->
             log.provider.contains("Whisper", ignoreCase = true) ||
-            log.payloadSnippet?.contains("whisper", ignoreCase = true) == true
+            log.payloadSnippet?.contains("whisper", ignoreCase = true) == true ||
+            (log.totalTokens == 0L && log.promptTokens == 0L && log.completionTokens == 0L)
         }
     }
 
-    val activeLogs = if (selectedModelTab == "WHISPER") whisperLogs else qwenLogs
-    val activeModelName = if (selectedModelTab == "WHISPER") "Groq LPU ~ Whisper" else "Groq LPU ~ Qwen"
+    // Strictly isolate Qwen / LLM logs (only actual text generation calls with tokens, strictly no whisper)
+    val qwenLogs = remember(recentLogs) {
+        recentLogs.filter { log ->
+            val isWhisper = log.provider.contains("Whisper", ignoreCase = true) ||
+                    log.payloadSnippet?.contains("whisper", ignoreCase = true) == true ||
+                    (log.totalTokens == 0L && log.promptTokens == 0L && log.completionTokens == 0L)
+            !isWhisper && (
+                log.provider.contains("Qwen", ignoreCase = true) ||
+                log.provider.contains("Llama", ignoreCase = true) ||
+                log.payloadSnippet?.contains("qwen", ignoreCase = true) == true ||
+                log.payloadSnippet?.contains("llama", ignoreCase = true) == true ||
+                log.totalTokens > 0L
+            )
+        }
+    }
 
-    // Calculate average token consumption across calls with tokens > 0
+    val isWhisperTab = selectedModelTab == "WHISPER"
+    val activeLogs = if (isWhisperTab) whisperLogs else qwenLogs
+    val activeModelName = if (isWhisperTab) "Groq LPU ~ Whisper" else "Groq LPU ~ Qwen"
+
+    // Proper model name dynamically derived from logs or engine standard
+    val properModelName = remember(activeLogs, isWhisperTab) {
+        if (isWhisperTab) {
+            activeLogs.firstOrNull { !it.payloadSnippet.isNullOrBlank() }?.payloadSnippet ?: "whisper-large-v3-turbo"
+        } else {
+            activeLogs.firstOrNull { !it.payloadSnippet.isNullOrBlank() }?.payloadSnippet ?: "qwen/qwen3.8-27b"
+        }
+    }
+
+    // Dynamic average token consumption across calls with tokens > 0
     val avgTokens = remember(activeLogs) {
         val positive = activeLogs.map { it.totalTokens }.filter { it > 0 }
+        if (positive.isNotEmpty()) positive.average() else 0.0
+    }
+
+    // Dynamic average latency across calls with latency > 0
+    val avgLatency = remember(activeLogs) {
+        val positive = activeLogs.map { it.latencyMs }.filter { it > 0 }
         if (positive.isNotEmpty()) positive.average() else 0.0
     }
 
@@ -3304,48 +3317,282 @@ private fun ModelExecutionHistoryTableCard(
     }
 
     val timeFormat = remember { java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US) }
+    val fullTimeFormat = remember { java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US) }
+
+    // Detail Modal for clicked execution log
+    if (selectedLogForModal != null) {
+        val log = selectedLogForModal!!
+        val isOk = !log.statusCode.startsWith("4") && !log.statusCode.startsWith("5")
+        val isAboveAvgTokens = avgTokens > 0 && log.totalTokens > avgTokens
+        val isAboveAvgLatency = avgLatency > 0 && log.latencyMs > avgLatency
+        val isAboveAvg = if (isWhisperTab && avgTokens <= 0) isAboveAvgLatency else isAboveAvgTokens
+
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { selectedLogForModal = null }
+        ) {
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = colors.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .padding(vertical = 24.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp)
+                ) {
+                    // Header: Icon + Title/Subtitle (No cross button)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(CyanAccent.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isWhisperTab) Icons.Default.GraphicEq else Icons.Default.FlashOn,
+                                contentDescription = null,
+                                tint = CyanAccent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = log.payloadSnippet?.takeIf { it.isNotBlank() } ?: "${log.provider} Call",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = fullTimeFormat.format(java.util.Date(log.timestamp)),
+                                fontSize = 11.sp,
+                                color = colors.textSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Status Code & Latency Cards
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.pillBg,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (isOk) StatusReady.copy(alpha = 0.35f) else StatusError.copy(alpha = 0.35f)
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text("STATUS CODE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.textMuted)
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = log.statusCode.ifBlank { if (isOk) "200 OK" else "Failed" },
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isOk) StatusReady else StatusError,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.pillBg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.3f)),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text("LATENCY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = colors.textMuted)
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = if (log.latencyMs > 0) "⚡ ${log.latencyMs} ms" else "⚡ Instant",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isAboveAvgLatency && isWhisperTab) Color(0xFFEF4444) else CyanAccent,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Model Endpoint
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = colors.pillBg,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Engine / Model", fontSize = 11.sp, color = colors.textSecondary)
+                            Text(
+                                text = log.payloadSnippet?.ifBlank { log.provider } ?: log.provider,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Token Breakdown
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.6f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Token Consumption Breakdown",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text("Prompt", fontSize = 10.sp, color = colors.textMuted)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text("${log.promptTokens} tk", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                                }
+                                Column {
+                                    Text("Output", fontSize = 10.sp, color = colors.textMuted)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text("${log.completionTokens} tk", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ElectricIndigo)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("Total Consumed", fontSize = 10.sp, color = colors.textMuted)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = if (log.totalTokens > 0) "+${log.totalTokens} tk" else if (isWhisperTab) "Audio" else "0 tk",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isAboveAvgTokens) Color(0xFFEF4444) else CyanAccent
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (isAboveAvg) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFEF4444).copy(alpha = 0.12f),
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, Color(0xFFEF4444).copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = if (isWhisperTab && avgTokens <= 0) {
+                                    "⚠️ Latency (${log.latencyMs} ms) exceeded the model dynamic average (${avgLatency.toInt()} ms)."
+                                } else {
+                                    "⚠️ Consumption (+${log.totalTokens} tk) exceeded the model dynamic average (${avgTokens.toInt()} tk)."
+                                },
+                                fontSize = 10.sp,
+                                color = Color(0xFFEF4444),
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+
+                    if (!log.errorDetails.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = StatusError.copy(alpha = 0.1f),
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, StatusError.copy(alpha = 0.3f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = log.errorDetails!!,
+                                fontSize = 10.sp,
+                                color = StatusError,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = { selectedLogForModal = null },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CyanAccent,
+                            contentColor = Color.Black
+                        )
+                    ) {
+                        Text("Close Details", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
 
     NeumorphicCard(colors = colors) {
         Column(modifier = Modifier.padding(18.dp)) {
-            // Header: Model Execution History (No reset wording)
+            // Header: Model Execution History
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(CyanAccent.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Storage,
-                            contentDescription = null,
-                            tint = CyanAccent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = "Model Execution History",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textPrimary
-                        )
-                        Text(
-                            text = if (avgTokens > 0) {
-                                "Model: $activeModelName • Red indicates above avg (${avgTokens.toInt()} tk)"
-                            } else {
-                                "Model: $activeModelName • Per-request call telemetry"
-                            },
-                            fontSize = 11.sp,
-                            color = colors.textSecondary
-                        )
-                    }
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(CyanAccent.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Storage,
+                        contentDescription = null,
+                        tint = CyanAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "Model Execution History",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary
+                    )
+                    Text(
+                        text = "Per-request call logs and consumption telemetry",
+                        fontSize = 11.sp,
+                        color = colors.textSecondary
+                    )
                 }
             }
 
@@ -3365,7 +3612,6 @@ private fun ModelExecutionHistoryTableCard(
                     Pair("WHISPER", "Groq LPU ~ Whisper")
                 ).forEach { (id, label) ->
                     val isSelected = selectedModelTab == id
-                    val count = if (id == "WHISPER") whisperLogs.size else qwenLogs.size
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = if (isSelected) CyanAccent.copy(alpha = 0.18f) else Color.Transparent,
@@ -3379,29 +3625,18 @@ private fun ModelExecutionHistoryTableCard(
                             }
                     ) {
                         Row(
-                            modifier = Modifier.padding(vertical = 7.dp, horizontal = 8.dp),
+                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = label,
-                                fontSize = 11.sp,
+                                fontSize = 11.5.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) CyanAccent else colors.textSecondary
+                                color = if (isSelected) CyanAccent else colors.textSecondary,
+                                maxLines = 1,
+                                softWrap = false
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = if (isSelected) CyanAccent.copy(alpha = 0.25f) else colors.surface
-                            ) {
-                                Text(
-                                    text = "$count",
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) CyanAccent else colors.textMuted,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                )
-                            }
                         }
                     }
                 }
@@ -3409,31 +3644,72 @@ private fun ModelExecutionHistoryTableCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Active Model Name & Average call consumption indicator
+            // Proper Model Name (e.g. "Model: qwen/qwen3.8-27b" or "Model: whisper-large-v3-turbo")
+            // No request counts, no red indicated text
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Model: $activeModelName",
-                    fontSize = 11.sp,
+                    text = "Model: $properModelName",
+                    fontSize = 12.5.sp,
                     fontWeight = FontWeight.Bold,
-                    color = CyanAccent
+                    color = CyanAccent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                if (avgTokens > 0) {
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Note about dynamic average
+            val noteText = remember(isWhisperTab, avgTokens, avgLatency) {
+                if (isWhisperTab) {
+                    if (avgTokens > 0) {
+                        "Note: Average consumption is ~${avgTokens.toInt()} tk/call. Values exceeding the dynamic average are highlighted in red text."
+                    } else if (avgLatency > 0) {
+                        "Note: Average response latency is ~${avgLatency.toInt()} ms/call. Calls exceeding the dynamic average latency are highlighted in red text."
+                    } else {
+                        "Note: Dynamic telemetry averages update with every request."
+                    }
+                } else {
+                    if (avgTokens > 0) {
+                        "Note: Average consumption is ~${avgTokens.toInt()} tk/call. Values exceeding the dynamic average are highlighted in red text."
+                    } else {
+                        "Note: Dynamic token consumption averages will update with every request."
+                    }
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = colors.pillBg.copy(alpha = 0.65f),
+                border = androidx.compose.foundation.BorderStroke(0.6.dp, colors.border.copy(alpha = 0.35f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = CyanAccent,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Avg: ${avgTokens.toInt()} tk/call • Highlighted red if > avg",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = colors.textSecondary
+                        text = noteText,
+                        fontSize = 10.5.sp,
+                        color = colors.textSecondary,
+                        lineHeight = 14.sp
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Table Content
             if (activeLogs.isEmpty()) {
@@ -3443,7 +3719,7 @@ private fun ModelExecutionHistoryTableCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "No execution logs recorded yet for $activeModelName. Tap 'Test Cloud' above to run live payload.",
+                        text = "No execution logs recorded yet for $properModelName. Tap 'Test Cloud' above to run live payload.",
                         fontSize = 11.sp,
                         color = colors.textMuted,
                         modifier = Modifier.padding(14.dp)
@@ -3474,18 +3750,21 @@ private fun ModelExecutionHistoryTableCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Table Rows
+                // Table Rows - Clickable to open detail modal, normal row background, token in red text only if > avg
                 displayLogs.forEach { log ->
                     val isOk = !log.statusCode.startsWith("4") && !log.statusCode.startsWith("5")
-                    val isAboveAvg = avgTokens > 0 && log.totalTokens > avgTokens
+                    val isAboveAvgTokens = avgTokens > 0 && log.totalTokens > avgTokens
+                    val isAboveAvgLatency = avgLatency > 0 && log.latencyMs > avgLatency
 
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = if (isAboveAvg) Color(0xFFEF4444).copy(alpha = 0.08f) else colors.pillBg.copy(alpha = 0.5f),
-                        border = if (isAboveAvg) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.45f)) else null,
+                        color = colors.pillBg.copy(alpha = 0.5f),
+                        border = androidx.compose.foundation.BorderStroke(0.6.dp, colors.border.copy(alpha = 0.2f)),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 2.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { selectedLogForModal = log }
                     ) {
                         Row(
                             modifier = Modifier
@@ -3494,7 +3773,7 @@ private fun ModelExecutionHistoryTableCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Time (Only the time: HH:mm:ss)
+                            // Time (HH:mm:ss)
                             Text(
                                 text = timeFormat.format(java.util.Date(log.timestamp)),
                                 fontSize = 10.sp,
@@ -3521,7 +3800,8 @@ private fun ModelExecutionHistoryTableCard(
                             Text(
                                 text = if (log.latencyMs > 0) "${log.latencyMs}ms" else "-",
                                 fontSize = 10.sp,
-                                color = colors.textSecondary,
+                                color = if (isWhisperTab && avgTokens <= 0 && isAboveAvgLatency) Color(0xFFEF4444) else colors.textSecondary,
+                                fontWeight = if (isWhisperTab && avgTokens <= 0 && isAboveAvgLatency) FontWeight.Bold else FontWeight.Normal,
                                 modifier = Modifier.weight(0.9f),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.End,
                                 maxLines = 1,
@@ -3550,40 +3830,17 @@ private fun ModelExecutionHistoryTableCard(
                                 softWrap = false
                             )
 
-                            // Total (tk) with Red Highlighting if Above Average
-                            Row(
+                            // Total (tk) with Red Text Only if Above Average
+                            Text(
+                                text = if (log.totalTokens > 0) "+${log.totalTokens}" else if (isWhisperTab) "Audio" else "-",
+                                fontSize = 10.sp,
+                                fontWeight = if (isAboveAvgTokens) FontWeight.Bold else FontWeight.SemiBold,
+                                color = if (isAboveAvgTokens) Color(0xFFEF4444) else CyanAccent,
                                 modifier = Modifier.weight(1.2f),
-                                horizontalArrangement = Arrangement.End,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (isAboveAvg) {
-                                    Surface(
-                                        shape = RoundedCornerShape(4.dp),
-                                        color = Color(0xFFEF4444).copy(alpha = 0.2f),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.8f))
-                                    ) {
-                                        Text(
-                                            text = "+${log.totalTokens}",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = Color(0xFFEF4444),
-                                            maxLines = 1,
-                                            softWrap = false,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                        )
-                                    }
-                                } else {
-                                    Text(
-                                        text = if (log.totalTokens > 0) "+${log.totalTokens}" else "Audio",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (log.totalTokens > 0) CyanAccent else colors.textMuted,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                                        maxLines = 1,
-                                        softWrap = false
-                                    )
-                                }
-                            }
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                maxLines = 1,
+                                softWrap = false
+                            )
                         }
                     }
                 }

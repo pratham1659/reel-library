@@ -57,10 +57,31 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
+                val appContext = context.applicationContext
+                val oldDb = appContext.getDatabasePath("reel_recall.db")
+                val newDb = appContext.getDatabasePath("reel_library.db")
+
+                // Seamlessly migrate existing database files if old exists and new does not yet
+                if (oldDb.exists() && !newDb.exists()) {
+                    try {
+                        newDb.parentFile?.mkdirs()
+                        oldDb.copyTo(newDb, overwrite = true)
+                        val oldWal = java.io.File(oldDb.parentFile, "reel_recall.db-wal")
+                        val newWal = java.io.File(newDb.parentFile, "reel_library.db-wal")
+                        if (oldWal.exists()) oldWal.copyTo(newWal, overwrite = true)
+                        val oldShm = java.io.File(oldDb.parentFile, "reel_recall.db-shm")
+                        val newShm = java.io.File(newDb.parentFile, "reel_library.db-shm")
+                        if (oldShm.exists()) oldShm.copyTo(newShm, overwrite = true)
+                        android.util.Log.i("AppDatabase", "Successfully migrated reel_recall.db to reel_library.db")
+                    } catch (e: Exception) {
+                        android.util.Log.e("AppDatabase", "Error migrating database files", e)
+                    }
+                }
+
                 val instance = Room.databaseBuilder(
-                    context.applicationContext,
+                    appContext,
                     AppDatabase::class.java,
-                    "reel_recall.db"
+                    "reel_library.db"
                 )
                     .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                     .fallbackToDestructiveMigration()

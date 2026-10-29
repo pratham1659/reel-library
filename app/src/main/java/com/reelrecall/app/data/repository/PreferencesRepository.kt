@@ -9,7 +9,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-val Context.dataStore by preferencesDataStore(name = "reel_recall_preferences")
+val Context.dataStore by preferencesDataStore(name = "reel_library_preferences")
 
 enum class EngineMode(val displayName: String, val description: String) {
     CLOUD_ONLY(
@@ -156,6 +156,20 @@ class PreferencesRepository(private val context: Context) {
         val GROQ_QWEN_PROMPT_TOKENS = longPreferencesKey("groq_qwen_prompt_tokens")
         val GROQ_QWEN_COMPLETION_TOKENS = longPreferencesKey("groq_qwen_completion_tokens")
         val GROQ_QWEN_CALLS_COUNT = longPreferencesKey("groq_qwen_calls_count")
+    }
+
+    init {
+        try {
+            val oldPrefFile = java.io.File(context.filesDir, "datastore/reel_recall_preferences.preferences_pb")
+            val newPrefFile = java.io.File(context.filesDir, "datastore/reel_library_preferences.preferences_pb")
+            if (oldPrefFile.exists() && !newPrefFile.exists()) {
+                newPrefFile.parentFile?.mkdirs()
+                oldPrefFile.copyTo(newPrefFile, overwrite = true)
+                android.util.Log.i("PreferencesRepo", "Migrated reel_recall_preferences to reel_library_preferences")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepo", "Error migrating preferences file", e)
+        }
     }
 
     private val db by lazy { com.reelrecall.app.data.local.AppDatabase.getInstance(context) }

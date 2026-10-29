@@ -42,12 +42,18 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun ReelRecallTheme(
+fun ReelLibraryTheme(
     isDarkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (isDarkTheme) DarkColorScheme else LightColorScheme
     val view = LocalView.current
+
+@Composable
+fun ReelRecallTheme(
+    isDarkTheme: Boolean = true,
+    content: @Composable () -> Unit
+) = ReelLibraryTheme(isDarkTheme = isDarkTheme, content = content)
 
     if (!view.isInEditMode) {
         SideEffect {

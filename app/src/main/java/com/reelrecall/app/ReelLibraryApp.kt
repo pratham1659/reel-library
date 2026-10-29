@@ -4,7 +4,7 @@ import android.app.Application
 import com.reelrecall.app.data.local.AppDatabase
 import com.reelrecall.app.data.repository.PreferencesRepository
 
-class ReelRecallApp : Application() {
+class ReelLibraryApp : Application() {
 
     lateinit var database: AppDatabase
         private set

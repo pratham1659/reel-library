@@ -384,7 +384,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             val dispatcher = com.reelrecall.app.engine.DualEngineDispatcher(getApplication())
             val summarizer = dispatcher.resolveSummarizationEngine(currentPrefs)
             val transcriber = dispatcher.resolveTranscriptionEngine(currentPrefs)
-            android.util.Log.d("ReelRecall", "Starting reprocess: ${allReels.size} reels, summarizer=${summarizer.name}, transcriber=${transcriber.name}")
+            android.util.Log.d("ReelLibrary", "Starting reprocess: ${allReels.size} reels, summarizer=${summarizer.name}, transcriber=${transcriber.name}")
 
             for (reel in allReels) {
                 val hasOldBogusTranscript = reel.transcript?.contains("likes") == true ||
@@ -402,7 +402,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
                 val needsOptimization = hasOldBogusTranscript || isGenericOrDemo
 
-                android.util.Log.d("ReelRecall", "Reel ${reel.id} (${reel.shortcode}): needsOptimization=$needsOptimization, currentTitle='${reel.title}'")
+                android.util.Log.d("ReelLibrary", "Reel ${reel.id} (${reel.shortcode}): needsOptimization=$needsOptimization, currentTitle='${reel.title}'")
 
                 if (needsOptimization) {
                     val extractionRes = com.reelrecall.app.worker.InstagramExtractor.extract(
@@ -431,12 +431,12 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         transcriber.transcribe(metadata.audioFile).getOrNull()?.trim()?.ifBlank { null }
                     } else null
 
-                    android.util.Log.d("ReelRecall", "Reel ${reel.id} extracted transcript: ${realTranscript?.take(80) ?: "None"}")
+                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} extracted transcript: ${realTranscript?.take(80) ?: "None"}")
 
                     // Step 3: Summarize using rich caption + real audio transcript
                     val summaryResult = summarizer.summarize(cleanCaption, realTranscript ?: "")
                     val summary = summaryResult.getOrNull()
-                    android.util.Log.d("ReelRecall", "Reel ${reel.id} summary: success=${summaryResult.isSuccess}, title='${summary?.title}'")
+                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} summary: success=${summaryResult.isSuccess}, title='${summary?.title}'")
 
                     if (summary != null) {
                         val updated = reel.copy(
@@ -469,7 +469,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         } catch (e: Exception) {
-            android.util.Log.e("ReelRecall", "reprocessDemoReelsIfNeeded error", e)
+            android.util.Log.e("ReelLibrary", "reprocessDemoReelsIfNeeded error", e)
         }
     }
 
@@ -546,7 +546,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     // Strict delay between individual reel calls to respect Groq OTPM/RPM limits
                     kotlinx.coroutines.delay(1500)
                 } catch (e: Exception) {
-                    android.util.Log.e("ReelRecall", "reprocessReel $id error", e)
+                    android.util.Log.e("ReelLibrary", "reprocessReel $id error", e)
                     try {
                         val r = dao.getReelById(id).first()
                         if (r != null) {
