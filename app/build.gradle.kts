@@ -87,6 +87,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
 
+    // MediaPipe GenAI for On-Device LLM Inference
+    implementation("com.google.mediapipe:tasks-genai:0.10.14")
+
     // Unit Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

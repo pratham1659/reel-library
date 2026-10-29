@@ -1,5 +1,7 @@
 package com.reelrecall.app.engine
 
+import android.content.Context
+import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.reelrecall.app.data.model.ReelSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -263,26 +265,29 @@ class GroqSummarizerEngine(
 }
 
 /**
- * Local on-device summarization engine using MediaPipe GenAI (Gemma 2B / Qwen 1.5B).
- * Executes strictly on-device using local model weights.
- * If model weights are not downloaded, it strictly fails with an explicit reason without fallback text.
+ * Local on-device summarization engine using MediaPipe Tasks GenAI (Gemma 2B / MediaPipe LLM tasks).
+ * Executes strictly on-device using local model weights (.bin or .task).
+ * If model weights are not downloaded or inference fails, it strictly fails without fallback.
  */
 class LocalMediaPipeSummarizerEngine(
+    private val context: Context,
     private val modelFile: File?,
     private val onTokensUsed: ((promptTokens: Long, completionTokens: Long, latencyMs: Long, provider: String) -> Unit)? = null
 ) : SummarizationEngine {
 
-    override val name: String = "Local Gemma/Qwen (On-Device NPU)"
+    override val name: String = "Local Gemma/Qwen (On-Device MediaPipe)"
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun summarize(caption: String?, transcript: String): Result<ReelSummary> =
         withContext(Dispatchers.IO) {
-            val targetFile = modelFile ?: File("gemma-2-2b-it-gpu.bin")
+            val targetFile = modelFile ?: File(context.filesDir, "gemma-2-2b-it-gpu.bin")
 
-            // Real quantized LLM weights require at least 50MB (typically ~1.4GB)
+            // Real quantized LLM weights require at least 50MB (typically ~1.3GB to 1.5GB)
             if (!targetFile.exists() || targetFile.length() < 50_000_000L) {
                 return@withContext Result.failure(
                     IllegalStateException(
-                        "On-device LLM weights are not installed. Please configure a Groq or Gemini API key in Settings -> Cloud AI Providers to summarize reels."
+                        "On-device LLM model weights not installed on this device (${targetFile.name}). Engine Mode is set to LOCAL_ONLY; no cloud fallback allowed."
                     )
                 )
             }
@@ -298,16 +303,105 @@ class LocalMediaPipeSummarizerEngine(
                 )
             }
 
-            // When authentic weights exist, execute local inference
             val startTime = android.os.SystemClock.elapsedRealtime()
-            val latency = (android.os.SystemClock.elapsedRealtime() - startTime).coerceAtLeast(42L)
-            val promptTokens = (content.length / 4L).coerceIn(16L, 1024L)
-            val compTokens = 120L
-            onTokensUsed?.invoke(promptTokens, compTokens, latency, "On-Device Gemma 2B")
 
-            Result.failure(
-                IllegalStateException("Local MediaPipe inference runtime is not available for model weights ${targetFile.name}.")
-            )
+            try {
+                // Initialize MediaPipe Tasks GenAI LlmInference
+                val options = LlmInference.LlmInferenceOptions.builder()
+                    .setModelPath(targetFile.absolutePath)
+                    .setMaxTokens(1024)
+                    .setTemperature(0.2f)
+                    .setTopK(40)
+                    .build()
+
+                val llmInference = LlmInference.createFromOptions(context, options)
+
+                try {
+                    val prompt = """
+                        <start_of_turn>user
+                        You are an executive research analyst. Deeply analyze this Instagram Reel and extract high-value insights.
+
+                        Spoken Audio Transcript: ${if (cleanTranscript.isNotBlank()) cleanTranscript else "None (Extract from post caption)"}
+                        Post Caption: ${if (cleanCaption.isNotBlank()) cleanCaption else "None"}
+
+                        Instructions:
+                        1. Prioritize real tools, websites, commands, steps, and practical insights.
+                        2. Return pure valid JSON strictly matching this schema:
+                        {
+                          "title": "Distinct, punchy title (4 to 7 words)",
+                          "one_line_summary": "Comprehensive 2-3 sentence executive briefing.",
+                          "actionable_takeaways": [
+                            "4 to 6 specific, practical, granular bullet points"
+                          ],
+                          "tags": [
+                            "3 to 5 highly relevant topic strings without #"
+                          ]
+                        }
+                        <end_of_turn>
+                        <start_of_turn>model
+                    """.trimIndent()
+
+                    val promptTokens = try {
+                        llmInference.sizeInTokens(prompt).toLong()
+                    } catch (e: Exception) {
+                        (prompt.length / 4L).coerceIn(16L, 1024L)
+                    }
+
+                    val rawResponse = llmInference.generateResponse(prompt)
+                    val latency = android.os.SystemClock.elapsedRealtime() - startTime
+
+                    if (rawResponse.isBlank()) {
+                        return@withContext Result.failure(
+                            IllegalStateException("Local MediaPipe model returned empty output.")
+                        )
+                    }
+
+                    val cleanedJson = rawResponse.trim()
+                        .removePrefix("```json")
+                        .removePrefix("```")
+                        .removeSuffix("```")
+                        .trim()
+
+                    val summary = try {
+                        json.decodeFromString<ReelSummary>(cleanedJson)
+                    } catch (e: Exception) {
+                        // Extract JSON block between first '{' and last '}'
+                        val startIdx = cleanedJson.indexOf('{')
+                        val endIdx = cleanedJson.lastIndexOf('}')
+                        if (startIdx != -1 && endIdx > startIdx) {
+                            val candidate = cleanedJson.substring(startIdx, endIdx + 1)
+                            json.decodeFromString<ReelSummary>(candidate)
+                        } else {
+                            // If model output natural text instead of JSON, parse safely
+                            val lines = cleanedJson.lines().filter { it.isNotBlank() }
+                            val fallbackTitle = lines.firstOrNull()?.take(60) ?: cleanCaption.take(50).ifBlank { "Local AI Summary" }
+                            val fallbackSummary = lines.drop(1).take(3).joinToString(" ").ifBlank { cleanedJson.take(200) }
+                            ReelSummary(
+                                title = fallbackTitle,
+                                one_line_summary = fallbackSummary,
+                                actionable_takeaways = lines.filter { it.startsWith("-") || it.startsWith("*") || it.matches(Regex("""^\d+\..*""")) }.take(5).ifEmpty { listOf(fallbackSummary) },
+                                tags = listOf("OnDeviceAI", "MediaPipe", "Offline")
+                            )
+                        }
+                    }
+
+                    val compTokens = (rawResponse.length / 4L).coerceAtLeast(10L)
+                    onTokensUsed?.invoke(promptTokens, compTokens, latency, "On-Device MediaPipe (${targetFile.nameWithoutExtension})")
+
+                    Result.success(summary)
+                } finally {
+                    try {
+                        llmInference.close()
+                    } catch (_: Exception) {}
+                }
+            } catch (e: Throwable) {
+                Result.failure(
+                    IllegalStateException(
+                        "Local MediaPipe inference execution failed: ${e.message ?: e.javaClass.simpleName}. Engine Mode is LOCAL_ONLY; no cloud fallback allowed.",
+                        e
+                    )
+                )
+            }
         }
 }
 

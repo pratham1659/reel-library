@@ -322,13 +322,13 @@ private fun ProfileMainScreen(
                 )
                 NeumorphicDivider(colors = colors)
 
-                // 4. Select Models (Opens Models Subscreen)
+                // 4. Models & API (Opens Models & API Subscreen)
                 ProfileMenuRow(
                     icon = Icons.Default.Memory,
                     iconTint = colors.accent,
-                    title = "Select Models",
-                    badgeText = if (isCloudMode) "Cloud API" else "Local NPU",
-                    badgeColor = if (isCloudMode) colors.accent else CyanAccent,
+                    title = "Models & API",
+                    badgeText = "Cloud API",
+                    badgeColor = colors.accent,
                     colors = colors,
                     onClick = onNavigateToModels
                 )
@@ -1021,13 +1021,32 @@ private fun SelectModelsScreen(
     val localDayWise by viewModel.localDayWiseConsumption.collectAsState()
     val localMonthWise by viewModel.localMonthWiseConsumption.collectAsState()
 
+    val whisperFilePicker = rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { viewModel.importModelFromUri(it, isWhisper = true) }
+    }
+    val llmFilePicker = rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { viewModel.importModelFromUri(it, isWhisper = false) }
+    }
+
     var groqApiKeyInput by remember { mutableStateOf(preferences.groqApiKey) }
 
     LaunchedEffect(preferences.groqApiKey) {
         groqApiKeyInput = preferences.groqApiKey
     }
 
+    val showLocalLlmInUi = false
     val isCloudMode = preferences.engineMode != EngineMode.LOCAL_ONLY
+
+    LaunchedEffect(Unit) {
+        if (!showLocalLlmInUi && preferences.engineMode != EngineMode.CLOUD_ONLY) {
+            viewModel.setEngineMode(EngineMode.CLOUD_ONLY)
+        }
+    }
+
     var selectedTokenApi by remember { mutableStateOf("QWEN") } // "QWEN", "WHISPER"
     var selectedLocalTokenApi by remember { mutableStateOf("GEMMA") } // "GEMMA", "WHISPER_LOCAL"
     var keyToClear by remember { mutableStateOf<String?>(null) }
@@ -1128,13 +1147,13 @@ private fun SelectModelsScreen(
 
             Column {
                 Text(
-                    text = "Select Models",
+                    text = "Models & API",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = colors.textPrimary
                 )
                 Text(
-                    text = "Configure AI engine, credentials & offline models",
+                    text = "Configure Cloud AI providers, API credentials & endpoints",
                     fontSize = 11.sp,
                     color = colors.textSecondary
                 )
@@ -1149,53 +1168,55 @@ private fun SelectModelsScreen(
                 .padding(horizontal = 18.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // CARD 1: EXCLUSIVE SELECTION (CLOUD API vs LOCAL)
-            NeumorphicCard(colors = colors) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(colors.accent.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.Memory, contentDescription = null, tint = colors.accent, modifier = Modifier.size(20.dp))
+            // CARD 1: EXCLUSIVE SELECTION (CLOUD API vs LOCAL) - Hidden from UI as requested, kept for future
+            if (showLocalLlmInUi) {
+                NeumorphicCard(colors = colors) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(colors.accent.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Memory, contentDescription = null, tint = colors.accent, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(text = "Model Engine", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                                Text(text = "Choose Cloud API or Local Model. Only one active at a time.", fontSize = 11.sp, color = colors.textSecondary)
+                            }
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(text = "Model Engine", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                            Text(text = "Choose Cloud API or Local Model. Only one active at a time.", fontSize = 11.sp, color = colors.textSecondary)
-                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // OPTION 1: CLOUD API
+                        ModelSelectionCard(
+                            title = "Cloud API",
+                            subtitle = "Fast processing with Groq Cloud APIs (Whisper audio + LLM summarization).",
+                            badge = "Cloud",
+                            colors = colors,
+                            isSelected = isCloudMode,
+                            onClick = { viewModel.setEngineMode(EngineMode.CLOUD_ONLY) }
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // OPTION 2: LOCAL ON-DEVICE
+                        ModelSelectionCard(
+                            title = "Local On-Device",
+                            subtitle = "100% offline & private. Runs Whisper.cpp & Gemma on device NPU.",
+                            badge = "Offline",
+                            colors = colors,
+                            isSelected = !isCloudMode,
+                            onClick = { viewModel.setEngineMode(EngineMode.LOCAL_ONLY) }
+                        )
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // OPTION 1: CLOUD API
-                    ModelSelectionCard(
-                        title = "Cloud API",
-                        subtitle = "Fast processing with Groq Cloud APIs (Whisper audio + LLM summarization).",
-                        badge = "Cloud",
-                        colors = colors,
-                        isSelected = isCloudMode,
-                        onClick = { viewModel.setEngineMode(EngineMode.CLOUD_ONLY) }
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // OPTION 2: LOCAL ON-DEVICE
-                    ModelSelectionCard(
-                        title = "Local On-Device",
-                        subtitle = "100% offline & private. Runs Whisper.cpp & Gemma on device NPU.",
-                        badge = "Offline",
-                        colors = colors,
-                        isSelected = !isCloudMode,
-                        onClick = { viewModel.setEngineMode(EngineMode.LOCAL_ONLY) }
-                    )
                 }
             }
 
-            if (isCloudMode) {
+            if (isCloudMode || !showLocalLlmInUi) {
                 // CARD 2: CLOUD API CREDENTIALS & LIVE TESTING
                 NeumorphicCard(colors = colors) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -2021,7 +2042,7 @@ private fun SelectModelsScreen(
                 initialModel = selectedTokenApi,
                 colors = colors
             )
-        } else {
+        } else if (showLocalLlmInUi) {
             // CARD 3: LOCAL DOWNLOAD PROGRESS & TEST ENGINE
             NeumorphicCard(colors = colors) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -2060,6 +2081,8 @@ private fun SelectModelsScreen(
                         progressState = whisperProgress,
                         colors = colors,
                         onStartDownload = { viewModel.startWhisperDownload() },
+                        onCancelDownload = { viewModel.cancelWhisperDownload() },
+                        onImportFile = { whisperFilePicker.launch("*/*") },
                         onDelete = { viewModel.deleteWhisperModel() }
                     )
 
@@ -2069,12 +2092,14 @@ private fun SelectModelsScreen(
                         title = "Gemma 2 2B / Qwen 1.5B LLM",
                         sizeText = "1.4 GB",
                         ramOverhead = "~1.8 GB RAM",
-                        description = "Synthesizes structured insights and topic tags fully offline.",
+                        description = "True MediaPipe Tasks GenAI on-device pipeline. Synthesizes structured insights and tags 100% offline.",
                         isEnabled = !isCloudMode,
                         isDownloaded = preferences.isLlmModelDownloaded,
                         progressState = llmProgress,
                         colors = colors,
                         onStartDownload = { viewModel.startLlmDownload() },
+                        onCancelDownload = { viewModel.cancelLlmDownload() },
+                        onImportFile = { llmFilePicker.launch("*/*") },
                         onDelete = { viewModel.deleteLlmModel() }
                     )
 
@@ -4744,6 +4769,8 @@ private fun LocalModelProgressRow(
     progressState: DownloadProgressState,
     colors: NeumorphicColors,
     onStartDownload: () -> Unit,
+    onCancelDownload: () -> Unit = {},
+    onImportFile: () -> Unit = {},
     onDelete: () -> Unit
 ) {
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
@@ -4817,11 +4844,16 @@ private fun LocalModelProgressRow(
                 }
 
                 if (progressState.isDownloading) {
-                    Surface(shape = RoundedCornerShape(8.dp), color = colors.accentBg) {
-                        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.8.dp, color = colors.accent)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = "${(progressState.progress * 100).toInt()}%", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.accent)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Surface(shape = RoundedCornerShape(8.dp), color = colors.accentBg) {
+                            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.8.dp, color = colors.accent)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(text = "${(progressState.progress * 100).toInt()}%", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.accent)
+                            }
+                        }
+                        IconButton(onClick = onCancelDownload, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Cancel", tint = StatusError, modifier = Modifier.size(14.dp))
                         }
                     }
                 } else if (isDownloaded) {
@@ -4838,15 +4870,31 @@ private fun LocalModelProgressRow(
                         }
                     }
                 } else {
-                    Button(
-                        onClick = onStartDownload,
-                        enabled = isEnabled,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
-                    ) {
-                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Download", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedButton(
+                            onClick = onImportFile,
+                            enabled = isEnabled,
+                            shape = RoundedCornerShape(8.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(13.dp), tint = if (isEnabled) colors.textPrimary else colors.textMuted)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Import", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (isEnabled) colors.textPrimary else colors.textMuted)
+                        }
+                        Button(
+                            onClick = onStartDownload,
+                            enabled = isEnabled,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(13.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Download", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
