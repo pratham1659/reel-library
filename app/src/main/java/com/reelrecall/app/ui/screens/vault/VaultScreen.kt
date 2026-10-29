@@ -961,22 +961,6 @@ fun DateSectionHeader(
                 color = colors.textMuted,
                 modifier = Modifier.padding(bottom = 2.dp)
             )
-            if (showSelectButton) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = colors.pillBg,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
-                    modifier = Modifier.padding(bottom = 2.dp)
-                ) {
-                    Text(
-                        text = "v1.0.0",
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.accent,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-            }
         }
 
         // SELECT BUTTON ROW (In the same row as Today, right below the settings icon!)

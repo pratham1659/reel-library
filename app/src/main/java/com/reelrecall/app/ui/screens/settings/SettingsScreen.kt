@@ -1017,6 +1017,7 @@ private fun SelectModelsScreen(
     val cloudRecentLogs by viewModel.cloudRecentLogs.collectAsState()
     val cloudDayWise by viewModel.cloudDayWiseConsumption.collectAsState()
     val cloudMonthWise by viewModel.cloudMonthWiseConsumption.collectAsState()
+    val localRecentLogs by viewModel.localRecentLogs.collectAsState()
     val localDayWise by viewModel.localDayWiseConsumption.collectAsState()
     val localMonthWise by viewModel.localMonthWiseConsumption.collectAsState()
 
@@ -1028,6 +1029,7 @@ private fun SelectModelsScreen(
 
     val isCloudMode = preferences.engineMode != EngineMode.LOCAL_ONLY
     var selectedTokenApi by remember { mutableStateOf("QWEN") } // "QWEN", "WHISPER"
+    var selectedLocalTokenApi by remember { mutableStateOf("GEMMA") } // "GEMMA", "WHISPER_LOCAL"
     var keyToClear by remember { mutableStateOf<String?>(null) }
 
     // Endpoint Diagnostics Modal
@@ -2020,7 +2022,7 @@ private fun SelectModelsScreen(
                 colors = colors
             )
         } else {
-            // CARD 3: LOCAL HARDWARE & DOWNLOAD PROGRESS
+            // CARD 3: LOCAL DOWNLOAD PROGRESS & TEST ENGINE
             NeumorphicCard(colors = colors) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Row(
@@ -2036,144 +2038,12 @@ private fun SelectModelsScreen(
                                     .background(ElectricIndigo.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.Smartphone, contentDescription = null, tint = ElectricIndigo, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.Download, contentDescription = null, tint = ElectricIndigo, modifier = Modifier.size(20.dp))
                             }
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
-                                Text(text = "Local Hardware & Models", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                                Text(text = "Local On-Device Models", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
                                 Text(text = "On-device AI weights stored locally", fontSize = 11.sp, color = colors.textSecondary)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Specs & Test Engine (Real Hardware Info - 0% Demo Data)
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = colors.pillBg,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            // Line 1: Device / Processor Name on Left, Small Test Engine Button on Right
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = hardwareInfo.processorName,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colors.textPrimary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    softWrap = false,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                OutlinedButton(
-                                    onClick = { viewModel.testLocalEngine() },
-                                    enabled = !isCloudMode && !localTestResult.isTesting,
-                                    shape = RoundedCornerShape(6.dp),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                    modifier = Modifier.height(26.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (!isCloudMode) ElectricIndigo else colors.border),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ElectricIndigo)
-                                ) {
-                                    if (localTestResult.isTesting) {
-                                        CircularProgressIndicator(modifier = Modifier.size(10.dp), strokeWidth = 1.5.dp, color = ElectricIndigo)
-                                        Spacer(modifier = Modifier.width(3.dp))
-                                        Text("Testing...", fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                                    } else {
-                                        Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(10.dp))
-                                        Spacer(modifier = Modifier.width(2.dp))
-                                        Text("Test Engine", fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            // Line 2: System Configuration (RAM, Storage, Cores) - full width, unobstructed
-                            Text(
-                                text = "${hardwareInfo.ramDisplay} • ${hardwareInfo.storageDisplay} • ${hardwareInfo.coreCount} Cores",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = StatusReady,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                softWrap = false
-                            )
-
-                            Spacer(modifier = Modifier.height(2.dp))
-
-                            // Line 3: NPU / GPU accelerator details
-                            Text(
-                                text = hardwareInfo.npuAcceleratorStatus,
-                                fontSize = 9.sp,
-                                color = colors.textSecondary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                softWrap = false
-                            )
-
-                            // Line 4: Latency in another dedicated line
-                            if (localTestResult.latencyMs != null) {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = ElectricIndigo.copy(alpha = 0.15f)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "⚡ Real Latency: ${localTestResult.latencyMs}ms",
-                                            color = ElectricIndigo,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                        if (localTestResult.statusCode != null) {
-                                            Text(
-                                                text = " • ${localTestResult.statusCode}",
-                                                color = ElectricIndigo,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                maxLines = 1,
-                                                softWrap = false
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Benchmark output banner
-                            AnimatedVisibility(visible = localTestResult.message.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                val isOk = localTestResult.isSuccess == true
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = if (isOk) StatusReady.copy(alpha = 0.12f) else StatusError.copy(alpha = 0.12f),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = localTestResult.message,
-                                        fontSize = 10.sp,
-                                        color = if (isOk) StatusReady else StatusError,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        softWrap = false,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
                             }
                         }
                     }
@@ -2207,14 +2077,603 @@ private fun SelectModelsScreen(
                         onStartDownload = { viewModel.startLlmDownload() },
                         onDelete = { viewModel.deleteLlmModel() }
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // TEST ENGINE BUTTON & REAL-TIME LATENCY + STATUS CODE (BELOW DOWNLOADED MODELS)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { viewModel.testLocalEngine() },
+                            enabled = !isCloudMode && !localTestResult.isTesting,
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (!isCloudMode) ElectricIndigo else colors.border),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ElectricIndigo)
+                        ) {
+                            if (localTestResult.isTesting) {
+                                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = ElectricIndigo)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Testing...", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                            } else {
+                                Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Test Engine", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                            }
+                        }
+
+                        // Live status code and latency badges - strictly 1 line, no wrap
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            if (localTestResult.statusCode != null) {
+                                val isOk = localTestResult.isSuccess == true
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isOk) StatusReady.copy(alpha = 0.15f) else StatusError.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (isOk) StatusReady.copy(alpha = 0.35f) else StatusError.copy(alpha = 0.35f)
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .clip(CircleShape)
+                                                .background(if (isOk) StatusReady else StatusError)
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Text(
+                                            text = localTestResult.statusCode ?: "",
+                                            color = if (isOk) StatusReady else StatusError,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (localTestResult.latencyMs != null) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = ElectricIndigo.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, ElectricIndigo.copy(alpha = 0.35f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.FlashOn,
+                                            contentDescription = null,
+                                            tint = ElectricIndigo,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text(
+                                            text = "${localTestResult.latencyMs}ms",
+                                            color = ElectricIndigo,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Individual endpoint test cards - matching Cloud API diagnostic cards
+                    if (localTestResult.endpointResults.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            localTestResult.endpointResults.forEach { ep ->
+                                val ok = ep.isSuccess
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.pillBg,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (ok) StatusReady.copy(alpha = 0.25f) else StatusError.copy(alpha = 0.25f)
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable { viewModel.openEndpointModal(ep) }
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(20.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(if (ok) StatusReady.copy(alpha = 0.15f) else StatusError.copy(alpha = 0.15f)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (ok) Icons.Default.Check else Icons.Default.Close,
+                                                    contentDescription = null,
+                                                    tint = if (ok) StatusReady else StatusError,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = ep.provider,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (ep.latencyMs != null) {
+                                                Text(
+                                                    text = "${ep.latencyMs}ms",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = ElectricIndigo,
+                                                    modifier = Modifier.padding(end = 6.dp)
+                                                )
+                                            }
+                                            Icon(
+                                                imageVector = Icons.Default.ChevronRight,
+                                                contentDescription = "Inspect Details",
+                                                tint = colors.textMuted,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else if (localTestResult.message.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val isOk = localTestResult.isSuccess == true
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isOk) StatusReady.copy(alpha = 0.15f) else StatusError.copy(alpha = 0.15f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = localTestResult.message,
+                                fontSize = 11.sp,
+                                color = if (isOk) StatusReady else StatusError,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                softWrap = false,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // REAL-TIME LOCAL TOKEN TRACKING (PER-API SELECTION & TELEMETRY - ZERO DEMO DATA)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.6f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            // Header Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = null,
+                                    tint = ElectricIndigo,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "On-Device Token Usage",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+
+                            Text(
+                                text = "Select an on-device model to inspect real-time usage telemetry",
+                                fontSize = 10.sp,
+                                color = colors.textSecondary,
+                                modifier = Modifier.padding(top = 2.dp, bottom = 10.dp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                softWrap = false
+                            )
+
+                            // Model Selector Segmented Tabs (Whisper vs Gemma)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(colors.surface)
+                                    .padding(3.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                listOf(
+                                    Triple("GEMMA", "On-Device Gemma", preferences.localTotalTokens),
+                                    Triple("WHISPER_LOCAL", "On-Device Whisper", preferences.localWhisperCallsCount)
+                                ).forEach { (id, label, tokens) ->
+                                    val isSelected = selectedLocalTokenApi == id
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isSelected) ElectricIndigo.copy(alpha = 0.15f) else Color.Transparent,
+                                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, ElectricIndigo.copy(alpha = 0.5f)) else null,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable { selectedLocalTokenApi = id }
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(
+                                                text = label,
+                                                fontSize = 11.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isSelected) ElectricIndigo else colors.textSecondary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Text(
+                                                text = if (id == "WHISPER_LOCAL" && tokens > 0) {
+                                                    "${tokens} calls"
+                                                } else if (tokens > 0) {
+                                                    "${java.text.NumberFormat.getIntegerInstance().format(tokens)} tk"
+                                                } else {
+                                                    "0 tk"
+                                                },
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = if (isSelected) ElectricIndigo else colors.textMuted,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Calculate active stats for selected Local Model
+                            val isWhisperLocalTab = selectedLocalTokenApi == "WHISPER_LOCAL"
+                            val localMetrics = if (isWhisperLocalTab) {
+                                ApiTokenMetrics(
+                                    total = 0L,
+                                    prompt = 0L,
+                                    completion = 0L,
+                                    calls = preferences.localWhisperCallsCount,
+                                    label = "On-Device Whisper Base"
+                                )
+                            } else {
+                                ApiTokenMetrics(
+                                    total = preferences.localTotalTokens,
+                                    prompt = preferences.localPromptTokens,
+                                    completion = preferences.localCompletionTokens,
+                                    calls = preferences.localGemmaCallsCount,
+                                    label = "On-Device Gemma 2B"
+                                )
+                            }
+
+                            // Provider status banner
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = localMetrics.label,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = colors.surface
+                                ) {
+                                    Text(
+                                        text = "${localMetrics.calls} reqs",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = colors.textSecondary,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // 3 Metric Cards for Selected Local API
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // Total Tokens
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.surface,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, ElectricIndigo.copy(alpha = 0.35f)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                        Text(
+                                            text = if (isWhisperLocalTab) "TOTAL CALLS" else "TOTAL (tk)",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = ElectricIndigo,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                        Text(
+                                            text = if (isWhisperLocalTab) "${localMetrics.calls}" else java.text.NumberFormat.getIntegerInstance().format(localMetrics.total),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = colors.textPrimary,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+
+                                // Prompt Tokens
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.surface,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                        Text(
+                                            text = if (isWhisperLocalTab) "AUDIO (sec)" else "PROMPT (tk)",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textSecondary,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                        Text(
+                                            text = if (isWhisperLocalTab) "Realtime" else java.text.NumberFormat.getIntegerInstance().format(localMetrics.prompt),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+
+                                // Output / Completion Tokens
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.surface,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                        Text(
+                                            text = if (isWhisperLocalTab) "SPEECH" else "OUTPUT (tk)",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = ElectricIndigo,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                        Text(
+                                            text = if (isWhisperLocalTab) "Offline" else java.text.NumberFormat.getIntegerInstance().format(localMetrics.completion),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Empty hint if 0 tokens recorded yet
+                            if (!isWhisperLocalTab && localMetrics.total == 0L) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = colors.surface.copy(alpha = 0.6f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "No tokens recorded yet for ${localMetrics.label}. Tap 'Test Engine' above to run live benchmark.",
+                                            fontSize = 10.sp,
+                                            color = colors.textMuted,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Last Call Telemetry (Permanent Section for local models)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val hasLocalCall = if (isWhisperLocalTab) {
+                                preferences.lastCallLocalWhisperLatencyMs > 0L || preferences.localWhisperCallsCount > 0L
+                            } else {
+                                preferences.lastCallLocalGemmaLatencyMs > 0L || preferences.lastCallLocalGemmaTokens > 0L
+                            }
+                            val localStatusLabel = if (hasLocalCall) {
+                                val lat = if (isWhisperLocalTab) {
+                                    if (preferences.lastCallLocalWhisperLatencyMs > 0L) "${preferences.lastCallLocalWhisperLatencyMs}ms" else "⚡"
+                                } else {
+                                    if (preferences.lastCallLocalGemmaLatencyMs > 0L) "${preferences.lastCallLocalGemmaLatencyMs}ms" else "⚡"
+                                }
+                                val code = if (isWhisperLocalTab) {
+                                    preferences.lastCallLocalWhisperStatusCode.ifBlank { "200 Ready" }
+                                } else {
+                                    preferences.lastCallLocalGemmaStatusCode.ifBlank { "200 Ready" }
+                                }
+                                "⚡ $lat • $code"
+                            } else {
+                                "⚡ Standby"
+                            }
+
+                            val localTokenText = if (isWhisperLocalTab) {
+                                if (hasLocalCall) "Audio transcribed" else "0 calls"
+                            } else {
+                                if (hasLocalCall) "+${preferences.lastCallLocalGemmaTokens} tk" else "0 tk"
+                            }
+
+                            val localBreakdownText = if (isWhisperLocalTab) {
+                                if (hasLocalCall) "whisper.cpp-base" else "Standby"
+                            } else {
+                                if (hasLocalCall) {
+                                    "(${preferences.lastCallLocalGemmaPromptTokens} in + ${preferences.lastCallLocalGemmaCompletionTokens} out)"
+                                } else {
+                                    "Standby"
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = colors.surface.copy(alpha = 0.7f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.3f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { viewModel.openLastCallModal(if (isWhisperLocalTab) "WHISPER_LOCAL" else "GEMMA") }
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                                ) {
+                                    // Line 1: Endpoint provider & Realtime Latency / Status
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.weight(1f, fill = false),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = if (isWhisperLocalTab) "Last Call: Whisper" else "Last Call: Gemma",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Spacer(modifier = Modifier.width(5.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = ElectricIndigo.copy(alpha = 0.15f)
+                                            ) {
+                                                Text(
+                                                    text = "Details ↗",
+                                                    fontSize = 8.5.sp,
+                                                    color = ElectricIndigo,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                                    softWrap = false
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.width(6.dp))
+
+                                        Text(
+                                            text = localStatusLabel,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = ElectricIndigo,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    // Line 2: Token breakdown without truncation
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = localTokenText,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = if (hasLocalCall) StatusReady else colors.textMuted,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = localBreakdownText,
+                                            fontSize = 9.5.sp,
+                                            color = colors.textSecondary,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
-            // LOCAL LLM CONSUMPTION TABLE (DAY-WISE & MONTH-WISE)
-            TokenConsumptionTableCard(
-                isCloud = false,
-                dayWiseList = localDayWise,
-                monthWiseList = localMonthWise,
+            // MODEL EXECUTION HISTORY TABLE FOR LOCAL (PER-REQUEST CALLS & RED HIGHLIGHT ABOVE AVERAGE)
+            ModelExecutionHistoryTableCard(
+                recentLogs = localRecentLogs,
+                initialModel = selectedLocalTokenApi,
+                isLocal = true,
                 colors = colors
             )
         }
@@ -2960,30 +3419,65 @@ private fun EndpointDetailsDialog(
 
 @Composable
 private fun LastCallDetailsModal(
-    targetModel: String, // "QWEN" or "WHISPER"
+    targetModel: String, // "QWEN", "WHISPER", "GEMMA", "WHISPER_LOCAL"
     preferences: AppPreferences,
     colors: NeumorphicColors,
     onDismiss: () -> Unit
 ) {
-    val isWhisper = targetModel == "WHISPER"
-    val statusCode = if (isWhisper) {
-        preferences.lastCallWhisperStatusCode.ifBlank { "200 OK" }
-    } else {
-        preferences.lastCallQwenStatusCode.ifBlank { "200 OK" }
+    val isWhisper = targetModel == "WHISPER" || targetModel == "WHISPER_LOCAL"
+    val isLocal = targetModel == "GEMMA" || targetModel == "WHISPER_LOCAL"
+    val accentColor = if (isLocal) ElectricIndigo else CyanAccent
+
+    val statusCode = when (targetModel) {
+        "WHISPER" -> preferences.lastCallWhisperStatusCode.ifBlank { "200 OK" }
+        "WHISPER_LOCAL" -> preferences.lastCallLocalWhisperStatusCode.ifBlank { "200 Ready" }
+        "GEMMA" -> preferences.lastCallLocalGemmaStatusCode.ifBlank { "200 Ready" }
+        else -> preferences.lastCallQwenStatusCode.ifBlank { "200 OK" }
     }
     val isSuccess = !statusCode.startsWith("4") && !statusCode.startsWith("5")
-    val hasCall = if (isWhisper) {
-        preferences.lastCallWhisperLatencyMs > 0L || preferences.groqWhisperCalls > 0L
-    } else {
-        preferences.lastCallQwenLatencyMs > 0L || preferences.lastCallQwenTokens > 0L
+    val hasCall = when (targetModel) {
+        "WHISPER" -> preferences.lastCallWhisperLatencyMs > 0L || preferences.groqWhisperCalls > 0L
+        "WHISPER_LOCAL" -> preferences.lastCallLocalWhisperLatencyMs > 0L || preferences.localWhisperCallsCount > 0L
+        "GEMMA" -> preferences.lastCallLocalGemmaLatencyMs > 0L || preferences.localGemmaCallsCount > 0L || preferences.lastCallLocalGemmaTokens > 0L
+        else -> preferences.lastCallQwenLatencyMs > 0L || preferences.lastCallQwenTokens > 0L
     }
-    val latencyMs = if (isWhisper) preferences.lastCallWhisperLatencyMs else preferences.lastCallQwenLatencyMs
-    val provider = if (isWhisper) preferences.lastCallWhisperProvider.ifBlank { "Groq LPU ~ Whisper" } else preferences.lastCallQwenProvider.ifBlank { "Groq LPU ~ Qwen" }
-    val model = if (isWhisper) preferences.lastCallWhisperModel.ifBlank { "whisper-large-v3-turbo" } else preferences.lastCallQwenModel.ifBlank { "qwen/qwen3.8-27b" }
+    val latencyMs = when (targetModel) {
+        "WHISPER" -> preferences.lastCallWhisperLatencyMs
+        "WHISPER_LOCAL" -> preferences.lastCallLocalWhisperLatencyMs
+        "GEMMA" -> preferences.lastCallLocalGemmaLatencyMs
+        else -> preferences.lastCallQwenLatencyMs
+    }
+    val provider = when (targetModel) {
+        "WHISPER" -> preferences.lastCallWhisperProvider.ifBlank { "Groq LPU ~ Whisper" }
+        "WHISPER_LOCAL" -> preferences.lastCallLocalWhisperProvider.ifBlank { "On-Device Whisper Base" }
+        "GEMMA" -> preferences.lastCallLocalGemmaProvider.ifBlank { "On-Device Gemma 2B" }
+        else -> preferences.lastCallQwenProvider.ifBlank { "Groq LPU ~ Qwen" }
+    }
+    val model = when (targetModel) {
+        "WHISPER" -> preferences.lastCallWhisperModel.ifBlank { "whisper-large-v3-turbo" }
+        "WHISPER_LOCAL" -> preferences.lastCallLocalWhisperModel.ifBlank { "whisper.cpp-base" }
+        "GEMMA" -> preferences.lastCallLocalGemmaModel.ifBlank { "gemma-2-2b-it-gpu" }
+        else -> preferences.lastCallQwenModel.ifBlank { "qwen/qwen3.8-27b" }
+    }
 
-    val promptTokens = if (isWhisper) preferences.lastCallWhisperPromptTokens else preferences.lastCallQwenPromptTokens
-    val compTokens = if (isWhisper) preferences.lastCallWhisperCompletionTokens else preferences.lastCallQwenCompletionTokens
-    val totalTokens = if (isWhisper) preferences.lastCallWhisperTokens else preferences.lastCallQwenTokens
+    val promptTokens = when (targetModel) {
+        "WHISPER" -> preferences.lastCallWhisperPromptTokens
+        "WHISPER_LOCAL" -> preferences.lastCallLocalWhisperPromptTokens
+        "GEMMA" -> preferences.lastCallLocalGemmaPromptTokens
+        else -> preferences.lastCallQwenPromptTokens
+    }
+    val compTokens = when (targetModel) {
+        "WHISPER" -> preferences.lastCallWhisperCompletionTokens
+        "WHISPER_LOCAL" -> preferences.lastCallLocalWhisperCompletionTokens
+        "GEMMA" -> preferences.lastCallLocalGemmaCompletionTokens
+        else -> preferences.lastCallQwenCompletionTokens
+    }
+    val totalTokens = when (targetModel) {
+        "WHISPER" -> preferences.lastCallWhisperTokens
+        "WHISPER_LOCAL" -> preferences.lastCallLocalWhisperTokens
+        "GEMMA" -> preferences.lastCallLocalGemmaTokens
+        else -> preferences.lastCallQwenTokens
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -3014,13 +3508,13 @@ private fun LastCallDetailsModal(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(CyanAccent.copy(alpha = 0.15f)),
+                            .background(accentColor.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = if (isWhisper) Icons.Default.GraphicEq else Icons.Default.FlashOn,
                             contentDescription = null,
-                            tint = CyanAccent,
+                            tint = accentColor,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -3081,7 +3575,7 @@ private fun LastCallDetailsModal(
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = colors.pillBg,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.3f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.3f)),
                         modifier = Modifier.weight(1f)
                     ) {
                         Column(modifier = Modifier.padding(10.dp)) {
@@ -3091,7 +3585,7 @@ private fun LastCallDetailsModal(
                                 text = if (hasCall && latencyMs > 0L) "⚡ $latencyMs ms" else "⚡ Ready",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = CyanAccent,
+                                color = accentColor,
                                 maxLines = 1
                             )
                         }
@@ -3231,7 +3725,7 @@ private fun LastCallDetailsModal(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanAccent)
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                 ) {
                     Text("Close Telemetry", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
@@ -3244,12 +3738,14 @@ private fun LastCallDetailsModal(
 private fun ModelExecutionHistoryTableCard(
     recentLogs: List<com.reelrecall.app.data.model.TokenUsageEntity>,
     initialModel: String = "QWEN",
+    isLocal: Boolean = false,
     colors: NeumorphicColors
 ) {
-    var selectedModelTab by remember { mutableStateOf(initialModel) } // "QWEN" or "WHISPER"
+    var selectedModelTab by remember { mutableStateOf(initialModel) } // "QWEN"/"GEMMA" or "WHISPER"
     var currentPage by remember { mutableStateOf(0) }
     var selectedLogForModal by remember { mutableStateOf<com.reelrecall.app.data.model.TokenUsageEntity?>(null) }
-    val pageSize = 7
+    val pageSize = 5
+    val accentColor = if (isLocal) ElectricIndigo else CyanAccent
 
     LaunchedEffect(initialModel) {
         if (initialModel.isNotBlank()) {
@@ -3267,32 +3763,53 @@ private fun ModelExecutionHistoryTableCard(
         }
     }
 
-    // Strictly isolate Qwen / LLM logs (only actual text generation calls with tokens, strictly no whisper)
-    val qwenLogs = remember(recentLogs) {
+    // Strictly isolate LLM logs (only actual text generation calls with tokens, strictly no whisper)
+    val llmLogs = remember(recentLogs, isLocal) {
         recentLogs.filter { log ->
             val isWhisper = log.provider.contains("Whisper", ignoreCase = true) ||
                     log.payloadSnippet?.contains("whisper", ignoreCase = true) == true ||
                     (log.totalTokens == 0L && log.promptTokens == 0L && log.completionTokens == 0L)
-            !isWhisper && (
-                log.provider.contains("Qwen", ignoreCase = true) ||
-                log.provider.contains("Llama", ignoreCase = true) ||
-                log.payloadSnippet?.contains("qwen", ignoreCase = true) == true ||
-                log.payloadSnippet?.contains("llama", ignoreCase = true) == true ||
-                log.totalTokens > 0L
-            )
+            if (isLocal) {
+                !isWhisper && (
+                    log.provider.contains("Gemma", ignoreCase = true) ||
+                    log.provider.contains("Local", ignoreCase = true) ||
+                    log.payloadSnippet?.contains("gemma", ignoreCase = true) == true ||
+                    log.totalTokens > 0L
+                )
+            } else {
+                !isWhisper && (
+                    log.provider.contains("Qwen", ignoreCase = true) ||
+                    log.provider.contains("Llama", ignoreCase = true) ||
+                    log.payloadSnippet?.contains("qwen", ignoreCase = true) == true ||
+                    log.payloadSnippet?.contains("llama", ignoreCase = true) == true ||
+                    log.totalTokens > 0L
+                )
+            }
         }
     }
 
-    val isWhisperTab = selectedModelTab == "WHISPER"
-    val activeLogs = if (isWhisperTab) whisperLogs else qwenLogs
-    val activeModelName = if (isWhisperTab) "Groq LPU ~ Whisper" else "Groq LPU ~ Qwen"
+    val isWhisperTab = selectedModelTab == "WHISPER" || selectedModelTab == "WHISPER_LOCAL"
+    val activeLogs = if (isWhisperTab) whisperLogs else llmLogs
+    val activeModelName = if (isLocal) {
+        if (isWhisperTab) "On-Device Whisper" else "On-Device Gemma 2B"
+    } else {
+        if (isWhisperTab) "Groq LPU ~ Whisper" else "Groq LPU ~ Qwen"
+    }
 
     // Proper model name dynamically derived from logs or engine standard
-    val properModelName = remember(activeLogs, isWhisperTab) {
-        if (isWhisperTab) {
-            activeLogs.firstOrNull { !it.payloadSnippet.isNullOrBlank() }?.payloadSnippet ?: "whisper-large-v3-turbo"
+    val properModelName = remember(activeLogs, isWhisperTab, isLocal) {
+        if (isLocal) {
+            if (isWhisperTab) {
+                activeLogs.firstOrNull { !it.payloadSnippet.isNullOrBlank() }?.payloadSnippet ?: "whisper.cpp-base"
+            } else {
+                activeLogs.firstOrNull { !it.payloadSnippet.isNullOrBlank() }?.payloadSnippet ?: "gemma-2-2b-it-gpu"
+            }
         } else {
-            activeLogs.firstOrNull { !it.payloadSnippet.isNullOrBlank() }?.payloadSnippet ?: "qwen/qwen3.8-27b"
+            if (isWhisperTab) {
+                activeLogs.firstOrNull { !it.payloadSnippet.isNullOrBlank() }?.payloadSnippet ?: "whisper-large-v3-turbo"
+            } else {
+                activeLogs.firstOrNull { !it.payloadSnippet.isNullOrBlank() }?.payloadSnippet ?: "qwen/qwen3.8-27b"
+            }
         }
     }
 
@@ -3352,13 +3869,13 @@ private fun ModelExecutionHistoryTableCard(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(CyanAccent.copy(alpha = 0.15f)),
+                                .background(accentColor.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = if (isWhisperTab) Icons.Default.GraphicEq else Icons.Default.FlashOn,
                                 contentDescription = null,
-                                tint = CyanAccent,
+                                tint = accentColor,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -3415,7 +3932,7 @@ private fun ModelExecutionHistoryTableCard(
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = colors.pillBg,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.3f)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.3f)),
                             modifier = Modifier.weight(1f)
                         ) {
                             Column(modifier = Modifier.padding(10.dp)) {
@@ -3425,7 +3942,7 @@ private fun ModelExecutionHistoryTableCard(
                                     text = if (log.latencyMs > 0) "⚡ ${log.latencyMs} ms" else "⚡ Instant",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isAboveAvgLatency && isWhisperTab) Color(0xFFEF4444) else CyanAccent,
+                                    color = if (isAboveAvgLatency && isWhisperTab) Color(0xFFEF4444) else accentColor,
                                     maxLines = 1
                                 )
                             }
@@ -3493,7 +4010,7 @@ private fun ModelExecutionHistoryTableCard(
                                         text = if (log.totalTokens > 0) "+${log.totalTokens} tk" else if (isWhisperTab) "Audio" else "0 tk",
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isAboveAvgTokens) Color(0xFFEF4444) else CyanAccent
+                                        color = if (isAboveAvgTokens) Color(0xFFEF4444) else accentColor
                                     )
                                 }
                             }
@@ -3548,7 +4065,7 @@ private fun ModelExecutionHistoryTableCard(
                             .height(44.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = CyanAccent,
+                            containerColor = accentColor,
                             contentColor = Color.Black
                         )
                     ) {
@@ -3570,13 +4087,13 @@ private fun ModelExecutionHistoryTableCard(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(CyanAccent.copy(alpha = 0.15f)),
+                        .background(accentColor.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Storage,
                         contentDescription = null,
-                        tint = CyanAccent,
+                        tint = accentColor,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -3598,7 +4115,19 @@ private fun ModelExecutionHistoryTableCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Model Switcher Tabs (Qwen vs Whisper)
+            // Model Switcher Tabs (Qwen vs Whisper for cloud, Gemma vs Whisper for local)
+            val modelTabs = if (isLocal) {
+                listOf(
+                    Pair("GEMMA", "On-Device Gemma"),
+                    Pair("WHISPER", "On-Device Whisper")
+                )
+            } else {
+                listOf(
+                    Pair("QWEN", "Groq LPU ~ Qwen"),
+                    Pair("WHISPER", "Groq LPU ~ Whisper")
+                )
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -3607,15 +4136,12 @@ private fun ModelExecutionHistoryTableCard(
                     .padding(3.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                listOf(
-                    Pair("QWEN", "Groq LPU ~ Qwen"),
-                    Pair("WHISPER", "Groq LPU ~ Whisper")
-                ).forEach { (id, label) ->
+                modelTabs.forEach { (id, label) ->
                     val isSelected = selectedModelTab == id
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = if (isSelected) CyanAccent.copy(alpha = 0.18f) else Color.Transparent,
-                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.5f)) else null,
+                        color = if (isSelected) accentColor.copy(alpha = 0.18f) else Color.Transparent,
+                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.5f)) else null,
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
@@ -3633,7 +4159,7 @@ private fun ModelExecutionHistoryTableCard(
                                 text = label,
                                 fontSize = 11.5.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) CyanAccent else colors.textSecondary,
+                                color = if (isSelected) accentColor else colors.textSecondary,
                                 maxLines = 1,
                                 softWrap = false
                             )
@@ -3644,8 +4170,7 @@ private fun ModelExecutionHistoryTableCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Proper Model Name (e.g. "Model: qwen/qwen3.8-27b" or "Model: whisper-large-v3-turbo")
-            // No request counts, no red indicated text
+            // Proper Model Name (e.g. "Model: qwen/qwen3.8-27b" or "Model: gemma-2-2b-it-gpu")
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -3656,7 +4181,7 @@ private fun ModelExecutionHistoryTableCard(
                     text = "Model: $properModelName",
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.Bold,
-                    color = CyanAccent,
+                    color = accentColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -3696,7 +4221,7 @@ private fun ModelExecutionHistoryTableCard(
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
-                        tint = CyanAccent,
+                        tint = accentColor,
                         modifier = Modifier.size(13.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
@@ -3719,7 +4244,7 @@ private fun ModelExecutionHistoryTableCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "No execution logs recorded yet for $properModelName. Tap 'Test Cloud' above to run live payload.",
+                        text = if (isLocal) "No execution logs recorded yet for $properModelName. Tap 'Test Engine' above to run live benchmark." else "No execution logs recorded yet for $properModelName. Tap 'Test Cloud' above to run live payload.",
                         fontSize = 11.sp,
                         color = colors.textMuted,
                         modifier = Modifier.padding(14.dp)
@@ -3744,7 +4269,7 @@ private fun ModelExecutionHistoryTableCard(
                         Text("Latency", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                         Text("Prompt", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                         Text("Output", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                        Text("Total (tk)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = CyanAccent, modifier = Modifier.weight(1.2f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        Text("Total (tk)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = accentColor, modifier = Modifier.weight(1.2f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                     }
                 }
 
@@ -3835,7 +4360,7 @@ private fun ModelExecutionHistoryTableCard(
                                 text = if (log.totalTokens > 0) "+${log.totalTokens}" else if (isWhisperTab) "Audio" else "-",
                                 fontSize = 10.sp,
                                 fontWeight = if (isAboveAvgTokens) FontWeight.Bold else FontWeight.SemiBold,
-                                color = if (isAboveAvgTokens) Color(0xFFEF4444) else CyanAccent,
+                                color = if (isAboveAvgTokens) Color(0xFFEF4444) else accentColor,
                                 modifier = Modifier.weight(1.2f),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.End,
                                 maxLines = 1,
@@ -3859,8 +4384,8 @@ private fun ModelExecutionHistoryTableCard(
                             shape = RoundedCornerShape(6.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                             modifier = Modifier.height(28.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, if (safePage > 0) CyanAccent else colors.border),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = CyanAccent)
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (safePage > 0) accentColor else colors.border),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = accentColor)
                         ) {
                             Text("Previous", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
@@ -3878,8 +4403,8 @@ private fun ModelExecutionHistoryTableCard(
                             shape = RoundedCornerShape(6.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                             modifier = Modifier.height(28.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, if (safePage < totalPages - 1) CyanAccent else colors.border),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = CyanAccent)
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (safePage < totalPages - 1) accentColor else colors.border),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = accentColor)
                         ) {
                             Text("Next", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
@@ -4221,6 +4746,49 @@ private fun LocalModelProgressRow(
     onStartDownload: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = {
+                Text(
+                    text = "Delete Model Weights?",
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete local weights for $title ($sizeText)? You will need to download them again for on-device processing.",
+                    color = colors.textSecondary,
+                    fontSize = 13.5.sp
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        onDelete()
+                    }
+                ) {
+                    Text(
+                        text = "Delete",
+                        color = StatusError,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel", color = colors.textMuted)
+                }
+            },
+            containerColor = colors.surface,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = colors.pillBg,
@@ -4265,7 +4833,7 @@ private fun LocalModelProgressRow(
                                 Text("Ready", color = StatusReady, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
-                        IconButton(onClick = onDelete, enabled = isEnabled, modifier = Modifier.size(32.dp)) {
+                        IconButton(onClick = { showDeleteConfirmDialog = true }, enabled = isEnabled, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete", tint = colors.textMuted, modifier = Modifier.size(16.dp))
                         }
                     }
