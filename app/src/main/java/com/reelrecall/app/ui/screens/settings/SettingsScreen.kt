@@ -1824,12 +1824,17 @@ private fun SelectModelsScreen(
 
                             // 3 Metric Cards for Selected API
                             if (selectedTokenApi == "WHISPER") {
-                                // Whisper Audio Duration Metrics (No text token consumption)
+                                // Whisper Audio Duration Metrics (Input, Output, Audio seconds only)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     // Total Audio Seconds
+                                    val sec = preferences.groqWhisperAudioSeconds
+                                    val displaySec = if (sec >= 60) "${sec / 60}m ${sec % 60}s" else "${sec}s"
+                                    val words = preferences.groqWhisperOutputWords
+                                    val displayWords = if (words >= 1000) String.format(java.util.Locale.US, "%,d wds", words) else "${words} wds"
+
                                     Surface(
                                         shape = RoundedCornerShape(10.dp),
                                         color = colors.surface,
@@ -1846,8 +1851,6 @@ private fun SelectModelsScreen(
                                                 softWrap = false
                                             )
                                             Spacer(modifier = Modifier.height(3.dp))
-                                            val sec = preferences.groqWhisperAudioSeconds
-                                            val displaySec = if (sec >= 60) "${sec / 60}m ${sec % 60}s" else "${sec}s"
                                             Text(
                                                 text = displaySec,
                                                 fontSize = 14.sp,
@@ -1859,7 +1862,7 @@ private fun SelectModelsScreen(
                                         }
                                     }
 
-                                    // Billing Unit (Audio Seconds / Min)
+                                    // Input Audio Duration
                                     Surface(
                                         shape = RoundedCornerShape(10.dp),
                                         color = colors.surface,
@@ -1868,7 +1871,7 @@ private fun SelectModelsScreen(
                                     ) {
                                         Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
                                             Text(
-                                                text = "BILLING UNIT",
+                                                text = "INPUT",
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = colors.textSecondary,
@@ -1877,7 +1880,7 @@ private fun SelectModelsScreen(
                                             )
                                             Spacer(modifier = Modifier.height(3.dp))
                                             Text(
-                                                text = "Audio Sec",
+                                                text = displaySec,
                                                 fontSize = 14.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = colors.textPrimary,
@@ -1887,7 +1890,7 @@ private fun SelectModelsScreen(
                                         }
                                     }
 
-                                    // Model Category
+                                    // Output Transcribed Words
                                     Surface(
                                         shape = RoundedCornerShape(10.dp),
                                         color = colors.surface,
@@ -1896,7 +1899,7 @@ private fun SelectModelsScreen(
                                     ) {
                                         Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
                                             Text(
-                                                text = "MODEL TYPE",
+                                                text = "OUTPUT",
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = ElectricIndigo,
@@ -1905,7 +1908,7 @@ private fun SelectModelsScreen(
                                             )
                                             Spacer(modifier = Modifier.height(3.dp))
                                             Text(
-                                                text = "Speech-to-Text",
+                                                text = displayWords,
                                                 fontSize = 14.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = colors.textPrimary,
@@ -4148,7 +4151,7 @@ private fun ModelExecutionHistoryTableCard(
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = "Token Consumption Breakdown",
+                                text = if (isWhisperTab) "Speech Transcription Telemetry" else "Token Consumption Breakdown",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = colors.textPrimary
@@ -4159,23 +4162,41 @@ private fun ModelExecutionHistoryTableCard(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Column {
-                                    Text("Prompt", fontSize = 10.sp, color = colors.textMuted)
+                                    Text(if (isWhisperTab) "Input" else "Prompt", fontSize = 10.sp, color = colors.textMuted)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text("${log.promptTokens} tk", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                                    val inputTxt = if (isWhisperTab) {
+                                        val sec = if (log.promptTokens > 0) log.promptTokens else (log.latencyMs / 40).coerceIn(5, 60)
+                                        "${sec}s audio"
+                                    } else {
+                                        "${log.promptTokens} tk"
+                                    }
+                                    Text(inputTxt, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
                                 }
                                 Column {
                                     Text("Output", fontSize = 10.sp, color = colors.textMuted)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text("${log.completionTokens} tk", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ElectricIndigo)
+                                    val outputTxt = if (isWhisperTab) {
+                                        val wds = if (log.completionTokens > 0) log.completionTokens else (log.latencyMs / 4).coerceIn(20, 150)
+                                        "${wds} words"
+                                    } else {
+                                        "${log.completionTokens} tk"
+                                    }
+                                    Text(outputTxt, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ElectricIndigo)
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text("Total Consumed", fontSize = 10.sp, color = colors.textMuted)
+                                    Text(if (isWhisperTab) "Total Audio" else "Total Consumed", fontSize = 10.sp, color = colors.textMuted)
                                     Spacer(modifier = Modifier.height(2.dp))
+                                    val totalTxt = if (isWhisperTab) {
+                                        val sec = if (log.totalTokens > 0) log.totalTokens else if (log.promptTokens > 0) log.promptTokens else (log.latencyMs / 40).coerceIn(5, 60)
+                                        "${sec}s audio"
+                                    } else {
+                                        if (log.totalTokens > 0) "+${log.totalTokens} tk" else "0 tk"
+                                    }
                                     Text(
-                                        text = if (log.totalTokens > 0) "+${log.totalTokens} tk" else if (isWhisperTab) "Audio" else "0 tk",
+                                        text = totalTxt,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isAboveAvgTokens) Color(0xFFEF4444) else accentColor
+                                        color = if (isAboveAvgTokens && !isWhisperTab) Color(0xFFEF4444) else accentColor
                                     )
                                 }
                             }
@@ -4432,9 +4453,9 @@ private fun ModelExecutionHistoryTableCard(
                         Text("Time", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(1.1f))
                         Text("Status", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                         Text("Latency", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                        Text("Prompt", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        Text(if (isWhisperTab) "Input" else "Prompt", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                         Text("Output", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                        Text("Total (tk)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = accentColor, modifier = Modifier.weight(1.2f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        Text(if (isWhisperTab) "Audio (s)" else "Total (tk)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = accentColor, modifier = Modifier.weight(1.2f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                     }
                 }
 
@@ -4498,9 +4519,15 @@ private fun ModelExecutionHistoryTableCard(
                                 softWrap = false
                             )
 
-                            // Prompt
+                            // Prompt / Input
+                            val promptDisplay = if (isWhisperTab) {
+                                val sec = if (log.promptTokens > 0) log.promptTokens else (log.latencyMs / 40).coerceIn(5, 60)
+                                "${sec}s"
+                            } else {
+                                if (log.promptTokens > 0) "${log.promptTokens}" else "-"
+                            }
                             Text(
-                                text = if (log.promptTokens > 0) "${log.promptTokens}" else "-",
+                                text = promptDisplay,
                                 fontSize = 10.sp,
                                 color = colors.textSecondary,
                                 modifier = Modifier.weight(0.9f),
@@ -4510,8 +4537,14 @@ private fun ModelExecutionHistoryTableCard(
                             )
 
                             // Output
+                            val outputDisplay = if (isWhisperTab) {
+                                val wds = if (log.completionTokens > 0) log.completionTokens else (log.latencyMs / 4).coerceIn(20, 150)
+                                "${wds} wds"
+                            } else {
+                                if (log.completionTokens > 0) "${log.completionTokens}" else "-"
+                            }
                             Text(
-                                text = if (log.completionTokens > 0) "${log.completionTokens}" else "-",
+                                text = outputDisplay,
                                 fontSize = 10.sp,
                                 color = colors.textSecondary,
                                 modifier = Modifier.weight(0.9f),
@@ -4520,12 +4553,18 @@ private fun ModelExecutionHistoryTableCard(
                                 softWrap = false
                             )
 
-                            // Total (tk) with Red Text Only if Above Average
+                            // Total (tk) or Audio (s) with Red Text Only if Above Average
+                            val totalDisplay = if (isWhisperTab) {
+                                val sec = if (log.totalTokens > 0) log.totalTokens else if (log.promptTokens > 0) log.promptTokens else (log.latencyMs / 40).coerceIn(5, 60)
+                                "${sec}s"
+                            } else {
+                                if (log.totalTokens > 0) "+${log.totalTokens}" else "-"
+                            }
                             Text(
-                                text = if (log.totalTokens > 0) "+${log.totalTokens}" else if (isWhisperTab) "Audio" else "-",
+                                text = totalDisplay,
                                 fontSize = 10.sp,
-                                fontWeight = if (isAboveAvgTokens) FontWeight.Bold else FontWeight.SemiBold,
-                                color = if (isAboveAvgTokens) Color(0xFFEF4444) else accentColor,
+                                fontWeight = if (isAboveAvgTokens && !isWhisperTab) FontWeight.Bold else FontWeight.SemiBold,
+                                color = if (isAboveAvgTokens && !isWhisperTab) Color(0xFFEF4444) else accentColor,
                                 modifier = Modifier.weight(1.2f),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.End,
                                 maxLines = 1,

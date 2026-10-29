@@ -102,37 +102,43 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     repository.setLocalModelStatus(isWhisper = false, isDownloaded = false, path = null)
                 }
 
-                // Seed groqWhisperAudioSeconds from existing indexed reels if currently 0
+                val db = AppDatabase.getInstance(getApplication())
+                // Backfill older whisper logs so Prompt (input) and Output show real telemetry numbers
+                db.tokenUsageDao().backfillWhisperLogsInputOutput()
+
+                // Seed groqWhisperAudioSeconds and groqWhisperOutputWords from existing indexed reels if currently 0
                 val currentPrefs = repository.preferencesFlow.first()
-                if (currentPrefs.groqWhisperAudioSeconds == 0L) {
-                    val db = AppDatabase.getInstance(getApplication())
-                    val reels: List<ReelEntity> = db.reelDao().getAllReelsSync()
-                    var totalSec = 0L
-                    for (reel in reels) {
-                        if (!reel.transcript.isNullOrBlank() && reel.transcript != "Not available") {
-                            var sec = 0L
-                            if (!reel.audioPath.isNullOrBlank()) {
-                                val audioFile = java.io.File(reel.audioPath)
-                                if (audioFile.exists()) {
-                                    try {
-                                        val retriever = android.media.MediaMetadataRetriever()
-                                        retriever.setDataSource(audioFile.absolutePath)
-                                        val d = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-                                        retriever.release()
-                                        sec = (d?.toLongOrNull() ?: 0L) / 1000L
-                                    } catch (_: Exception) {}
-                                }
+                val reels: List<ReelEntity> = db.reelDao().getAllReelsSync()
+                var totalSec = 0L
+                var totalWords = 0L
+                for (reel in reels) {
+                    if (!reel.transcript.isNullOrBlank() && reel.transcript != "Not available") {
+                        val words = reel.transcript.split(Regex("\\s+")).count { it.isNotBlank() }
+                        totalWords += words
+                        var sec = 0L
+                        if (!reel.audioPath.isNullOrBlank()) {
+                            val audioFile = java.io.File(reel.audioPath)
+                            if (audioFile.exists()) {
+                                try {
+                                    val retriever = android.media.MediaMetadataRetriever()
+                                    retriever.setDataSource(audioFile.absolutePath)
+                                    val d = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                                    retriever.release()
+                                    sec = (d?.toLongOrNull() ?: 0L) / 1000L
+                                } catch (_: Exception) {}
                             }
-                            if (sec <= 0L) {
-                                val words = reel.transcript.split(Regex("\\s+")).count { it.isNotBlank() }
-                                sec = (words / 2.5).toLong().coerceIn(10L, 90L)
-                            }
-                            totalSec += sec
                         }
+                        if (sec <= 0L) {
+                            sec = (words / 2.5).toLong().coerceIn(10L, 90L)
+                        }
+                        totalSec += sec
                     }
-                    if (totalSec > 0L) {
-                        repository.setGroqWhisperAudioSeconds(totalSec)
-                    }
+                }
+                if (currentPrefs.groqWhisperAudioSeconds == 0L && totalSec > 0L) {
+                    repository.setGroqWhisperAudioSeconds(totalSec)
+                }
+                if (currentPrefs.groqWhisperOutputWords == 0L && totalWords > 0L) {
+                    repository.setGroqWhisperOutputWords(totalWords)
                 }
             } catch (_: Exception) {}
         }

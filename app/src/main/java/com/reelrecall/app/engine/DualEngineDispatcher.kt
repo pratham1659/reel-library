@@ -30,11 +30,11 @@ class DualEngineDispatcher(
         }
     }
 
-    private val onWhisperAudioTranscribed: (Long, Long) -> Unit = { audioSeconds, latency ->
+    private val onWhisperAudioTranscribed: (Long, Long, Long) -> Unit = { audioSeconds, wordsTranscribed, latency ->
         scope.launch {
             preferencesRepo.recordTokenUsage(
-                promptTokens = 0L,
-                completionTokens = 0L,
+                promptTokens = audioSeconds,
+                completionTokens = wordsTranscribed,
                 latencyMs = latency,
                 statusCode = "200 OK",
                 provider = "Groq LPU ~ Whisper",

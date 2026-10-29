@@ -86,6 +86,8 @@ data class AppPreferences(
     val groqWhisperCalls: Long = 0L,
     val groqWhisperAudioSeconds: Long = 0L,
     val lastCallWhisperAudioSeconds: Long = 0L,
+    val groqWhisperOutputWords: Long = 0L,
+    val lastCallWhisperOutputWords: Long = 0L,
     val groqQwenTokens: Long = 0L,
     val groqQwenPromptTokens: Long = 0L,
     val groqQwenCompletionTokens: Long = 0L,
@@ -176,6 +178,8 @@ class PreferencesRepository(private val context: Context) {
         val GROQ_WHISPER_CALLS_COUNT = longPreferencesKey("groq_whisper_calls_count")
         val GROQ_WHISPER_AUDIO_SECONDS = longPreferencesKey("groq_whisper_audio_seconds")
         val LAST_CALL_WHISPER_AUDIO_SECONDS = longPreferencesKey("last_call_whisper_audio_seconds")
+        val GROQ_WHISPER_OUTPUT_WORDS = longPreferencesKey("groq_whisper_output_words")
+        val LAST_CALL_WHISPER_OUTPUT_WORDS = longPreferencesKey("last_call_whisper_output_words")
         val GROQ_QWEN_TOTAL_TOKENS = longPreferencesKey("groq_qwen_total_tokens")
         val GROQ_QWEN_PROMPT_TOKENS = longPreferencesKey("groq_qwen_prompt_tokens")
         val GROQ_QWEN_COMPLETION_TOKENS = longPreferencesKey("groq_qwen_completion_tokens")
@@ -342,6 +346,8 @@ class PreferencesRepository(private val context: Context) {
             groqWhisperCalls = preferences[PreferencesKeys.GROQ_WHISPER_CALLS_COUNT] ?: 0L,
             groqWhisperAudioSeconds = preferences[PreferencesKeys.GROQ_WHISPER_AUDIO_SECONDS] ?: 0L,
             lastCallWhisperAudioSeconds = preferences[PreferencesKeys.LAST_CALL_WHISPER_AUDIO_SECONDS] ?: 0L,
+            groqWhisperOutputWords = preferences[PreferencesKeys.GROQ_WHISPER_OUTPUT_WORDS] ?: 0L,
+            lastCallWhisperOutputWords = preferences[PreferencesKeys.LAST_CALL_WHISPER_OUTPUT_WORDS] ?: 0L,
             groqQwenTokens = preferences[PreferencesKeys.GROQ_QWEN_TOTAL_TOKENS] ?: (preferences[PreferencesKeys.GROQ_TOTAL_TOKENS] ?: 0L),
             groqQwenPromptTokens = preferences[PreferencesKeys.GROQ_QWEN_PROMPT_TOKENS] ?: (preferences[PreferencesKeys.GROQ_PROMPT_TOKENS] ?: 0L),
             groqQwenCompletionTokens = preferences[PreferencesKeys.GROQ_QWEN_COMPLETION_TOKENS] ?: (preferences[PreferencesKeys.GROQ_COMPLETION_TOKENS] ?: 0L),
@@ -651,11 +657,16 @@ class PreferencesRepository(private val context: Context) {
                     val wTotal = preferences[PreferencesKeys.GROQ_WHISPER_TOTAL_TOKENS] ?: 0L
                     val wCalls = preferences[PreferencesKeys.GROQ_WHISPER_CALLS_COUNT] ?: 0L
                     val wAudio = preferences[PreferencesKeys.GROQ_WHISPER_AUDIO_SECONDS] ?: 0L
+                    val wWords = preferences[PreferencesKeys.GROQ_WHISPER_OUTPUT_WORDS] ?: 0L
                     preferences[PreferencesKeys.GROQ_WHISPER_TOTAL_TOKENS] = wTotal + totalForCall
                     preferences[PreferencesKeys.GROQ_WHISPER_CALLS_COUNT] = wCalls + 1
                     if (audioSeconds > 0L) {
                         preferences[PreferencesKeys.GROQ_WHISPER_AUDIO_SECONDS] = wAudio + audioSeconds
                         preferences[PreferencesKeys.LAST_CALL_WHISPER_AUDIO_SECONDS] = audioSeconds
+                    }
+                    if (completionTokens > 0L) {
+                        preferences[PreferencesKeys.GROQ_WHISPER_OUTPUT_WORDS] = wWords + completionTokens
+                        preferences[PreferencesKeys.LAST_CALL_WHISPER_OUTPUT_WORDS] = completionTokens
                     }
 
                     preferences[PreferencesKeys.LAST_CALL_WHISPER_TOKENS] = totalForCall
@@ -726,6 +737,12 @@ class PreferencesRepository(private val context: Context) {
     suspend fun setGroqWhisperAudioSeconds(seconds: Long) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.GROQ_WHISPER_AUDIO_SECONDS] = seconds
+        }
+    }
+
+    suspend fun setGroqWhisperOutputWords(words: Long) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.GROQ_WHISPER_OUTPUT_WORDS] = words
         }
     }
 }

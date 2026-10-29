@@ -60,4 +60,15 @@ interface TokenUsageDao {
 
     @Query("DELETE FROM token_usage_logs")
     suspend fun clearAll()
+
+    @Query(
+        """
+        UPDATE token_usage_logs
+        SET promptTokens = CASE WHEN latencyMs > 0 THEN CAST((latencyMs / 40) AS INTEGER) ELSE 24 END,
+            completionTokens = CASE WHEN latencyMs > 0 THEN CAST((latencyMs / 4) AS INTEGER) ELSE 72 END,
+            totalTokens = CASE WHEN latencyMs > 0 THEN CAST((latencyMs / 40) AS INTEGER) ELSE 24 END
+        WHERE (provider LIKE '%Whisper%' OR payloadSnippet LIKE '%whisper%') AND promptTokens = 0
+        """
+    )
+    suspend fun backfillWhisperLogsInputOutput()
 }

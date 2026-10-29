@@ -4,11 +4,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
 interface TranscriptionEngine {
@@ -28,7 +35,7 @@ private data class GroqTranscriptionResponse(
 class GroqWhisperEngine(
     private val apiKey: String,
     private val client: OkHttpClient = OkHttpClient(),
-    private val onAudioTranscribed: ((audioSeconds: Long, latencyMs: Long) -> Unit)? = null
+    private val onAudioTranscribed: ((audioSeconds: Long, wordsTranscribed: Long, latencyMs: Long) -> Unit)? = null
 ) : TranscriptionEngine {
 
     override val name: String = "Groq LPU ~ Whisper"
@@ -52,10 +59,13 @@ class GroqWhisperEngine(
                 "audio/*".toMediaTypeOrNull()
             }
 
+            val whisperPrompt = "Transcribe spoken Hindi in Hinglish using Roman Latin script (e.g., 'Haan dosto aaj hum is video mein baat karenge...'). Transcribe English in English. For any other foreign language, translate and transcribe in English."
+
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("model", "whisper-large-v3-turbo")
                 .addFormDataPart("response_format", "json")
+                .addFormDataPart("prompt", whisperPrompt)
                 .addFormDataPart(
                     "file",
                     audioFile.name,
@@ -92,12 +102,66 @@ class GroqWhisperEngine(
                     0L
                 }
                 val audioSeconds = (audioDurationMs / 1000L).coerceAtLeast(1L)
-                onAudioTranscribed?.invoke(audioSeconds, latency)
 
-                Result.success(parsed.text.trim())
+                // Ensure transcript conforms to: Hindi -> Hinglish (Roman script), English -> English, Non-English -> English translation
+                val rawTranscript = parsed.text.trim()
+                val finalizedTranscript = formatTranscriptHinglishOrEnglish(rawTranscript, apiKey, client)
+
+                val wordsTranscribed = finalizedTranscript.split(Regex("""\s+""")).count { it.isNotBlank() }.toLong()
+                onAudioTranscribed?.invoke(audioSeconds, wordsTranscribed, latency)
+
+                Result.success(finalizedTranscript)
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private fun formatTranscriptHinglishOrEnglish(
+        rawText: String,
+        apiKey: String,
+        client: OkHttpClient
+    ): String {
+        if (rawText.isBlank() || apiKey.isBlank()) return rawText
+        val hasDevanagari = rawText.any { it in '\u0900'..'\u097F' }
+        if (!hasDevanagari) {
+            return rawText
+        }
+        return try {
+            val systemPrompt = "You are an expert audio transcription formatter. Follow these strict rules:\n" +
+                    "1. If the content is in Hindi (Devanagari script), transliterate/convert it into natural, fluent HINGLISH using Roman/Latin alphabet (e.g., 'Haan dosto aaj hum baat karenge...'). Keep technical English terms in English.\n" +
+                    "2. If the content is in English, output it in English.\n" +
+                    "3. If the content is in another non-English foreign language, translate it into English.\n" +
+                    "4. Output ONLY the finalized text. Do not add quotes, introductory remarks, or explanations."
+            val payload = """
+                {
+                  "model": "llama-3.1-8b-instant",
+                  "messages": [
+                    {"role": "system", "content": ${Json.encodeToString(kotlinx.serialization.serializer(), systemPrompt)}},
+                    {"role": "user", "content": ${Json.encodeToString(kotlinx.serialization.serializer(), rawText)}}
+                  ],
+                  "temperature": 0.1,
+                  "max_tokens": 1024
+                }
+            """.trimIndent()
+            val body = payload.toRequestBody("application/json".toMediaType())
+            val req = Request.Builder()
+                .url("https://api.groq.com/openai/v1/chat/completions")
+                .addHeader("Authorization", "Bearer ${apiKey.trim()}")
+                .post(body)
+                .build()
+            client.newCall(req).execute().use { resp ->
+                if (resp.isSuccessful) {
+                    val respStr = resp.body?.string() ?: ""
+                    val root = json.decodeFromString<JsonObject>(respStr)
+                    val content = root["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull
+                    if (!content.isNullOrBlank()) content.trim() else rawText
+                } else {
+                    rawText
+                }
+            }
+        } catch (_: Exception) {
+            rawText
         }
     }
 }
