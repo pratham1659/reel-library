@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Exclude encrypted and legacy shared preferences from full-backup -->
+    <exclude domain="sharedpref" path="reel_library_vault_encrypted.xml" />
+    <exclude domain="sharedpref" path="reelrecall_secure_keys.xml" />
+    <exclude domain="sharedpref" path="reel_library_prefs.xml" />
+    <exclude domain="database" path="reel_library.db" />
+</full-backup-content>

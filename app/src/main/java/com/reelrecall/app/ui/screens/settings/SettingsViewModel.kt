@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -99,6 +100,45 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 if (llmFile.exists() && llmFile.length() < 50_000_000L) {
                     llmFile.delete()
                     repository.setLocalModelStatus(isWhisper = false, isDownloaded = false, path = null)
+                }
+
+                val db = AppDatabase.getInstance(getApplication())
+                // Backfill older whisper logs so Prompt (input) and Output show real telemetry numbers
+                db.tokenUsageDao().backfillWhisperLogsInputOutput()
+
+                // Seed groqWhisperAudioSeconds and groqWhisperOutputWords from existing indexed reels if currently 0
+                val currentPrefs = repository.preferencesFlow.first()
+                val reels: List<ReelEntity> = db.reelDao().getAllReelsSync()
+                var totalSec = 0L
+                var totalWords = 0L
+                for (reel in reels) {
+                    if (!reel.transcript.isNullOrBlank() && reel.transcript != "Not available") {
+                        val words = reel.transcript.split(Regex("\\s+")).count { it.isNotBlank() }
+                        totalWords += words
+                        var sec = 0L
+                        if (!reel.audioPath.isNullOrBlank()) {
+                            val audioFile = java.io.File(reel.audioPath)
+                            if (audioFile.exists()) {
+                                try {
+                                    val retriever = android.media.MediaMetadataRetriever()
+                                    retriever.setDataSource(audioFile.absolutePath)
+                                    val d = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                                    retriever.release()
+                                    sec = (d?.toLongOrNull() ?: 0L) / 1000L
+                                } catch (_: Exception) {}
+                            }
+                        }
+                        if (sec <= 0L) {
+                            sec = (words / 2.5).toLong().coerceIn(10L, 90L)
+                        }
+                        totalSec += sec
+                    }
+                }
+                if (currentPrefs.groqWhisperAudioSeconds == 0L && totalSec > 0L) {
+                    repository.setGroqWhisperAudioSeconds(totalSec)
+                }
+                if (currentPrefs.groqWhisperOutputWords == 0L && totalWords > 0L) {
+                    repository.setGroqWhisperOutputWords(totalWords)
                 }
             } catch (_: Exception) {}
         }
@@ -211,21 +251,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun saveApiKeys(groqKey: String, geminiKey: String) {
-        viewModelScope.launch {
-            repository.setApiKeys(groqKey, geminiKey)
-        }
-    }
-
     fun setGroqApiKey(key: String) {
         viewModelScope.launch {
             repository.setGroqApiKey(key)
         }
     }
 
-    fun setGeminiApiKey(key: String) {
+    fun deleteGroqApiKey() {
         viewModelScope.launch {
-            repository.setGeminiApiKey(key)
+            repository.deleteGroqApiKey()
         }
     }
 
@@ -527,7 +561,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // ==========================================
     // HEALTH CHECK & MODEL TESTING
     // ==========================================
-    fun testCloudConnection(groqKey: String = "", geminiKey: String = "") {
+    fun testCloudConnection(groqKey: String = "") {
         viewModelScope.launch {
             _cloudTestResult.value = ModelTestResult(isTesting = true, message = "Testing Groq cloud endpoint with live payload...")
 
@@ -585,7 +619,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         .build()
                     httpClient.newCall(modelsReq).execute().use { res ->
                         val modelsBody = res.body?.string() ?: ""
-                        android.util.Log.d("TEST_CLOUD", "Groq /models (HTTP ${res.code}): $modelsBody")
+                        android.util.Log.d("TEST_CLOUD", "Groq /models (HTTP ${res.code}): success=${res.isSuccessful}")
                         if (res.isSuccessful) {
                             val root = Json { ignoreUnknownKeys = true }.decodeFromString<JsonObject>(modelsBody)
                             val dataArr = root["data"] as? kotlinx.serialization.json.JsonArray
@@ -720,7 +754,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                             lastBodyStr = bodyStr
                             lastModel = model
 
-                            android.util.Log.d("TEST_CLOUD", "Groq Qwen test ($model): HTTP $code -> $bodyStr")
+                            android.util.Log.d("TEST_CLOUD", "Groq Qwen test ($model): HTTP $code")
 
                             if (res.isSuccessful) {
                                 qwenSuccess = true
@@ -916,7 +950,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     promptTokens = 128L,
                     completionTokens = 32L,
                     modelName = "gemma-2-2b-it-gpu",
-                    errorDetails = if (hasLlm) null else "Gemma 2B model weights are not installed on this device. Configure Groq or Gemini API key in Settings for cloud summarization.",
+                    errorDetails = if (hasLlm) null else "Gemma 2B model weights are not installed on this device. Configure Groq API key in Settings for cloud summarization.",
                     rawResponse = "{\n  \"model\": \"gemma-2-2b-it-gpu.bin\",\n  \"engine\": \"MediaPipe GenAI\",\n  \"parameters\": \"2.6B\",\n  \"ram\": \"${hardware.ramDisplay}\",\n  \"execution\": \"GPU/NPU Delegate\",\n  \"context_tokens\": 2048,\n  \"status\": \"${if (hasLlm) "READY" else "NOT_INSTALLED"}\"\n}"
                 )
             )
@@ -925,7 +959,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val summaryMsg = if (allOk) {
                 "Local Engine Verified: NPU Ready • FP16 Latency ${elapsedLatency}ms • 100% Offline"
             } else {
-                "Local Engine: Model weights not installed on device. Configure Groq or Gemini in Cloud AI Settings."
+                "Local Engine: Model weights not installed on device. Configure Groq in Cloud AI Settings."
             }
 
             _localTestResult.value = ModelTestResult(

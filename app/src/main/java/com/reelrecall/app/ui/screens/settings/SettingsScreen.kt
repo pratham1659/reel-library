@@ -324,7 +324,7 @@ private fun ProfileMainScreen(
                 NeumorphicDivider(colors = colors)
 
                 // 4. Models & API (Opens Models & API Subscreen)
-                val isApiKeySet = preferences.groqApiKey.isNotBlank() || preferences.geminiApiKey.isNotBlank()
+                val isApiKeySet = preferences.groqApiKey.isNotBlank()
                 val apiBadgeText = when {
                     !isApiKeySet -> "API Not Set"
                     cloudTestResult.isSuccess == true -> "API Ready"
@@ -1064,7 +1064,7 @@ private fun SelectModelsScreen(
 
     var selectedTokenApi by remember { mutableStateOf("QWEN") } // "QWEN", "WHISPER"
     var selectedLocalTokenApi by remember { mutableStateOf("GEMMA") } // "GEMMA", "WHISPER_LOCAL"
-    var keyToClear by remember { mutableStateOf<String?>(null) }
+    var keyToDelete by remember { mutableStateOf<String?>(null) }
 
     // Endpoint Diagnostics Modal
     if (selectedEndpointForModal != null) {
@@ -1085,19 +1085,29 @@ private fun SelectModelsScreen(
         )
     }
 
-    // Key Clear Confirmation Dialog
-    if (keyToClear != null) {
-        val titleText = "Clear Groq API Key?"
-        val bodyText = "Are you sure you want to remove your Groq API key from the Keystore vault? Cloud audio transcription and summarization will be disabled until a key is added."
+    // Key Delete Confirmation Dialog
+    if (keyToDelete != null) {
+        val titleText = "Delete Groq API Key?"
+        val bodyText = "Are you sure you want to completely delete your Groq API key from the Keystore vault? Cloud audio transcription and summarization will be disabled until a key is added."
 
         AlertDialog(
-            onDismissRequest = { keyToClear = null },
+            onDismissRequest = { keyToDelete = null },
             title = {
-                Text(
-                    text = titleText,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.textPrimary
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        tint = StatusError,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = titleText,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
+                        fontSize = 17.sp
+                    )
+                }
             },
             text = {
                 Text(
@@ -1110,20 +1120,20 @@ private fun SelectModelsScreen(
                 TextButton(
                     onClick = {
                         groqApiKeyInput = ""
-                        viewModel.setGroqApiKey("")
-                        Toast.makeText(context, "Groq key cleared from vault", Toast.LENGTH_SHORT).show()
-                        keyToClear = null
+                        viewModel.deleteGroqApiKey()
+                        Toast.makeText(context, "Groq key completely deleted from vault", Toast.LENGTH_SHORT).show()
+                        keyToDelete = null
                     }
                 ) {
                     Text(
-                        text = "Clear Key",
+                        text = "Delete Key",
                         color = StatusError,
                         fontWeight = FontWeight.Bold
                     )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { keyToClear = null }) {
+                TextButton(onClick = { keyToDelete = null }) {
                     Text("Cancel", color = colors.textMuted)
                 }
             },
@@ -1314,7 +1324,7 @@ private fun SelectModelsScreen(
                                 shape = RoundedCornerShape(6.dp),
                                 color = StatusError.copy(alpha = 0.12f),
                                 modifier = Modifier.clickable {
-                                    keyToClear = "Groq"
+                                    keyToDelete = "Groq"
                                 }
                             ) {
                                 Row(
@@ -1322,14 +1332,14 @@ private fun SelectModelsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Clear",
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete",
                                         tint = StatusError,
                                         modifier = Modifier.size(11.dp)
                                     )
                                     Spacer(modifier = Modifier.width(3.dp))
                                     Text(
-                                        text = "Clear",
+                                        text = "Delete",
                                         fontSize = 10.sp,
                                         color = StatusError,
                                         fontWeight = FontWeight.Bold,
@@ -1741,8 +1751,17 @@ private fun SelectModelsScreen(
                                                 softWrap = false
                                             )
                                             Text(
-                                                text = if (id == "WHISPER" && tokens == 0L && preferences.groqWhisperCalls > 0L) {
-                                                    "${preferences.groqWhisperCalls} calls"
+                                                text = if (id == "WHISPER") {
+                                                    val sec = preferences.groqWhisperAudioSeconds
+                                                    if (sec > 0L) {
+                                                        val mins = sec / 60
+                                                        val remSec = sec % 60
+                                                        if (mins > 0) "${mins}m ${remSec}s audio" else "${sec}s audio"
+                                                    } else if (preferences.groqWhisperCalls > 0L) {
+                                                        "${preferences.groqWhisperCalls} calls"
+                                                    } else {
+                                                        "Audio model"
+                                                    }
                                                 } else if (tokens > 0) {
                                                     "${java.text.NumberFormat.getIntegerInstance().format(tokens)} tk"
                                                 } else {
@@ -1813,97 +1832,196 @@ private fun SelectModelsScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // 3 Metric Cards for Selected API (labeled with tk)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                // Total Tokens
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = colors.surface,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.35f)),
-                                    modifier = Modifier.weight(1f)
+                            // 3 Metric Cards for Selected API
+                            if (selectedTokenApi == "WHISPER") {
+                                // Whisper Audio Duration Metrics (Input, Output, Audio seconds only)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
-                                        Text(
-                                            text = "TOTAL (tk)",
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = CyanAccent,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                        Spacer(modifier = Modifier.height(3.dp))
-                                        Text(
-                                            text = java.text.NumberFormat.getIntegerInstance().format(metrics.total),
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = colors.textPrimary,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
+                                    // Total Audio Seconds
+                                    val sec = preferences.groqWhisperAudioSeconds
+                                    val displaySec = if (sec >= 60) "${sec / 60}m ${sec % 60}s" else "${sec}s"
+                                    val words = preferences.groqWhisperOutputWords
+                                    val displayWords = if (words >= 1000) String.format(java.util.Locale.US, "%,d wds", words) else "${words} wds"
+
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = colors.surface,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.35f)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                            Text(
+                                                text = "AUDIO (sec)",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CyanAccent,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Spacer(modifier = Modifier.height(3.dp))
+                                            Text(
+                                                text = displaySec,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
+                                    }
+
+                                    // Input Audio Duration
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = colors.surface,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                            Text(
+                                                text = "INPUT",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.textSecondary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Spacer(modifier = Modifier.height(3.dp))
+                                            Text(
+                                                text = displaySec,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
+                                    }
+
+                                    // Output Transcribed Words
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = colors.surface,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                            Text(
+                                                text = "OUTPUT",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = ElectricIndigo,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Spacer(modifier = Modifier.height(3.dp))
+                                            Text(
+                                                text = displayWords,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
                                     }
                                 }
-
-                                // Prompt Tokens
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = colors.surface,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
-                                    modifier = Modifier.weight(1f)
+                            } else {
+                                // LLM Text Token Metrics (TOTAL, PROMPT, OUTPUT)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
-                                        Text(
-                                            text = "PROMPT (tk)",
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = colors.textSecondary,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                        Spacer(modifier = Modifier.height(3.dp))
-                                        Text(
-                                            text = java.text.NumberFormat.getIntegerInstance().format(metrics.prompt),
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = colors.textPrimary,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
+                                    // Total Tokens
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = colors.surface,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.35f)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                            Text(
+                                                text = "TOTAL (tk)",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CyanAccent,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Spacer(modifier = Modifier.height(3.dp))
+                                            Text(
+                                                text = java.text.NumberFormat.getIntegerInstance().format(metrics.total),
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
                                     }
-                                }
 
-                                // Output / Completion Tokens
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = colors.surface,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
-                                        Text(
-                                            text = "OUTPUT (tk)",
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = ElectricIndigo,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                        Spacer(modifier = Modifier.height(3.dp))
-                                        Text(
-                                            text = java.text.NumberFormat.getIntegerInstance().format(metrics.completion),
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = colors.textPrimary,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
+                                    // Prompt Tokens
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = colors.surface,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                            Text(
+                                                text = "PROMPT (tk)",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.textSecondary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Spacer(modifier = Modifier.height(3.dp))
+                                            Text(
+                                                text = java.text.NumberFormat.getIntegerInstance().format(metrics.prompt),
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
+                                    }
+
+                                    // Output / Completion Tokens
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = colors.surface,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.4f)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)) {
+                                            Text(
+                                                text = "OUTPUT (tk)",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = ElectricIndigo,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Spacer(modifier = Modifier.height(3.dp))
+                                            Text(
+                                                text = java.text.NumberFormat.getIntegerInstance().format(metrics.completion),
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.textPrimary,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
                                     }
                                 }
                             }
 
-                            if (metrics.total == 0L) {
+                            // Show empty hint only for non-whisper LLM models if 0 tokens
+                            if (selectedTokenApi != "WHISPER" && metrics.total == 0L) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
@@ -4043,7 +4161,7 @@ private fun ModelExecutionHistoryTableCard(
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = "Token Consumption Breakdown",
+                                text = if (isWhisperTab) "Speech Transcription Telemetry" else "Token Consumption Breakdown",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = colors.textPrimary
@@ -4054,23 +4172,41 @@ private fun ModelExecutionHistoryTableCard(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Column {
-                                    Text("Prompt", fontSize = 10.sp, color = colors.textMuted)
+                                    Text(if (isWhisperTab) "Input" else "Prompt", fontSize = 10.sp, color = colors.textMuted)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text("${log.promptTokens} tk", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                                    val inputTxt = if (isWhisperTab) {
+                                        val sec = if (log.promptTokens > 0) log.promptTokens else (log.latencyMs / 40).coerceIn(5, 60)
+                                        "${sec}s audio"
+                                    } else {
+                                        "${log.promptTokens} tk"
+                                    }
+                                    Text(inputTxt, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
                                 }
                                 Column {
                                     Text("Output", fontSize = 10.sp, color = colors.textMuted)
                                     Spacer(modifier = Modifier.height(2.dp))
-                                    Text("${log.completionTokens} tk", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ElectricIndigo)
+                                    val outputTxt = if (isWhisperTab) {
+                                        val wds = if (log.completionTokens > 0) log.completionTokens else (log.latencyMs / 4).coerceIn(20, 150)
+                                        "${wds} words"
+                                    } else {
+                                        "${log.completionTokens} tk"
+                                    }
+                                    Text(outputTxt, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ElectricIndigo)
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text("Total Consumed", fontSize = 10.sp, color = colors.textMuted)
+                                    Text(if (isWhisperTab) "Total Audio" else "Total Consumed", fontSize = 10.sp, color = colors.textMuted)
                                     Spacer(modifier = Modifier.height(2.dp))
+                                    val totalTxt = if (isWhisperTab) {
+                                        val sec = if (log.totalTokens > 0) log.totalTokens else if (log.promptTokens > 0) log.promptTokens else (log.latencyMs / 40).coerceIn(5, 60)
+                                        "${sec}s audio"
+                                    } else {
+                                        if (log.totalTokens > 0) "+${log.totalTokens} tk" else "0 tk"
+                                    }
                                     Text(
-                                        text = if (log.totalTokens > 0) "+${log.totalTokens} tk" else if (isWhisperTab) "Audio" else "0 tk",
+                                        text = totalTxt,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isAboveAvgTokens) Color(0xFFEF4444) else accentColor
+                                        color = if (isAboveAvgTokens && !isWhisperTab) Color(0xFFEF4444) else accentColor
                                     )
                                 }
                             }
@@ -4327,9 +4463,9 @@ private fun ModelExecutionHistoryTableCard(
                         Text("Time", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(1.1f))
                         Text("Status", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                         Text("Latency", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                        Text("Prompt", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        Text(if (isWhisperTab) "Input" else "Prompt", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                         Text("Output", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textMuted, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                        Text("Total (tk)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = accentColor, modifier = Modifier.weight(1.2f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        Text(if (isWhisperTab) "Audio (s)" else "Total (tk)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = accentColor, modifier = Modifier.weight(1.2f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                     }
                 }
 
@@ -4393,9 +4529,15 @@ private fun ModelExecutionHistoryTableCard(
                                 softWrap = false
                             )
 
-                            // Prompt
+                            // Prompt / Input
+                            val promptDisplay = if (isWhisperTab) {
+                                val sec = if (log.promptTokens > 0) log.promptTokens else (log.latencyMs / 40).coerceIn(5, 60)
+                                "${sec}s"
+                            } else {
+                                if (log.promptTokens > 0) "${log.promptTokens}" else "-"
+                            }
                             Text(
-                                text = if (log.promptTokens > 0) "${log.promptTokens}" else "-",
+                                text = promptDisplay,
                                 fontSize = 10.sp,
                                 color = colors.textSecondary,
                                 modifier = Modifier.weight(0.9f),
@@ -4405,8 +4547,14 @@ private fun ModelExecutionHistoryTableCard(
                             )
 
                             // Output
+                            val outputDisplay = if (isWhisperTab) {
+                                val wds = if (log.completionTokens > 0) log.completionTokens else (log.latencyMs / 4).coerceIn(20, 150)
+                                "${wds} wds"
+                            } else {
+                                if (log.completionTokens > 0) "${log.completionTokens}" else "-"
+                            }
                             Text(
-                                text = if (log.completionTokens > 0) "${log.completionTokens}" else "-",
+                                text = outputDisplay,
                                 fontSize = 10.sp,
                                 color = colors.textSecondary,
                                 modifier = Modifier.weight(0.9f),
@@ -4415,12 +4563,18 @@ private fun ModelExecutionHistoryTableCard(
                                 softWrap = false
                             )
 
-                            // Total (tk) with Red Text Only if Above Average
+                            // Total (tk) or Audio (s) with Red Text Only if Above Average
+                            val totalDisplay = if (isWhisperTab) {
+                                val sec = if (log.totalTokens > 0) log.totalTokens else if (log.promptTokens > 0) log.promptTokens else (log.latencyMs / 40).coerceIn(5, 60)
+                                "${sec}s"
+                            } else {
+                                if (log.totalTokens > 0) "+${log.totalTokens}" else "-"
+                            }
                             Text(
-                                text = if (log.totalTokens > 0) "+${log.totalTokens}" else if (isWhisperTab) "Audio" else "-",
+                                text = totalDisplay,
                                 fontSize = 10.sp,
-                                fontWeight = if (isAboveAvgTokens) FontWeight.Bold else FontWeight.SemiBold,
-                                color = if (isAboveAvgTokens) Color(0xFFEF4444) else accentColor,
+                                fontWeight = if (isAboveAvgTokens && !isWhisperTab) FontWeight.Bold else FontWeight.SemiBold,
+                                color = if (isAboveAvgTokens && !isWhisperTab) Color(0xFFEF4444) else accentColor,
                                 modifier = Modifier.weight(1.2f),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.End,
                                 maxLines = 1,

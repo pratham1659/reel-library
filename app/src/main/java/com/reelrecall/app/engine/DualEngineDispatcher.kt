@@ -30,6 +30,20 @@ class DualEngineDispatcher(
         }
     }
 
+    private val onWhisperAudioTranscribed: (Long, Long, Long) -> Unit = { audioSeconds, wordsTranscribed, latency ->
+        scope.launch {
+            preferencesRepo.recordTokenUsage(
+                promptTokens = audioSeconds,
+                completionTokens = wordsTranscribed,
+                latencyMs = latency,
+                statusCode = "200 OK",
+                provider = "Groq LPU ~ Whisper",
+                model = "whisper-large-v3-turbo",
+                audioSeconds = audioSeconds
+            )
+        }
+    }
+
     fun resolveTranscriptionEngine(prefs: AppPreferences): TranscriptionEngine {
         val whisperPath = prefs.whisperModelPath
         val whisperFile = if (!whisperPath.isNullOrBlank() && File(whisperPath).exists()) {
@@ -41,7 +55,7 @@ class DualEngineDispatcher(
         return when (prefs.engineMode) {
             EngineMode.CLOUD_ONLY -> {
                 if (prefs.groqApiKey.isNotBlank()) {
-                    GroqWhisperEngine(prefs.groqApiKey)
+                    GroqWhisperEngine(prefs.groqApiKey, onAudioTranscribed = onWhisperAudioTranscribed)
                 } else {
                     FailingTranscriptionEngine("Engine Mode is set to CLOUD_ONLY: Groq API key is missing. Local fallback is strictly disallowed.")
                 }
@@ -58,7 +72,7 @@ class DualEngineDispatcher(
             EngineMode.AUTO_HYBRID -> {
                 val isOnline = isNetworkAvailable()
                 if (isOnline && prefs.groqApiKey.isNotBlank()) {
-                    GroqWhisperEngine(prefs.groqApiKey)
+                    GroqWhisperEngine(prefs.groqApiKey, onAudioTranscribed = onWhisperAudioTranscribed)
                 } else {
                     if (!whisperFile.exists() || whisperFile.length() < 10_000_000L) {
                         FailingTranscriptionEngine("Whisper transcription unavailable: Cloud requires a Groq API key and on-device Whisper weights are not installed.")
@@ -82,10 +96,8 @@ class DualEngineDispatcher(
             EngineMode.CLOUD_ONLY -> {
                 if (prefs.groqApiKey.isNotBlank()) {
                     GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
-                } else if (prefs.geminiApiKey.isNotBlank()) {
-                    GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
                 } else {
-                    FailingSummarizerEngine("Engine Mode is set to CLOUD_ONLY: Cloud API key (Groq or Gemini) is missing. Local fallback is strictly disallowed.")
+                    FailingSummarizerEngine("Engine Mode is set to CLOUD_ONLY: Groq API key is missing. Local fallback is strictly disallowed.")
                 }
             }
 
@@ -105,11 +117,9 @@ class DualEngineDispatcher(
                 val isOnline = isNetworkAvailable()
                 if (isOnline && prefs.groqApiKey.isNotBlank()) {
                     GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
-                } else if (isOnline && prefs.geminiApiKey.isNotBlank()) {
-                    GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
                 } else {
                     if (!llmFile.exists() || llmFile.length() < 50_000_000L) {
-                        FailingSummarizerEngine("Summarization unavailable: Cloud API key missing and on-device LLM weights are not installed.")
+                        FailingSummarizerEngine("Summarization unavailable: Groq API key missing and on-device LLM weights are not installed.")
                     } else {
                         LocalMediaPipeSummarizerEngine(
                             context = context,

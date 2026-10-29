@@ -4,11 +4,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 
 interface TranscriptionEngine {
@@ -27,14 +34,20 @@ private data class GroqTranscriptionResponse(
  */
 class GroqWhisperEngine(
     private val apiKey: String,
-    private val client: OkHttpClient = OkHttpClient()
+    private val client: OkHttpClient = OkHttpClient(),
+    private val onAudioTranscribed: ((audioSeconds: Long, wordsTranscribed: Long, latencyMs: Long) -> Unit)? = null
 ) : TranscriptionEngine {
+
+    companion object {
+        const val MAX_GROQ_AUDIO_BYTES: Long = 25L * 1024L * 1024L // 26,214,400 bytes
+    }
 
     override val name: String = "Groq LPU ~ Whisper"
 
     private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun transcribe(audioFile: File): Result<String> = withContext(Dispatchers.IO) {
+        val startTime = System.currentTimeMillis()
         try {
             if (apiKey.isBlank()) {
                 return@withContext Result.failure(IllegalStateException("Groq API key is not configured in Settings."))
@@ -44,16 +57,26 @@ class GroqWhisperEngine(
                 return@withContext Result.failure(IllegalStateException("No valid audio stream available for transcription."))
             }
 
+            // Groq Cloud hard upload limit is 25 MB (26,214,400 bytes)
+            if (audioFile.length() > MAX_GROQ_AUDIO_BYTES) {
+                return@withContext Result.failure(
+                    IllegalStateException("Audio file exceeds Groq maximum upload limit (25 MB). Size: ${audioFile.length() / (1024 * 1024)} MB")
+                )
+            }
+
             val mediaType = if (audioFile.name.endsWith(".mp4", ignoreCase = true)) {
                 "video/mp4".toMediaTypeOrNull()
             } else {
                 "audio/*".toMediaTypeOrNull()
             }
 
+            val whisperPrompt = "Transcribe spoken Hindi in Hinglish using Roman Latin script (e.g., 'Haan dosto aaj hum is video mein baat karenge...'). Transcribe English in English. For any other foreign language, translate and transcribe in English."
+
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("model", "whisper-large-v3-turbo")
                 .addFormDataPart("response_format", "json")
+                .addFormDataPart("prompt", whisperPrompt)
                 .addFormDataPart(
                     "file",
                     audioFile.name,
@@ -68,6 +91,7 @@ class GroqWhisperEngine(
                 .build()
 
             client.newCall(request).execute().use { response ->
+                val latency = System.currentTimeMillis() - startTime
                 if (!response.isSuccessful) {
                     val errorBody = response.body?.string() ?: "Unknown error"
                     return@withContext Result.failure(
@@ -77,10 +101,78 @@ class GroqWhisperEngine(
 
                 val responseString = response.body?.string() ?: ""
                 val parsed = json.decodeFromString<GroqTranscriptionResponse>(responseString)
-                Result.success(parsed.text.trim())
+
+                // Measure audio seconds
+                val audioDurationMs = try {
+                    val retriever = android.media.MediaMetadataRetriever()
+                    retriever.setDataSource(audioFile.absolutePath)
+                    val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    retriever.release()
+                    time?.toLongOrNull() ?: 0L
+                } catch (_: Exception) {
+                    0L
+                }
+                val audioSeconds = (audioDurationMs / 1000L).coerceAtLeast(1L)
+
+                // Ensure transcript conforms to: Hindi -> Hinglish (Roman script), English -> English, Non-English -> English translation
+                val rawTranscript = parsed.text.trim()
+                val finalizedTranscript = formatTranscriptHinglishOrEnglish(rawTranscript, apiKey, client)
+
+                val wordsTranscribed = finalizedTranscript.split(Regex("""\s+""")).count { it.isNotBlank() }.toLong()
+                onAudioTranscribed?.invoke(audioSeconds, wordsTranscribed, latency)
+
+                Result.success(finalizedTranscript)
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private fun formatTranscriptHinglishOrEnglish(
+        rawText: String,
+        apiKey: String,
+        client: OkHttpClient
+    ): String {
+        if (rawText.isBlank() || apiKey.isBlank()) return rawText
+        val hasDevanagari = rawText.any { it in '\u0900'..'\u097F' }
+        if (!hasDevanagari) {
+            return rawText
+        }
+        return try {
+            val systemPrompt = "You are an expert audio transcription formatter. Follow these strict rules:\n" +
+                    "1. If the content is in Hindi (Devanagari script), transliterate/convert it into natural, fluent HINGLISH using Roman/Latin alphabet (e.g., 'Haan dosto aaj hum baat karenge...'). Keep technical English terms in English.\n" +
+                    "2. If the content is in English, output it in English.\n" +
+                    "3. If the content is in another non-English foreign language, translate it into English.\n" +
+                    "4. Output ONLY the finalized text. Do not add quotes, introductory remarks, or explanations."
+            val payload = """
+                {
+                  "model": "llama-3.1-8b-instant",
+                  "messages": [
+                    {"role": "system", "content": ${Json.encodeToString(kotlinx.serialization.serializer(), systemPrompt)}},
+                    {"role": "user", "content": ${Json.encodeToString(kotlinx.serialization.serializer(), rawText)}}
+                  ],
+                  "temperature": 0.1,
+                  "max_tokens": 1024
+                }
+            """.trimIndent()
+            val body = payload.toRequestBody("application/json".toMediaType())
+            val req = Request.Builder()
+                .url("https://api.groq.com/openai/v1/chat/completions")
+                .addHeader("Authorization", "Bearer ${apiKey.trim()}")
+                .post(body)
+                .build()
+            client.newCall(req).execute().use { resp ->
+                if (resp.isSuccessful) {
+                    val respStr = resp.body?.string() ?: ""
+                    val root = json.decodeFromString<JsonObject>(respStr)
+                    val content = root["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull
+                    if (!content.isNullOrBlank()) content.trim() else rawText
+                } else {
+                    rawText
+                }
+            }
+        } catch (_: Exception) {
+            rawText
         }
     }
 }

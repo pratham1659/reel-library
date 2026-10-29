@@ -228,8 +228,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     companion object {
-        const val INITIAL_PAGE_SIZE = 10
-        const val PAGE_SIZE_INCREMENT = 10
+        const val INITIAL_PAGE_SIZE = 24
+        const val PAGE_SIZE_INCREMENT = 20
     }
 
     val visibleItemsCount = MutableStateFlow(INITIAL_PAGE_SIZE)
@@ -499,12 +499,12 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         else -> "Not available"
                     }
 
-                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} extracted transcript: ${realTranscript.take(80)}")
+                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} extracted transcript length: ${realTranscript.length}")
 
                     // Step 3: Summarize using rich caption + real audio transcript
                     val summaryResult = summarizer.summarize(cleanCaption, if (realTranscript == "Not available") "" else realTranscript)
                     val summary = summaryResult.getOrNull()
-                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} summary: success=${summaryResult.isSuccess}, title='${summary?.title}'")
+                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} summary: success=${summaryResult.isSuccess}")
 
                     if (summary != null) {
                         val updated = reel.copy(

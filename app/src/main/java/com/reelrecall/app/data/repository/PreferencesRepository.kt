@@ -29,7 +29,6 @@ enum class EngineMode(val displayName: String, val description: String) {
 data class AppPreferences(
     val engineMode: EngineMode = EngineMode.CLOUD_ONLY,
     val groqApiKey: String = "",
-    val geminiApiKey: String = "",
     val isWhisperModelDownloaded: Boolean = false,
     val isLlmModelDownloaded: Boolean = false,
     val whisperModelPath: String? = null,
@@ -74,16 +73,16 @@ data class AppPreferences(
     val lastCallWhisperProvider: String = "",
     val lastCallWhisperModel: String = "",
     // Per-API Token Tracking
-    val geminiTotalTokens: Long = 0L,
-    val geminiPromptTokens: Long = 0L,
-    val geminiCompletionTokens: Long = 0L,
-    val geminiCallsCount: Long = 0L,
     val groqTotalTokens: Long = 0L,
     val groqPromptTokens: Long = 0L,
     val groqCompletionTokens: Long = 0L,
     val groqCallsCount: Long = 0L,
     val groqWhisperTokens: Long = 0L,
     val groqWhisperCalls: Long = 0L,
+    val groqWhisperAudioSeconds: Long = 0L,
+    val lastCallWhisperAudioSeconds: Long = 0L,
+    val groqWhisperOutputWords: Long = 0L,
+    val lastCallWhisperOutputWords: Long = 0L,
     val groqQwenTokens: Long = 0L,
     val groqQwenPromptTokens: Long = 0L,
     val groqQwenCompletionTokens: Long = 0L,
@@ -115,7 +114,6 @@ class PreferencesRepository(private val context: Context) {
     private object PreferencesKeys {
         val ENGINE_MODE = stringPreferencesKey("engine_mode")
         val GROQ_API_KEY = stringPreferencesKey("groq_api_key")
-        val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
         val IS_WHISPER_DOWNLOADED = booleanPreferencesKey("is_whisper_downloaded")
         val IS_LLM_DOWNLOADED = booleanPreferencesKey("is_llm_downloaded")
         val WHISPER_PATH = stringPreferencesKey("whisper_path")
@@ -162,16 +160,16 @@ class PreferencesRepository(private val context: Context) {
         val LAST_CALL_WHISPER_PROVIDER = stringPreferencesKey("last_call_whisper_provider")
         val LAST_CALL_WHISPER_MODEL = stringPreferencesKey("last_call_whisper_model")
         // Per-Provider Telemetry Keys
-        val GEMINI_TOTAL_TOKENS = longPreferencesKey("gemini_total_tokens")
-        val GEMINI_PROMPT_TOKENS = longPreferencesKey("gemini_prompt_tokens")
-        val GEMINI_COMPLETION_TOKENS = longPreferencesKey("gemini_completion_tokens")
-        val GEMINI_CALLS_COUNT = longPreferencesKey("gemini_calls_count")
         val GROQ_TOTAL_TOKENS = longPreferencesKey("groq_total_tokens")
         val GROQ_PROMPT_TOKENS = longPreferencesKey("groq_prompt_tokens")
         val GROQ_COMPLETION_TOKENS = longPreferencesKey("groq_completion_tokens")
         val GROQ_CALLS_COUNT = longPreferencesKey("groq_calls_count")
         val GROQ_WHISPER_TOTAL_TOKENS = longPreferencesKey("groq_whisper_total_tokens")
         val GROQ_WHISPER_CALLS_COUNT = longPreferencesKey("groq_whisper_calls_count")
+        val GROQ_WHISPER_AUDIO_SECONDS = longPreferencesKey("groq_whisper_audio_seconds")
+        val LAST_CALL_WHISPER_AUDIO_SECONDS = longPreferencesKey("last_call_whisper_audio_seconds")
+        val GROQ_WHISPER_OUTPUT_WORDS = longPreferencesKey("groq_whisper_output_words")
+        val LAST_CALL_WHISPER_OUTPUT_WORDS = longPreferencesKey("last_call_whisper_output_words")
         val GROQ_QWEN_TOTAL_TOKENS = longPreferencesKey("groq_qwen_total_tokens")
         val GROQ_QWEN_PROMPT_TOKENS = longPreferencesKey("groq_qwen_prompt_tokens")
         val GROQ_QWEN_COMPLETION_TOKENS = longPreferencesKey("groq_qwen_completion_tokens")
@@ -228,21 +226,8 @@ class PreferencesRepository(private val context: Context) {
             EngineMode.CLOUD_ONLY
         }
 
-        // Retrieve securely from hardware-backed Keystore vault, fallback/migrate from DataStore
-        val groqKey = secureKeyVault.getGroqApiKey().ifBlank {
-            val legacyKey = preferences[PreferencesKeys.GROQ_API_KEY] ?: ""
-            if (legacyKey.isNotBlank()) {
-                secureKeyVault.setGroqApiKey(legacyKey)
-            }
-            legacyKey
-        }
-        val geminiKey = secureKeyVault.getGeminiApiKey().ifBlank {
-            val legacyKey = preferences[PreferencesKeys.GEMINI_API_KEY] ?: ""
-            if (legacyKey.isNotBlank()) {
-                secureKeyVault.setGeminiApiKey(legacyKey)
-            }
-            legacyKey
-        }
+        // Retrieve securely from hardware-backed Keystore vault
+        val groqKey = secureKeyVault.getGroqApiKey()
 
         val lastProvider = preferences[PreferencesKeys.LAST_CALL_PROVIDER] ?: ""
         val lastLatency = preferences[PreferencesKeys.LAST_CALL_LATENCY_MS] ?: 0L
@@ -284,7 +269,6 @@ class PreferencesRepository(private val context: Context) {
         AppPreferences(
             engineMode = mode,
             groqApiKey = groqKey,
-            geminiApiKey = geminiKey,
             isWhisperModelDownloaded = isWhisperReal,
             isLlmModelDownloaded = isLlmReal,
             whisperModelPath = preferences[PreferencesKeys.WHISPER_PATH],
@@ -326,16 +310,16 @@ class PreferencesRepository(private val context: Context) {
             lastCallWhisperStatusCode = whisperStatus,
             lastCallWhisperProvider = whisperProvider,
             lastCallWhisperModel = whisperModel,
-            geminiTotalTokens = preferences[PreferencesKeys.GEMINI_TOTAL_TOKENS] ?: 0L,
-            geminiPromptTokens = preferences[PreferencesKeys.GEMINI_PROMPT_TOKENS] ?: 0L,
-            geminiCompletionTokens = preferences[PreferencesKeys.GEMINI_COMPLETION_TOKENS] ?: 0L,
-            geminiCallsCount = preferences[PreferencesKeys.GEMINI_CALLS_COUNT] ?: 0L,
             groqTotalTokens = preferences[PreferencesKeys.GROQ_TOTAL_TOKENS] ?: 0L,
             groqPromptTokens = preferences[PreferencesKeys.GROQ_PROMPT_TOKENS] ?: 0L,
             groqCompletionTokens = preferences[PreferencesKeys.GROQ_COMPLETION_TOKENS] ?: 0L,
             groqCallsCount = preferences[PreferencesKeys.GROQ_CALLS_COUNT] ?: 0L,
             groqWhisperTokens = preferences[PreferencesKeys.GROQ_WHISPER_TOTAL_TOKENS] ?: 0L,
             groqWhisperCalls = preferences[PreferencesKeys.GROQ_WHISPER_CALLS_COUNT] ?: 0L,
+            groqWhisperAudioSeconds = preferences[PreferencesKeys.GROQ_WHISPER_AUDIO_SECONDS] ?: 0L,
+            lastCallWhisperAudioSeconds = preferences[PreferencesKeys.LAST_CALL_WHISPER_AUDIO_SECONDS] ?: 0L,
+            groqWhisperOutputWords = preferences[PreferencesKeys.GROQ_WHISPER_OUTPUT_WORDS] ?: 0L,
+            lastCallWhisperOutputWords = preferences[PreferencesKeys.LAST_CALL_WHISPER_OUTPUT_WORDS] ?: 0L,
             groqQwenTokens = preferences[PreferencesKeys.GROQ_QWEN_TOTAL_TOKENS] ?: (preferences[PreferencesKeys.GROQ_TOTAL_TOKENS] ?: 0L),
             groqQwenPromptTokens = preferences[PreferencesKeys.GROQ_QWEN_PROMPT_TOKENS] ?: (preferences[PreferencesKeys.GROQ_PROMPT_TOKENS] ?: 0L),
             groqQwenCompletionTokens = preferences[PreferencesKeys.GROQ_QWEN_COMPLETION_TOKENS] ?: (preferences[PreferencesKeys.GROQ_COMPLETION_TOKENS] ?: 0L),
@@ -369,26 +353,21 @@ class PreferencesRepository(private val context: Context) {
         }
     }
 
-    suspend fun setApiKeys(groqKey: String, geminiKey: String) {
-        secureKeyVault.setGroqApiKey(groqKey)
-        secureKeyVault.setGeminiApiKey(geminiKey)
-        context.dataStore.edit { preferences ->
-            preferences.remove(PreferencesKeys.GROQ_API_KEY)
-            preferences.remove(PreferencesKeys.GEMINI_API_KEY)
-        }
-    }
-
     suspend fun setGroqApiKey(key: String) {
-        secureKeyVault.setGroqApiKey(key)
-        context.dataStore.edit { preferences ->
-            preferences.remove(PreferencesKeys.GROQ_API_KEY)
+        if (key.isBlank()) {
+            deleteGroqApiKey()
+        } else {
+            secureKeyVault.setGroqApiKey(key)
+            context.dataStore.edit { preferences ->
+                preferences.remove(PreferencesKeys.GROQ_API_KEY)
+            }
         }
     }
 
-    suspend fun setGeminiApiKey(key: String) {
-        secureKeyVault.setGeminiApiKey(key)
+    suspend fun deleteGroqApiKey() {
+        secureKeyVault.deleteGroqApiKey()
         context.dataStore.edit { preferences ->
-            preferences.remove(PreferencesKeys.GEMINI_API_KEY)
+            preferences.remove(PreferencesKeys.GROQ_API_KEY)
         }
     }
 
@@ -490,10 +469,6 @@ class PreferencesRepository(private val context: Context) {
                 preferences[PreferencesKeys.TOTAL_TOKENS_USED] = 0L
                 preferences[PreferencesKeys.TOTAL_PROMPT_TOKENS] = 0L
                 preferences[PreferencesKeys.TOTAL_COMPLETION_TOKENS] = 0L
-                preferences[PreferencesKeys.GEMINI_TOTAL_TOKENS] = 0L
-                preferences[PreferencesKeys.GEMINI_PROMPT_TOKENS] = 0L
-                preferences[PreferencesKeys.GEMINI_COMPLETION_TOKENS] = 0L
-                preferences[PreferencesKeys.GEMINI_CALLS_COUNT] = 0L
                 preferences[PreferencesKeys.GROQ_TOTAL_TOKENS] = 0L
                 preferences[PreferencesKeys.GROQ_PROMPT_TOKENS] = 0L
                 preferences[PreferencesKeys.GROQ_COMPLETION_TOKENS] = 0L
@@ -521,7 +496,8 @@ class PreferencesRepository(private val context: Context) {
         statusCode: String = "200 OK",
         provider: String = "",
         model: String = "",
-        errorMessage: String? = null
+        errorMessage: String? = null,
+        audioSeconds: Long = 0L
     ) {
         checkAndPerformDailyResetIfNeeded()
 
@@ -618,17 +594,7 @@ class PreferencesRepository(private val context: Context) {
             }
 
             // Per-provider specific metrics
-            if (provider.contains("Gemini", ignoreCase = true)) {
-                val gTotal = preferences[PreferencesKeys.GEMINI_TOTAL_TOKENS] ?: 0L
-                val gPrompt = preferences[PreferencesKeys.GEMINI_PROMPT_TOKENS] ?: 0L
-                val gComp = preferences[PreferencesKeys.GEMINI_COMPLETION_TOKENS] ?: 0L
-                val gCalls = preferences[PreferencesKeys.GEMINI_CALLS_COUNT] ?: 0L
-
-                preferences[PreferencesKeys.GEMINI_TOTAL_TOKENS] = gTotal + totalForCall
-                preferences[PreferencesKeys.GEMINI_PROMPT_TOKENS] = gPrompt + promptTokens
-                preferences[PreferencesKeys.GEMINI_COMPLETION_TOKENS] = gComp + completionTokens
-                preferences[PreferencesKeys.GEMINI_CALLS_COUNT] = gCalls + 1
-            } else if (provider.contains("Groq", ignoreCase = true)) {
+            if (provider.contains("Groq", ignoreCase = true)) {
                 val grTotal = preferences[PreferencesKeys.GROQ_TOTAL_TOKENS] ?: 0L
                 val grPrompt = preferences[PreferencesKeys.GROQ_PROMPT_TOKENS] ?: 0L
                 val grComp = preferences[PreferencesKeys.GROQ_COMPLETION_TOKENS] ?: 0L
@@ -643,8 +609,18 @@ class PreferencesRepository(private val context: Context) {
                 if (isWhisper) {
                     val wTotal = preferences[PreferencesKeys.GROQ_WHISPER_TOTAL_TOKENS] ?: 0L
                     val wCalls = preferences[PreferencesKeys.GROQ_WHISPER_CALLS_COUNT] ?: 0L
+                    val wAudio = preferences[PreferencesKeys.GROQ_WHISPER_AUDIO_SECONDS] ?: 0L
+                    val wWords = preferences[PreferencesKeys.GROQ_WHISPER_OUTPUT_WORDS] ?: 0L
                     preferences[PreferencesKeys.GROQ_WHISPER_TOTAL_TOKENS] = wTotal + totalForCall
                     preferences[PreferencesKeys.GROQ_WHISPER_CALLS_COUNT] = wCalls + 1
+                    if (audioSeconds > 0L) {
+                        preferences[PreferencesKeys.GROQ_WHISPER_AUDIO_SECONDS] = wAudio + audioSeconds
+                        preferences[PreferencesKeys.LAST_CALL_WHISPER_AUDIO_SECONDS] = audioSeconds
+                    }
+                    if (completionTokens > 0L) {
+                        preferences[PreferencesKeys.GROQ_WHISPER_OUTPUT_WORDS] = wWords + completionTokens
+                        preferences[PreferencesKeys.LAST_CALL_WHISPER_OUTPUT_WORDS] = completionTokens
+                    }
 
                     preferences[PreferencesKeys.LAST_CALL_WHISPER_TOKENS] = totalForCall
                     preferences[PreferencesKeys.LAST_CALL_WHISPER_PROMPT_TOKENS] = promptTokens
@@ -685,17 +661,14 @@ class PreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.TOTAL_PROMPT_TOKENS] = 0L
             preferences[PreferencesKeys.TOTAL_COMPLETION_TOKENS] = 0L
 
-            preferences[PreferencesKeys.GEMINI_TOTAL_TOKENS] = 0L
-            preferences[PreferencesKeys.GEMINI_PROMPT_TOKENS] = 0L
-            preferences[PreferencesKeys.GEMINI_COMPLETION_TOKENS] = 0L
-            preferences[PreferencesKeys.GEMINI_CALLS_COUNT] = 0L
-
             preferences[PreferencesKeys.GROQ_TOTAL_TOKENS] = 0L
             preferences[PreferencesKeys.GROQ_PROMPT_TOKENS] = 0L
             preferences[PreferencesKeys.GROQ_COMPLETION_TOKENS] = 0L
             preferences[PreferencesKeys.GROQ_CALLS_COUNT] = 0L
             preferences[PreferencesKeys.GROQ_WHISPER_TOTAL_TOKENS] = 0L
             preferences[PreferencesKeys.GROQ_WHISPER_CALLS_COUNT] = 0L
+            preferences[PreferencesKeys.GROQ_WHISPER_AUDIO_SECONDS] = 0L
+            preferences[PreferencesKeys.LAST_CALL_WHISPER_AUDIO_SECONDS] = 0L
             preferences[PreferencesKeys.GROQ_QWEN_TOTAL_TOKENS] = 0L
             preferences[PreferencesKeys.GROQ_QWEN_PROMPT_TOKENS] = 0L
             preferences[PreferencesKeys.GROQ_QWEN_COMPLETION_TOKENS] = 0L
@@ -706,6 +679,18 @@ class PreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.LOCAL_COMPLETION_TOKENS] = 0L
             preferences[PreferencesKeys.LOCAL_GEMMA_CALLS_COUNT] = 0L
             preferences[PreferencesKeys.LOCAL_WHISPER_CALLS_COUNT] = 0L
+        }
+    }
+
+    suspend fun setGroqWhisperAudioSeconds(seconds: Long) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.GROQ_WHISPER_AUDIO_SECONDS] = seconds
+        }
+    }
+
+    suspend fun setGroqWhisperOutputWords(words: Long) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.GROQ_WHISPER_OUTPUT_WORDS] = words
         }
     }
 }
