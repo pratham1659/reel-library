@@ -3074,7 +3074,7 @@ fun ReelDetailScreen(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
-                                    text = "🎙️ No spoken voiceover detected in audio. Insights & takeaways were synthesized directly from the original post caption.",
+                                    text = "🎙️ Transcript unavailable: Direct audio stream could not be extracted from Instagram, or Local Whisper offline runtime is not configured on this device.",
                                     fontSize = 12.5.sp,
                                     color = colors.textMuted,
                                     lineHeight = 18.sp
