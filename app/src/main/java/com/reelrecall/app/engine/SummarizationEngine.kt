@@ -186,7 +186,7 @@ class GroqSummarizerEngine(
                     Instructions: If Spoken Audio Transcript is present, prioritize actual spoken tools and advice. If absent, extract details thoroughly from Post Caption. Do not generate generic or matching duplicate content.
                 """.trimIndent()
 
-                val candidateModels = listOf("qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile")
+                val candidateModels = listOf("qwen/qwen3.8-27b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant")
                 var lastError: Exception? = null
 
                 for (model in candidateModels) {
@@ -197,6 +197,7 @@ class GroqSummarizerEngine(
                             {"role": "system", "content": ${Json.encodeToString(kotlinx.serialization.serializer(), systemPrompt)}},
                             {"role": "user", "content": ${Json.encodeToString(kotlinx.serialization.serializer(), userContent)}}
                           ],
+                          "max_tokens": 512,
                           "response_format": {"type": "json_object"}
                         }
                     """.trimIndent()

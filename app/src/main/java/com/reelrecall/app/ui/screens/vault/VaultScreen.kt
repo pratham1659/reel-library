@@ -21,6 +21,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -157,6 +161,9 @@ fun VaultScreen(
     val isSearchActive by viewModel.isSearchActive.collectAsState()
     val isSortMenuOpen by viewModel.isSortMenuOpen.collectAsState()
     val groupedReels by viewModel.groupedReels.collectAsState()
+    val hasMoreReels by viewModel.hasMoreReels.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+    val totalMatchingCount by viewModel.totalMatchingCount.collectAsState()
 
     val orderBy by viewModel.orderBy.collectAsState()
     val sortDirection by viewModel.sortDirection.collectAsState()
@@ -577,9 +584,43 @@ fun VaultScreen(
                 } else {
                     val allReelIds = remember(groupedReels) { groupedReels.flatMap { it.reels }.map { it.id } }
 
+                    val gridState = rememberLazyGridState()
+                    val listState = rememberLazyListState()
+
+                    val shouldLoadMoreGrid by remember {
+                        derivedStateOf {
+                            val layoutInfo = gridState.layoutInfo
+                            val total = layoutInfo.totalItemsCount
+                            val lastVisible = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
+                            total > 0 && lastVisible >= (total - 2)
+                        }
+                    }
+
+                    val shouldLoadMoreList by remember {
+                        derivedStateOf {
+                            val layoutInfo = listState.layoutInfo
+                            val total = layoutInfo.totalItemsCount
+                            val lastVisible = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
+                            total > 0 && lastVisible >= (total - 2)
+                        }
+                    }
+
+                    LaunchedEffect(shouldLoadMoreGrid) {
+                        if (shouldLoadMoreGrid && hasMoreReels && !isLoadingMore) {
+                            viewModel.loadNextPage()
+                        }
+                    }
+
+                    LaunchedEffect(shouldLoadMoreList) {
+                        if (shouldLoadMoreList && hasMoreReels && !isLoadingMore) {
+                            viewModel.loadNextPage()
+                        }
+                    }
+
                     when (viewMode) {
                         ViewMode.GRID -> {
                             LazyVerticalGrid(
+                                state = gridState,
                                 columns = GridCells.Fixed(2),
                                 verticalArrangement = Arrangement.spacedBy(14.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -620,6 +661,64 @@ fun VaultScreen(
                                     }
                                 }
 
+                                if (isLoadingMore) {
+                                    item(span = { GridItemSpan(2) }) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                modifier = Modifier
+                                                    .background(colors.surface, RoundedCornerShape(20.dp))
+                                                    .border(1.dp, colors.border, RoundedCornerShape(20.dp))
+                                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                            ) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(14.dp),
+                                                    strokeWidth = 2.dp,
+                                                    color = colors.accent
+                                                )
+                                                Text(
+                                                    text = "Loading more reels...",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = colors.textSecondary
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else if (!hasMoreReels && totalMatchingCount > VaultViewModel.INITIAL_PAGE_SIZE) {
+                                    item(span = { GridItemSpan(2) }) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 14.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = colors.textMuted,
+                                                    modifier = Modifier.size(13.dp)
+                                                )
+                                                Text(
+                                                    text = "All $totalMatchingCount reels loaded",
+                                                    fontSize = 12.sp,
+                                                    color = colors.textMuted
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
                                 item(span = { GridItemSpan(2) }) {
                                     Spacer(modifier = Modifier.height(100.dp))
                                 }
@@ -627,6 +726,7 @@ fun VaultScreen(
                         }
                         ViewMode.LIST -> {
                             LazyColumn(
+                                state = listState,
                                 verticalArrangement = Arrangement.spacedBy(22.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
@@ -664,6 +764,64 @@ fun VaultScreen(
                                                 onRetry = { viewModel.retryReel(reel) },
                                                 onDelete = { viewModel.deleteReel(reel.id) }
                                             )
+                                        }
+                                    }
+                                }
+
+                                if (isLoadingMore) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                modifier = Modifier
+                                                    .background(colors.surface, RoundedCornerShape(20.dp))
+                                                    .border(1.dp, colors.border, RoundedCornerShape(20.dp))
+                                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                            ) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(14.dp),
+                                                    strokeWidth = 2.dp,
+                                                    color = colors.accent
+                                                )
+                                                Text(
+                                                    text = "Loading more reels...",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = colors.textSecondary
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else if (!hasMoreReels && totalMatchingCount > VaultViewModel.INITIAL_PAGE_SIZE) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 14.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = colors.textMuted,
+                                                    modifier = Modifier.size(13.dp)
+                                                )
+                                                Text(
+                                                    text = "All $totalMatchingCount reels loaded",
+                                                    fontSize = 12.sp,
+                                                    color = colors.textMuted
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -787,7 +945,7 @@ fun DateSectionHeader(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
-            verticalAlignment = Alignment.Bottom,
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
@@ -803,6 +961,22 @@ fun DateSectionHeader(
                 color = colors.textMuted,
                 modifier = Modifier.padding(bottom = 2.dp)
             )
+            if (showSelectButton) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = colors.pillBg,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                    modifier = Modifier.padding(bottom = 2.dp)
+                ) {
+                    Text(
+                        text = "v1.0.0",
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.accent,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
         }
 
         // SELECT BUTTON ROW (In the same row as Today, right below the settings icon!)
@@ -2164,6 +2338,14 @@ fun ReelDetailScreen(
             Json.decodeFromString<List<String>>(currentReel.takeawaysJson)
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    // Auto-reprocess failed or unsummarized reel when opened (strictly sequential via ViewModel Mutex)
+    LaunchedEffect(currentReel.id) {
+        val hasContent = !currentReel.oneLineSummary.isNullOrBlank() || takeaways.isNotEmpty()
+        if ((currentReel.status == IngestionStatus.FAILED || !hasContent) && !isRetrying) {
+            viewModel.reprocessReel(currentReel.id)
         }
     }
 

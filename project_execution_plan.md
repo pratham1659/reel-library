@@ -1,7 +1,7 @@
-# Project Plan: ReelRecall (Dual-Engine: Cloud & On-Device Instagram Reel Knowledge Vault)
+# Project Plan: Reel Library (Dual-Engine: Cloud & On-Device Instagram Reel Knowledge Vault)
 
 ## 1. Project Overview & Objectives
-**ReelRecall** is an Android application designed to capture Instagram Reels shared directly from the Instagram app via Android's native share sheet (`ACTION_SEND`). It extracts the post caption, audio, and metadata, transcribes the spoken content, generates structured actionable summaries and tags, indexes them locally in a searchable Room FTS5 vault, and enables one-tap deep linking back to the Reel in the Instagram app.
+**Reel Library** is an Android application designed to capture Instagram Reels shared directly from the Instagram app via Android's native share sheet (`ACTION_SEND`). It extracts the post caption, audio, and metadata, transcribes the spoken content, generates structured actionable summaries and tags, indexes them locally in a searchable Room FTS5 vault, and enables one-tap deep linking back to the Reel in the Instagram app.
 
 ### Core Architectural Principles
 - **Dual-Engine Architecture (User’s Choice):** Full support for both:

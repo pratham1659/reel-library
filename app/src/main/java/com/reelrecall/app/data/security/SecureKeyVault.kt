@@ -15,16 +15,40 @@ class SecureKeyVault private constructor(context: Context) {
     private val sharedPreferences: SharedPreferences by lazy {
         try {
             val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
-            EncryptedSharedPreferences.create(
+            val prefs = EncryptedSharedPreferences.create(
                 PREFS_FILENAME,
                 masterKeyAlias,
                 context.applicationContext,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
+            // Migrate key from legacy encrypted vault if new vault is empty
+            if (prefs.getString(KEY_GROQ_API, "").isNullOrBlank()) {
+                try {
+                    val oldPrefs = EncryptedSharedPreferences.create(
+                        "reel_recall_vault_encrypted",
+                        masterKeyAlias,
+                        context.applicationContext,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                    )
+                    val oldGroq = oldPrefs.getString(KEY_GROQ_API, "") ?: ""
+                    val oldGemini = oldPrefs.getString(KEY_GEMINI_API, "") ?: ""
+                    if (oldGroq.isNotBlank()) prefs.edit().putString(KEY_GROQ_API, oldGroq).apply()
+                    if (oldGemini.isNotBlank()) prefs.edit().putString(KEY_GEMINI_API, oldGemini).apply()
+                } catch (ignored: Exception) {}
+            }
+            prefs
         } catch (e: Exception) {
             // Fallback for devices or test environments with Keystore issues
-            context.applicationContext.getSharedPreferences("reel_recall_secure_fallback", Context.MODE_PRIVATE)
+            val fallback = context.applicationContext.getSharedPreferences("reel_library_secure_fallback", Context.MODE_PRIVATE)
+            val oldFallback = context.applicationContext.getSharedPreferences("reel_recall_secure_fallback", Context.MODE_PRIVATE)
+            if (fallback.all.isEmpty() && oldFallback.all.isNotEmpty()) {
+                val ed = fallback.edit()
+                oldFallback.all.forEach { (k, v) -> if (v is String) ed.putString(k, v) }
+                ed.apply()
+            }
+            fallback
         }
     }
 
@@ -52,7 +76,7 @@ class SecureKeyVault private constructor(context: Context) {
     }
 
     companion object {
-        private const val PREFS_FILENAME = "reel_recall_vault_encrypted"
+        private const val PREFS_FILENAME = "reel_library_vault_encrypted"
         private const val KEY_GROQ_API = "vault_groq_api_key"
         private const val KEY_GEMINI_API = "vault_gemini_api_key"
 

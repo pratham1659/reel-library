@@ -221,12 +221,12 @@ fun KnowledgeDrawerContent(
                     }
                 )
 
-                // 4. Refresh Library Button (Replaced Grid Style Change Icon)
+                // 4. Toggle Layout View Mode (Grid / List)
                 NeumorphicDrawerButton(
-                    icon = Icons.Default.Refresh,
-                    contentDescription = "Refresh Library",
+                    icon = Icons.Default.GridView,
+                    contentDescription = "Toggle Grid/List View",
                     isDark = isDarkTheme,
-                    onClick = onReprocessAll
+                    onClick = onToggleViewMode
                 )
 
                 // 5. Search Button
@@ -471,13 +471,13 @@ fun KnowledgeDrawerContent(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = textPrimaryColor, modifier = Modifier.size(16.dp))
-                                    Text("Reprocess All Reels", color = textPrimaryColor, fontSize = 13.sp)
+                                    Icon(Icons.Default.GridView, contentDescription = null, tint = textPrimaryColor, modifier = Modifier.size(16.dp))
+                                    Text("Toggle Grid / List View", color = textPrimaryColor, fontSize = 13.sp)
                                 }
                             },
                             onClick = {
                                 showMenu = false
-                                onReprocessAll()
+                                onToggleViewMode()
                             }
                         )
                         DropdownMenuItem(

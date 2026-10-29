@@ -85,7 +85,7 @@ import com.reelrecall.app.ui.theme.ObsidianBg
 import com.reelrecall.app.ui.theme.ObsidianCard
 import com.reelrecall.app.ui.theme.ObsidianPill
 import com.reelrecall.app.ui.theme.ObsidianPillBorder
-import com.reelrecall.app.ui.theme.ReelRecallTheme
+import com.reelrecall.app.ui.theme.ReelLibraryTheme
 import com.reelrecall.app.ui.theme.SparkleOrange
 import com.reelrecall.app.ui.theme.TextMuted
 import com.reelrecall.app.ui.theme.TextPrimary
@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
                 showSplashScreen = false
             }
 
-            ReelRecallTheme(isDarkTheme = isDarkTheme) {
+            ReelLibraryTheme(isDarkTheme = isDarkTheme) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                     val scope = rememberCoroutineScope()
@@ -152,6 +152,8 @@ class MainActivity : ComponentActivity() {
                                     vaultViewModel.toggleSelectionMode(true)
                                 },
                                 onToggleViewMode = {
+                                    scope.launch { drawerState.close() }
+                                    currentTab = 0
                                     val currentMode = vaultViewModel.viewMode.value
                                     val newMode = if (currentMode == ViewMode.GRID) {
                                         ViewMode.LIST
@@ -485,7 +487,7 @@ fun InstagramStyleSplashScreen(isDarkTheme: Boolean) {
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "AI-Powered Video Knowledge",
+                text = "AI-Powered Video Knowledge • v1.0.0",
                 fontSize = 12.sp,
                 color = textMuted,
                 fontWeight = FontWeight.Normal
@@ -512,6 +514,13 @@ fun InstagramStyleSplashScreen(isDarkTheme: Boolean) {
                 fontWeight = FontWeight.Bold,
                 color = if (isDarkTheme) Color(0xFFE2E8F0) else Color(0xFF1E293B),
                 letterSpacing = 1.5.sp
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "v1.0.0",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = textMuted.copy(alpha = 0.7f)
             )
         }
     }

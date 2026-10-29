@@ -148,7 +148,7 @@ class ReelIngestWorker(
     }
 
     private fun postCompletionNotification(title: String, summary: String) {
-        val channelId = "reel_recall_ingestion"
+        val channelId = "reel_library_ingestion"
         val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

@@ -525,7 +525,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 val qwenCandidates = mutableListOf<String>()
                 // Prioritize qwen models, then other active Groq chat models
                 qwenCandidates.addAll(fetchedChatModels.filter { it.contains("qwen", ignoreCase = true) })
-                qwenCandidates.addAll(listOf("qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile"))
+                qwenCandidates.addAll(listOf("qwen/qwen3.8-27b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"))
                 val distinctQwenCandidates = qwenCandidates.distinct()
 
                 val qwenStart = SystemClock.elapsedRealtime()
