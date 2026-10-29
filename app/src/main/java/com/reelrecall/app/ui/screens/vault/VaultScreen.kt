@@ -1320,8 +1320,11 @@ fun RecallReelCard(
             )
 
             // 2. VIDEO SUMMARY (Executive summary)
-            val summaryText = reel.oneLineSummary
-                ?: (if (reel.status == IngestionStatus.COMPLETED) reel.caption?.take(160) else "AI is extracting summary & takeaways...")
+            val summaryText = if (reel.status == IngestionStatus.FAILED) {
+                null
+            } else {
+                reel.oneLineSummary ?: (if (reel.status == IngestionStatus.COMPLETED) reel.caption?.take(160) else "AI is extracting summary & takeaways...")
+            }
             if (!summaryText.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -2325,10 +2328,9 @@ fun ReelDetailScreen(
         }
     }
 
-    // Auto-reprocess failed or unsummarized reel when opened (strictly sequential via ViewModel Mutex)
+    // Auto-reprocess queued reels when opened
     LaunchedEffect(currentReel.id) {
-        val hasContent = !currentReel.oneLineSummary.isNullOrBlank() || takeaways.isNotEmpty()
-        if ((currentReel.status == IngestionStatus.FAILED || !hasContent) && !isRetrying) {
+        if ((currentReel.status == IngestionStatus.QUEUED || currentReel.status == IngestionStatus.EXTRACTING) && !isRetrying) {
             viewModel.reprocessReel(currentReel.id)
         }
     }
@@ -2609,16 +2611,18 @@ fun ReelDetailScreen(
 
                         // Action Button (Run AI Summarise or Retry AI)
                         Surface(
+                            onClick = {
+                                android.util.Log.d("ReelLibrary", "Top Executive Summary button clicked for ${currentReel.id}")
+                                viewModel.reprocessReel(currentReel.id)
+                                Toast.makeText(context, if (hasAiContent) "AI is regenerating summary..." else "Running AI Summarise...", Toast.LENGTH_SHORT).show()
+                            },
+                            enabled = !isRetrying,
                             shape = RoundedCornerShape(12.dp),
                             color = if (isRetrying) colors.accentBg else if (!hasAiContent) colors.accent.copy(alpha = 0.12f) else colors.pillBg,
                             border = androidx.compose.foundation.BorderStroke(
                                 if (!hasAiContent) 1.dp else 0.7.dp,
                                 if (isRetrying || !hasAiContent) colors.accent else colors.border
-                            ),
-                            modifier = Modifier.clickable(enabled = !isRetrying) {
-                                viewModel.reprocessReel(currentReel.id)
-                                Toast.makeText(context, if (hasAiContent) "AI is regenerating summary..." else "Running AI Summarise...", Toast.LENGTH_SHORT).show()
-                            }
+                            )
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp),
@@ -2668,7 +2672,116 @@ fun ReelDetailScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    if (!hasAiContent) {
+                    val isFailed = currentReel.status == IngestionStatus.FAILED || !currentReel.errorMessage.isNullOrBlank()
+
+                    if (isFailed) {
+                        // DEDICATED AI FAILURE REASON CARD
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = StatusError.copy(alpha = 0.12f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, StatusError.copy(alpha = 0.45f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(StatusError.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = "Failed",
+                                            tint = StatusError,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "AI Processing Failed",
+                                            fontSize = 13.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = StatusError
+                                        )
+                                        Text(
+                                            text = "Selected model was unable to complete summarization",
+                                            fontSize = 11.sp,
+                                            color = colors.textMuted
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Text(
+                                    text = currentReel.errorMessage ?: "Reason: Model not available or API key not configured.",
+                                    fontSize = 12.5.sp,
+                                    color = colors.textPrimary,
+                                    lineHeight = 18.sp
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Surface(
+                                    onClick = {
+                                        android.util.Log.d("ReelLibrary", "Failure card Retry button clicked for ${currentReel.id}")
+                                        viewModel.reprocessReel(currentReel.id)
+                                        Toast.makeText(context, "Retrying AI Summarise...", Toast.LENGTH_SHORT).show()
+                                    },
+                                    enabled = !isRetrying,
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isRetrying) colors.pillBg else StatusError.copy(alpha = 0.12f),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (isRetrying) colors.border else StatusError.copy(alpha = 0.45f)
+                                    ),
+                                    modifier = Modifier.fillMaxWidth().height(44.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        if (isRetrying) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(14.dp),
+                                                strokeWidth = 2.dp,
+                                                color = colors.accent
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Retrying AI Model...",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.accent
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.Refresh,
+                                                contentDescription = null,
+                                                tint = StatusError,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Retry with Selected AI",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = StatusError
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else if (!hasAiContent) {
                         // REEL > 1 MIN TOKEN SAVER CALL-TO-ACTION CARD
                         Surface(
                             shape = RoundedCornerShape(14.dp),
@@ -2769,9 +2882,9 @@ fun ReelDetailScreen(
                                 }
                             }
                         }
-                    } else {
+                    } else if (currentReel.status == IngestionStatus.COMPLETED && !currentReel.oneLineSummary.isNullOrBlank()) {
                         Text(
-                            text = currentReel.oneLineSummary ?: (currentReel.caption ?: "Summary is being generated by AI..."),
+                            text = currentReel.oneLineSummary!!,
                             fontSize = 14.5.sp,
                             color = colors.textPrimary,
                             lineHeight = 22.sp,
@@ -2779,7 +2892,7 @@ fun ReelDetailScreen(
                         )
                     }
 
-                    if (takeaways.isNotEmpty()) {
+                    if (!isFailed && currentReel.status == IngestionStatus.COMPLETED && takeaways.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,

@@ -44,13 +44,6 @@ class DualEngineDispatcher(
 
             EngineMode.LOCAL_ONLY -> {
                 val whisperFile = File(context.filesDir, "whisper-base.bin")
-                if (!whisperFile.exists()) {
-                    try {
-                        whisperFile.writeText("whisper-base-model-weights-v1")
-                    } catch (e: Exception) {
-                        // Ignore fallback creation error
-                    }
-                }
                 LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
             }
 
@@ -59,13 +52,6 @@ class DualEngineDispatcher(
                     GroqWhisperEngine(prefs.groqApiKey)
                 } else {
                     val whisperFile = File(context.filesDir, "whisper-base.bin")
-                    if (!whisperFile.exists()) {
-                        try {
-                            whisperFile.writeText("whisper-base-model-weights-v1")
-                        } catch (e: Exception) {
-                            // Ignore fallback creation error
-                        }
-                    }
                     LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
                 }
             }
@@ -90,9 +76,7 @@ class DualEngineDispatcher(
                 val llmFile = File(context.filesDir, "gemma-2-2b-it-gpu.bin")
                 LocalMediaPipeSummarizerEngine(
                     modelFile = llmFile,
-                    onTokensUsed = onTokensUsed,
-                    geminiApiKey = prefs.geminiApiKey.ifBlank { null },
-                    groqApiKey = prefs.groqApiKey.ifBlank { null }
+                    onTokensUsed = onTokensUsed
                 )
             }
 
@@ -105,9 +89,7 @@ class DualEngineDispatcher(
                     val llmFile = File(context.filesDir, "gemma-2-2b-it-gpu.bin")
                     LocalMediaPipeSummarizerEngine(
                         modelFile = llmFile,
-                        onTokensUsed = onTokensUsed,
-                        geminiApiKey = prefs.geminiApiKey.ifBlank { null },
-                        groqApiKey = prefs.groqApiKey.ifBlank { null }
+                        onTokensUsed = onTokensUsed
                     )
                 }
             }

@@ -59,6 +59,12 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     val groupBy = MutableStateFlow(GroupBy.DAY)
     val viewMode = MutableStateFlow(ViewMode.GRID)
 
+    init {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            reprocessDemoReelsIfNeeded()
+        }
+    }
+
     val selectedTag = MutableStateFlow<String?>(null)
     val selectedSource = MutableStateFlow<String?>(null)
 
@@ -391,11 +397,16 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                                            reel.transcript?.contains("comments - ") == true ||
                                            reel.transcript?.contains("Transcription generated on-device via Whisper", ignoreCase = true) == true
 
-                val isGenericOrDemo = reel.creatorHandle?.contains("&#") == true ||
-                                     reel.title.isNullOrBlank() ||
-                                     reel.oneLineSummary.isNullOrBlank() ||
-                                     reel.takeawaysJson.isNullOrBlank() ||
-                                     reel.takeawaysJson == "[]"
+                val isGenericOrDemo = (reel.status == IngestionStatus.COMPLETED && (
+                    reel.creatorHandle?.contains("&#") == true ||
+                    reel.title.isNullOrBlank() ||
+                    reel.oneLineSummary.isNullOrBlank() ||
+                    reel.takeawaysJson.isNullOrBlank() ||
+                    reel.takeawaysJson == "[]" ||
+                    reel.title?.contains("Zero Cloud Cost AI Vision", ignoreCase = true) == true ||
+                    reel.title?.contains("Unlocking AI Fish Tool Access", ignoreCase = true) == true ||
+                    reel.engineUsed?.contains("Local Gemma/Qwen (On-Device NPU)") == true
+                ))
 
                 val needsOptimization = hasOldBogusTranscript || isGenericOrDemo
 
@@ -452,13 +463,17 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         )
                         dao.update(updated)
                     } else {
+                        val err = summaryResult.exceptionOrNull()?.message ?: "AI summarization failed"
                         val updated = reel.copy(
+                            title = cleanCaption.take(60).ifBlank { "Reel #${reel.shortcode}" },
+                            oneLineSummary = null,
+                            takeawaysJson = "[]",
                             creatorHandle = parsedHandle ?: reel.creatorHandle,
                             caption = cleanCaption.ifBlank { reel.caption },
                             transcript = realTranscript,
                             thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
                             status = IngestionStatus.FAILED,
-                            errorMessage = "Sync failed: ${summaryResult.exceptionOrNull()?.message ?: "API unavailable"}"
+                            errorMessage = err
                         )
                         dao.update(updated)
                     }
@@ -484,6 +499,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     val dispatcher = com.reelrecall.app.engine.DualEngineDispatcher(getApplication())
                     val summarizer = dispatcher.resolveSummarizationEngine(currentPrefs)
                     val transcriber = dispatcher.resolveTranscriptionEngine(currentPrefs)
+                    android.util.Log.d("ReelLibrary", "reprocessReel EXECUTING for id=$id, mode=${currentPrefs.engineMode}, summarizer=${summarizer.name}")
 
                     val extractionRes = com.reelrecall.app.worker.InstagramExtractor.extract(
                         reel.canonicalUrl,
@@ -540,6 +556,13 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     } else {
                         val err = summaryResult.exceptionOrNull()?.message ?: "Processing failed: Summarization returned no data"
                         val failedReel = reel.copy(
+                            title = cleanCaption.take(60).ifBlank { "Reel #${reel.shortcode}" },
+                            oneLineSummary = null,
+                            takeawaysJson = "[]",
+                            creatorHandle = parsedHandle ?: reel.creatorHandle,
+                            caption = cleanCaption.ifBlank { reel.caption },
+                            transcript = realTranscript,
+                            thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
                             status = IngestionStatus.FAILED,
                             errorMessage = err
                         )
@@ -553,7 +576,12 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     try {
                         val r = dao.getReelById(id).first()
                         if (r != null) {
-                            dao.update(r.copy(status = IngestionStatus.FAILED, errorMessage = e.message ?: "Reprocessing error"))
+                            dao.update(r.copy(
+                                oneLineSummary = null,
+                                takeawaysJson = "[]",
+                                status = IngestionStatus.FAILED,
+                                errorMessage = e.message ?: "Reprocessing error"
+                            ))
                         }
                     } catch (_: Exception) {}
                 } finally {

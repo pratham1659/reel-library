@@ -110,7 +110,9 @@ class LocalWhisperEngine(
         val elapsedLatency = (android.os.SystemClock.elapsedRealtime() - startTime).coerceAtLeast(32L)
         onTokensUsed?.invoke(0L, 0L, elapsedLatency, "On-Device Whisper Base")
 
-        Result.success("Transcription generated on-device via Whisper.")
+        Result.failure(
+            IllegalStateException("On-device Whisper native inference runtime is not loaded.")
+        )
     }
 }
 
