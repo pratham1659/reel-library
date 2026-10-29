@@ -26,6 +26,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,6 +57,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.ViewSidebar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -57,10 +66,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -527,6 +539,38 @@ fun KnowledgeDrawerContent(
                     }
                 } else {
                     val drawerScrollState = rememberLazyListState()
+                    var visibleDrawerLimit by remember { mutableStateOf(8) }
+                    var isLoadingMoreDrawer by remember { mutableStateOf(false) }
+
+                    // Reset pagination if filtered list changes
+                    LaunchedEffect(filteredReels) {
+                        visibleDrawerLimit = 8
+                    }
+
+                    val displayedReels = remember(filteredReels, visibleDrawerLimit) {
+                        filteredReels.take(visibleDrawerLimit)
+                    }
+                    val hasMoreDrawer = visibleDrawerLimit < filteredReels.size
+
+                    val shouldLoadMoreDrawer by remember {
+                        derivedStateOf {
+                            val layoutInfo = drawerScrollState.layoutInfo
+                            val total = layoutInfo.totalItemsCount
+                            val lastVisible = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
+                            total > 0 && lastVisible >= (total - 1) && hasMoreDrawer
+                        }
+                    }
+
+                    LaunchedEffect(shouldLoadMoreDrawer) {
+                        if (shouldLoadMoreDrawer && !isLoadingMoreDrawer) {
+                            isLoadingMoreDrawer = true
+                            delay(200)
+                            visibleDrawerLimit += 8
+                            isLoadingMoreDrawer = false
+                        }
+                    }
+
+                    // Reels List with progressive lazy loading
                     LazyColumn(
                         state = drawerScrollState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -535,7 +579,7 @@ fun KnowledgeDrawerContent(
                             .fillMaxWidth()
                             .weight(1f)
                     ) {
-                        items(filteredReels, key = { it.id }) { reel ->
+                        items(displayedReels, key = { it.id }) { reel ->
                             DrawerReelCard(
                                 reel = reel,
                                 isDark = isDarkTheme,
@@ -544,6 +588,48 @@ fun KnowledgeDrawerContent(
                                     onSelectReel(reel)
                                 }
                             )
+                        }
+
+                        if (isLoadingMoreDrawer) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(14.dp),
+                                            strokeWidth = 2.dp,
+                                            color = ActiveBlue
+                                        )
+                                        Text(
+                                            text = "Loading more reels...",
+                                            fontSize = 11.sp,
+                                            color = textMutedColor
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (!hasMoreDrawer && filteredReels.size > 8) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "All ${filteredReels.size} reels loaded",
+                                        fontSize = 11.sp,
+                                        color = textMutedColor
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -882,3 +968,4 @@ private fun DrawerReelCard(
         }
     }
 }
+

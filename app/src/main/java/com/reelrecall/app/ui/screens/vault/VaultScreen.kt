@@ -23,6 +23,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.SearchOff
@@ -628,9 +636,9 @@ fun VaultScreen(
                     }
 
                     when (viewMode) {
-                        ViewMode.GRID -> {
-                            LazyVerticalGrid(
-                                state = gridState,
+                            ViewMode.GRID -> {
+                                LazyVerticalGrid(
+                                    state = gridState,
                                 columns = GridCells.Fixed(2),
                                 verticalArrangement = Arrangement.spacedBy(14.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -3809,4 +3817,5 @@ fun HyperlinkNotesText(
         )
     }
 }
+
 

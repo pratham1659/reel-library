@@ -30,6 +30,20 @@ class DualEngineDispatcher(
         }
     }
 
+    private val onWhisperAudioTranscribed: (Long, Long) -> Unit = { audioSeconds, latency ->
+        scope.launch {
+            preferencesRepo.recordTokenUsage(
+                promptTokens = 0L,
+                completionTokens = 0L,
+                latencyMs = latency,
+                statusCode = "200 OK",
+                provider = "Groq LPU ~ Whisper",
+                model = "whisper-large-v3-turbo",
+                audioSeconds = audioSeconds
+            )
+        }
+    }
+
     fun resolveTranscriptionEngine(prefs: AppPreferences): TranscriptionEngine {
         val whisperPath = prefs.whisperModelPath
         val whisperFile = if (!whisperPath.isNullOrBlank() && File(whisperPath).exists()) {
@@ -41,7 +55,7 @@ class DualEngineDispatcher(
         return when (prefs.engineMode) {
             EngineMode.CLOUD_ONLY -> {
                 if (prefs.groqApiKey.isNotBlank()) {
-                    GroqWhisperEngine(prefs.groqApiKey)
+                    GroqWhisperEngine(prefs.groqApiKey, onAudioTranscribed = onWhisperAudioTranscribed)
                 } else {
                     FailingTranscriptionEngine("Engine Mode is set to CLOUD_ONLY: Groq API key is missing. Local fallback is strictly disallowed.")
                 }
@@ -58,7 +72,7 @@ class DualEngineDispatcher(
             EngineMode.AUTO_HYBRID -> {
                 val isOnline = isNetworkAvailable()
                 if (isOnline && prefs.groqApiKey.isNotBlank()) {
-                    GroqWhisperEngine(prefs.groqApiKey)
+                    GroqWhisperEngine(prefs.groqApiKey, onAudioTranscribed = onWhisperAudioTranscribed)
                 } else {
                     if (!whisperFile.exists() || whisperFile.length() < 10_000_000L) {
                         FailingTranscriptionEngine("Whisper transcription unavailable: Cloud requires a Groq API key and on-device Whisper weights are not installed.")

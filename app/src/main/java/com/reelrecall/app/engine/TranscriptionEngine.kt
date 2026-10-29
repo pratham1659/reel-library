@@ -27,7 +27,8 @@ private data class GroqTranscriptionResponse(
  */
 class GroqWhisperEngine(
     private val apiKey: String,
-    private val client: OkHttpClient = OkHttpClient()
+    private val client: OkHttpClient = OkHttpClient(),
+    private val onAudioTranscribed: ((audioSeconds: Long, latencyMs: Long) -> Unit)? = null
 ) : TranscriptionEngine {
 
     override val name: String = "Groq LPU ~ Whisper"
@@ -35,6 +36,7 @@ class GroqWhisperEngine(
     private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun transcribe(audioFile: File): Result<String> = withContext(Dispatchers.IO) {
+        val startTime = System.currentTimeMillis()
         try {
             if (apiKey.isBlank()) {
                 return@withContext Result.failure(IllegalStateException("Groq API key is not configured in Settings."))
@@ -68,6 +70,7 @@ class GroqWhisperEngine(
                 .build()
 
             client.newCall(request).execute().use { response ->
+                val latency = System.currentTimeMillis() - startTime
                 if (!response.isSuccessful) {
                     val errorBody = response.body?.string() ?: "Unknown error"
                     return@withContext Result.failure(
@@ -77,6 +80,20 @@ class GroqWhisperEngine(
 
                 val responseString = response.body?.string() ?: ""
                 val parsed = json.decodeFromString<GroqTranscriptionResponse>(responseString)
+
+                // Measure audio seconds
+                val audioDurationMs = try {
+                    val retriever = android.media.MediaMetadataRetriever()
+                    retriever.setDataSource(audioFile.absolutePath)
+                    val time = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    retriever.release()
+                    time?.toLongOrNull() ?: 0L
+                } catch (_: Exception) {
+                    0L
+                }
+                val audioSeconds = (audioDurationMs / 1000L).coerceAtLeast(1L)
+                onAudioTranscribed?.invoke(audioSeconds, latency)
+
                 Result.success(parsed.text.trim())
             }
         } catch (e: Exception) {
