@@ -221,6 +221,7 @@ private fun ProfileMainScreen(
 ) {
     val context = LocalContext.current
     val preferences by viewModel.preferences.collectAsState()
+    val cloudTestResult by viewModel.cloudTestResult.collectAsState()
     val isCloudMode = preferences.engineMode != EngineMode.LOCAL_ONLY
     val isDarkTheme = preferences.themeMode != "OBSIDIAN_LIGHT"
     var showUpdateDialog by remember { mutableStateOf(false) }
@@ -323,12 +324,26 @@ private fun ProfileMainScreen(
                 NeumorphicDivider(colors = colors)
 
                 // 4. Models & API (Opens Models & API Subscreen)
+                val isApiKeySet = preferences.groqApiKey.isNotBlank() || preferences.geminiApiKey.isNotBlank()
+                val apiBadgeText = when {
+                    !isApiKeySet -> "API Not Set"
+                    cloudTestResult.isSuccess == true -> "API Ready"
+                    cloudTestResult.isSuccess == false && !cloudTestResult.isTesting && cloudTestResult.message.isNotBlank() -> "API Error"
+                    else -> "API Ready"
+                }
+                val apiBadgeColor = when {
+                    !isApiKeySet -> Color(0xFFFFB74D)
+                    cloudTestResult.isSuccess == true -> StatusReady
+                    cloudTestResult.isSuccess == false && !cloudTestResult.isTesting && cloudTestResult.message.isNotBlank() -> StatusError
+                    else -> StatusReady
+                }
+
                 ProfileMenuRow(
                     icon = Icons.Default.Memory,
-                    iconTint = colors.accent,
+                    iconTint = if (isApiKeySet) StatusReady else colors.accent,
                     title = "Models & API",
-                    badgeText = "Cloud API",
-                    badgeColor = colors.accent,
+                    badgeText = apiBadgeText,
+                    badgeColor = apiBadgeColor,
                     colors = colors,
                     onClick = onNavigateToModels
                 )
@@ -1242,10 +1257,30 @@ private fun SelectModelsScreen(
                             }
                         }
 
-                        if (!isCloudMode) {
-                            Surface(shape = RoundedCornerShape(6.dp), color = colors.pillBg) {
-                                Text(text = "Inactive", fontSize = 10.sp, color = colors.textMuted, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
-                            }
+                        val isApiKeySet = groqApiKeyInput.isNotBlank() || preferences.groqApiKey.isNotBlank()
+                        val cardBadgeText = when {
+                            !isApiKeySet -> "API Not Set"
+                            cloudTestResult.isSuccess == true -> "API Ready"
+                            cloudTestResult.isSuccess == false && !cloudTestResult.isTesting && cloudTestResult.message.isNotBlank() -> "API Error"
+                            else -> "API Ready"
+                        }
+                        val cardBadgeColor = when {
+                            !isApiKeySet -> Color(0xFFFFB74D)
+                            cloudTestResult.isSuccess == true -> StatusReady
+                            cloudTestResult.isSuccess == false && !cloudTestResult.isTesting && cloudTestResult.message.isNotBlank() -> StatusError
+                            else -> StatusReady
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = cardBadgeColor.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = cardBadgeText,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = cardBadgeColor,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
                         }
                     }
 
