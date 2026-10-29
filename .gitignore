@@ -64,6 +64,7 @@ cmake-build-*/
 .Trashes
 ehthumbs.db
 Thumbs.db
+.tempmediaStorage/
 
 # Keystore & Signing secrets
 *.jks

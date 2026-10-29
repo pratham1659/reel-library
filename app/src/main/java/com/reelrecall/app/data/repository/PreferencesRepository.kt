@@ -87,7 +87,27 @@ data class AppPreferences(
     val groqQwenTokens: Long = 0L,
     val groqQwenPromptTokens: Long = 0L,
     val groqQwenCompletionTokens: Long = 0L,
-    val groqQwenCalls: Long = 0L
+    val groqQwenCalls: Long = 0L,
+    // Per-Model Local Telemetry
+    val lastCallLocalGemmaTokens: Long = 0L,
+    val lastCallLocalGemmaPromptTokens: Long = 0L,
+    val lastCallLocalGemmaCompletionTokens: Long = 0L,
+    val lastCallLocalGemmaLatencyMs: Long = 0L,
+    val lastCallLocalGemmaStatusCode: String = "",
+    val lastCallLocalGemmaProvider: String = "",
+    val lastCallLocalGemmaModel: String = "",
+    val lastCallLocalWhisperTokens: Long = 0L,
+    val lastCallLocalWhisperPromptTokens: Long = 0L,
+    val lastCallLocalWhisperCompletionTokens: Long = 0L,
+    val lastCallLocalWhisperLatencyMs: Long = 0L,
+    val lastCallLocalWhisperStatusCode: String = "",
+    val lastCallLocalWhisperProvider: String = "",
+    val lastCallLocalWhisperModel: String = "",
+    val localTotalTokens: Long = 0L,
+    val localPromptTokens: Long = 0L,
+    val localCompletionTokens: Long = 0L,
+    val localGemmaCallsCount: Long = 0L,
+    val localWhisperCallsCount: Long = 0L
 )
 
 class PreferencesRepository(private val context: Context) {
@@ -156,6 +176,29 @@ class PreferencesRepository(private val context: Context) {
         val GROQ_QWEN_PROMPT_TOKENS = longPreferencesKey("groq_qwen_prompt_tokens")
         val GROQ_QWEN_COMPLETION_TOKENS = longPreferencesKey("groq_qwen_completion_tokens")
         val GROQ_QWEN_CALLS_COUNT = longPreferencesKey("groq_qwen_calls_count")
+
+        // Local On-Device Telemetry Keys
+        val LAST_CALL_LOCAL_GEMMA_TOKENS = longPreferencesKey("last_call_local_gemma_tokens")
+        val LAST_CALL_LOCAL_GEMMA_PROMPT_TOKENS = longPreferencesKey("last_call_local_gemma_prompt_tokens")
+        val LAST_CALL_LOCAL_GEMMA_COMPLETION_TOKENS = longPreferencesKey("last_call_local_gemma_completion_tokens")
+        val LAST_CALL_LOCAL_GEMMA_LATENCY_MS = longPreferencesKey("last_call_local_gemma_latency_ms")
+        val LAST_CALL_LOCAL_GEMMA_STATUS_CODE = stringPreferencesKey("last_call_local_gemma_status_code")
+        val LAST_CALL_LOCAL_GEMMA_PROVIDER = stringPreferencesKey("last_call_local_gemma_provider")
+        val LAST_CALL_LOCAL_GEMMA_MODEL = stringPreferencesKey("last_call_local_gemma_model")
+
+        val LAST_CALL_LOCAL_WHISPER_TOKENS = longPreferencesKey("last_call_local_whisper_tokens")
+        val LAST_CALL_LOCAL_WHISPER_PROMPT_TOKENS = longPreferencesKey("last_call_local_whisper_prompt_tokens")
+        val LAST_CALL_LOCAL_WHISPER_COMPLETION_TOKENS = longPreferencesKey("last_call_local_whisper_completion_tokens")
+        val LAST_CALL_LOCAL_WHISPER_LATENCY_MS = longPreferencesKey("last_call_local_whisper_latency_ms")
+        val LAST_CALL_LOCAL_WHISPER_STATUS_CODE = stringPreferencesKey("last_call_local_whisper_status_code")
+        val LAST_CALL_LOCAL_WHISPER_PROVIDER = stringPreferencesKey("last_call_local_whisper_provider")
+        val LAST_CALL_LOCAL_WHISPER_MODEL = stringPreferencesKey("last_call_local_whisper_model")
+
+        val LOCAL_TOTAL_TOKENS = longPreferencesKey("local_total_tokens")
+        val LOCAL_PROMPT_TOKENS = longPreferencesKey("local_prompt_tokens")
+        val LOCAL_COMPLETION_TOKENS = longPreferencesKey("local_completion_tokens")
+        val LOCAL_GEMMA_CALLS_COUNT = longPreferencesKey("local_gemma_calls_count")
+        val LOCAL_WHISPER_CALLS_COUNT = longPreferencesKey("local_whisper_calls_count")
     }
 
     init {
@@ -282,7 +325,27 @@ class PreferencesRepository(private val context: Context) {
             groqQwenTokens = preferences[PreferencesKeys.GROQ_QWEN_TOTAL_TOKENS] ?: (preferences[PreferencesKeys.GROQ_TOTAL_TOKENS] ?: 0L),
             groqQwenPromptTokens = preferences[PreferencesKeys.GROQ_QWEN_PROMPT_TOKENS] ?: (preferences[PreferencesKeys.GROQ_PROMPT_TOKENS] ?: 0L),
             groqQwenCompletionTokens = preferences[PreferencesKeys.GROQ_QWEN_COMPLETION_TOKENS] ?: (preferences[PreferencesKeys.GROQ_COMPLETION_TOKENS] ?: 0L),
-            groqQwenCalls = preferences[PreferencesKeys.GROQ_QWEN_CALLS_COUNT] ?: (preferences[PreferencesKeys.GROQ_CALLS_COUNT] ?: 0L)
+            groqQwenCalls = preferences[PreferencesKeys.GROQ_QWEN_CALLS_COUNT] ?: (preferences[PreferencesKeys.GROQ_CALLS_COUNT] ?: 0L),
+            // Local On-Device Telemetry
+            lastCallLocalGemmaTokens = preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_TOKENS] ?: 0L,
+            lastCallLocalGemmaPromptTokens = preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_PROMPT_TOKENS] ?: 0L,
+            lastCallLocalGemmaCompletionTokens = preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_COMPLETION_TOKENS] ?: 0L,
+            lastCallLocalGemmaLatencyMs = preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_LATENCY_MS] ?: 0L,
+            lastCallLocalGemmaStatusCode = preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_STATUS_CODE] ?: "200 OK",
+            lastCallLocalGemmaProvider = preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_PROVIDER] ?: "On-Device Gemma 2B",
+            lastCallLocalGemmaModel = preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_MODEL] ?: "gemma-2-2b-it-gpu",
+            lastCallLocalWhisperTokens = preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_TOKENS] ?: 0L,
+            lastCallLocalWhisperPromptTokens = preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_PROMPT_TOKENS] ?: 0L,
+            lastCallLocalWhisperCompletionTokens = preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_COMPLETION_TOKENS] ?: 0L,
+            lastCallLocalWhisperLatencyMs = preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_LATENCY_MS] ?: 0L,
+            lastCallLocalWhisperStatusCode = preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_STATUS_CODE] ?: "200 OK",
+            lastCallLocalWhisperProvider = preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_PROVIDER] ?: "On-Device Whisper Base",
+            lastCallLocalWhisperModel = preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_MODEL] ?: "whisper.cpp-base",
+            localTotalTokens = preferences[PreferencesKeys.LOCAL_TOTAL_TOKENS] ?: 0L,
+            localPromptTokens = preferences[PreferencesKeys.LOCAL_PROMPT_TOKENS] ?: 0L,
+            localCompletionTokens = preferences[PreferencesKeys.LOCAL_COMPLETION_TOKENS] ?: 0L,
+            localGemmaCallsCount = preferences[PreferencesKeys.LOCAL_GEMMA_CALLS_COUNT] ?: 0L,
+            localWhisperCallsCount = preferences[PreferencesKeys.LOCAL_WHISPER_CALLS_COUNT] ?: 0L
         )
     }
 
@@ -427,6 +490,11 @@ class PreferencesRepository(private val context: Context) {
                 preferences[PreferencesKeys.GROQ_QWEN_PROMPT_TOKENS] = 0L
                 preferences[PreferencesKeys.GROQ_QWEN_COMPLETION_TOKENS] = 0L
                 preferences[PreferencesKeys.GROQ_QWEN_CALLS_COUNT] = 0L
+                preferences[PreferencesKeys.LOCAL_TOTAL_TOKENS] = 0L
+                preferences[PreferencesKeys.LOCAL_PROMPT_TOKENS] = 0L
+                preferences[PreferencesKeys.LOCAL_COMPLETION_TOKENS] = 0L
+                preferences[PreferencesKeys.LOCAL_GEMMA_CALLS_COUNT] = 0L
+                preferences[PreferencesKeys.LOCAL_WHISPER_CALLS_COUNT] = 0L
                 preferences[PreferencesKeys.LAST_DAILY_RESET_TIME] = now
             }
         }
@@ -451,7 +519,8 @@ class PreferencesRepository(private val context: Context) {
         val totalForCall = promptTokens + completionTokens
         val isLocal = (provider.contains("Whisper", ignoreCase = true) && !provider.contains("Groq", ignoreCase = true)) ||
                 provider.contains("Gemma", ignoreCase = true) ||
-                provider.contains("Local", ignoreCase = true)
+                provider.contains("Local", ignoreCase = true) ||
+                provider.contains("On-Device", ignoreCase = true)
         val engineType = if (isLocal) "LOCAL" else "CLOUD"
 
         // 1. Permanently record full history into Room DB
@@ -496,6 +565,42 @@ class PreferencesRepository(private val context: Context) {
             }
             if (provider.isNotBlank()) {
                 preferences[PreferencesKeys.LAST_CALL_PROVIDER] = provider
+            }
+
+            // Local On-Device telemetry tracking
+            if (isLocal) {
+                val locTotal = preferences[PreferencesKeys.LOCAL_TOTAL_TOKENS] ?: 0L
+                val locPrompt = preferences[PreferencesKeys.LOCAL_PROMPT_TOKENS] ?: 0L
+                val locComp = preferences[PreferencesKeys.LOCAL_COMPLETION_TOKENS] ?: 0L
+
+                preferences[PreferencesKeys.LOCAL_TOTAL_TOKENS] = locTotal + totalForCall
+                preferences[PreferencesKeys.LOCAL_PROMPT_TOKENS] = locPrompt + promptTokens
+                preferences[PreferencesKeys.LOCAL_COMPLETION_TOKENS] = locComp + completionTokens
+
+                val isLocalWhisper = provider.contains("Whisper", ignoreCase = true) || model.contains("whisper", ignoreCase = true)
+                if (isLocalWhisper) {
+                    val wCalls = preferences[PreferencesKeys.LOCAL_WHISPER_CALLS_COUNT] ?: 0L
+                    preferences[PreferencesKeys.LOCAL_WHISPER_CALLS_COUNT] = wCalls + 1
+
+                    preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_TOKENS] = totalForCall
+                    preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_PROMPT_TOKENS] = promptTokens
+                    preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_COMPLETION_TOKENS] = completionTokens
+                    if (latencyMs > 0L) preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_LATENCY_MS] = latencyMs
+                    if (statusCode.isNotBlank()) preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_STATUS_CODE] = statusCode
+                    preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_PROVIDER] = provider.ifBlank { "On-Device Whisper Base" }
+                    if (model.isNotBlank()) preferences[PreferencesKeys.LAST_CALL_LOCAL_WHISPER_MODEL] = model
+                } else {
+                    val gCalls = preferences[PreferencesKeys.LOCAL_GEMMA_CALLS_COUNT] ?: 0L
+                    preferences[PreferencesKeys.LOCAL_GEMMA_CALLS_COUNT] = gCalls + 1
+
+                    preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_TOKENS] = totalForCall
+                    preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_PROMPT_TOKENS] = promptTokens
+                    preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_COMPLETION_TOKENS] = completionTokens
+                    if (latencyMs > 0L) preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_LATENCY_MS] = latencyMs
+                    if (statusCode.isNotBlank()) preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_STATUS_CODE] = statusCode
+                    preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_PROVIDER] = provider.ifBlank { "On-Device Gemma 2B" }
+                    if (model.isNotBlank()) preferences[PreferencesKeys.LAST_CALL_LOCAL_GEMMA_MODEL] = model
+                }
             }
 
             // Per-provider specific metrics
@@ -565,8 +670,6 @@ class PreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.TOTAL_TOKENS_USED] = 0L
             preferences[PreferencesKeys.TOTAL_PROMPT_TOKENS] = 0L
             preferences[PreferencesKeys.TOTAL_COMPLETION_TOKENS] = 0L
-            // Daily and aggregate counters reset, but LAST_CALL telemetry is preserved
-            // so user can continuously monitor the most recent invocation
 
             preferences[PreferencesKeys.GEMINI_TOTAL_TOKENS] = 0L
             preferences[PreferencesKeys.GEMINI_PROMPT_TOKENS] = 0L
@@ -583,6 +686,12 @@ class PreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.GROQ_QWEN_PROMPT_TOKENS] = 0L
             preferences[PreferencesKeys.GROQ_QWEN_COMPLETION_TOKENS] = 0L
             preferences[PreferencesKeys.GROQ_QWEN_CALLS_COUNT] = 0L
+
+            preferences[PreferencesKeys.LOCAL_TOTAL_TOKENS] = 0L
+            preferences[PreferencesKeys.LOCAL_PROMPT_TOKENS] = 0L
+            preferences[PreferencesKeys.LOCAL_COMPLETION_TOKENS] = 0L
+            preferences[PreferencesKeys.LOCAL_GEMMA_CALLS_COUNT] = 0L
+            preferences[PreferencesKeys.LOCAL_WHISPER_CALLS_COUNT] = 0L
         }
     }
 }
