@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -167,11 +168,47 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         Pair(tag, source)
     }
 
+    companion object {
+        const val INITIAL_PAGE_SIZE = 24
+        const val PAGE_SIZE_INCREMENT = 20
+    }
+
+    val visibleItemsCount = MutableStateFlow(INITIAL_PAGE_SIZE)
+    val isLoadingMore = MutableStateFlow(false)
+    val totalMatchingCount = MutableStateFlow(0)
+    val hasMoreReels = MutableStateFlow(false)
+    val allMatchingReelIds = MutableStateFlow<List<Long>>(emptyList())
+
+    init {
+        // Reset pagination window whenever filters or sorting change
+        viewModelScope.launch {
+            combine(rawReelsFlow, filterConfigFlow, selectionFilterFlow) { _, _, _ -> }
+                .collect {
+                    visibleItemsCount.value = INITIAL_PAGE_SIZE
+                }
+        }
+    }
+
+    fun loadNextPage() {
+        if (isLoadingMore.value || !hasMoreReels.value) return
+        viewModelScope.launch {
+            isLoadingMore.value = true
+            kotlinx.coroutines.delay(180)
+            visibleItemsCount.value += PAGE_SIZE_INCREMENT
+            isLoadingMore.value = false
+        }
+    }
+
+    fun resetPagination() {
+        visibleItemsCount.value = INITIAL_PAGE_SIZE
+    }
+
     val groupedReels: StateFlow<List<DateGroup>> = combine(
         rawReelsFlow,
         filterConfigFlow,
-        selectionFilterFlow
-    ) { reelsList: List<ReelEntity>, (order, direction, group), (tag, source) ->
+        selectionFilterFlow,
+        visibleItemsCount
+    ) { reelsList: List<ReelEntity>, (order, direction, group), (tag, source), visibleCount ->
 
         // Step 1: Filter by tag & source
         var filtered: List<ReelEntity> = reelsList
@@ -190,9 +227,16 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // Step 3: Group by Date
+        totalMatchingCount.value = filtered.size
+        hasMoreReels.value = filtered.size > visibleCount
+        allMatchingReelIds.value = filtered.map { it.id }
+
+        // Step 3: Lazy Windowing / Slicing - process only visible batch for speed & low memory footprint
+        val windowed = filtered.take(visibleCount)
+
+        // Step 4: Group by Date
         if (group == GroupBy.NONE) {
-            listOf(DateGroup(primaryHeader = "All Reels", secondaryHeader = "${filtered.size} items", reels = filtered))
+            listOf(DateGroup(primaryHeader = "All Reels", secondaryHeader = "${windowed.size} of ${filtered.size} items", reels = windowed))
         } else {
             val today = LocalDate.now()
             val zone = ZoneId.systemDefault()
@@ -201,7 +245,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
             val groupsMap = when (group) {
                 GroupBy.DAY -> {
-                    filtered.groupBy { entity ->
+                    windowed.groupBy { entity ->
                         val date = Instant.ofEpochMilli(entity.createdAt).atZone(zone).toLocalDate()
                         val daysDiff = ChronoUnit.DAYS.between(date, today)
 
@@ -215,7 +259,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
                 GroupBy.WEEK -> {
-                    filtered.groupBy { entity ->
+                    windowed.groupBy { entity ->
                         val date = Instant.ofEpochMilli(entity.createdAt).atZone(zone).toLocalDate()
                         val daysDiff = ChronoUnit.DAYS.between(date, today)
                         val weeksDiff = daysDiff / 7
@@ -230,7 +274,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
                 GroupBy.MONTH -> {
-                    filtered.groupBy { entity ->
+                    windowed.groupBy { entity ->
                         val date = Instant.ofEpochMilli(entity.createdAt).atZone(zone).toLocalDate()
                         val primary = date.format(monthFormatter)
                         val secondary = date.month.name.lowercase().replaceFirstChar { it.uppercase() }
@@ -331,11 +375,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getReel(id: Long) = dao.getReelById(id)
 
-    init {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            reprocessDemoReelsIfNeeded()
-        }
-    }
+    private val reprocessMutex = kotlinx.coroutines.sync.Mutex()
 
     suspend fun reprocessDemoReelsIfNeeded() {
         try {
@@ -424,6 +464,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         )
                         dao.update(updated)
                     }
+                    // Rate limit protection between batch items
+                    kotlinx.coroutines.delay(2000)
                 }
             }
         } catch (e: Exception) {
@@ -435,79 +477,85 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
     fun reprocessReel(id: Long) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            if (isRetryingMap.value[id] == true) return@launch
             isRetryingMap.value = isRetryingMap.value + (id to true)
-            try {
-                val reel = dao.getReelById(id).first() ?: return@launch
-                val currentPrefs = preferencesRepo.preferencesFlow.first()
-                val dispatcher = com.reelrecall.app.engine.DualEngineDispatcher(getApplication())
-                val summarizer = dispatcher.resolveSummarizationEngine(currentPrefs)
-                val transcriber = dispatcher.resolveTranscriptionEngine(currentPrefs)
-
-                val extractionRes = com.reelrecall.app.worker.InstagramExtractor.extract(
-                    reel.canonicalUrl,
-                    getApplication<android.app.Application>().cacheDir
-                )
-                val metadata = extractionRes.getOrNull()
-
-                val cleanCaption = metadata?.caption ?: reel.caption?.let {
-                    val unescaped = android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
-                    if (unescaped.contains(": \"")) unescaped.substringAfter(": \"").removeSuffix("\"").removeSuffix("\".").trim()
-                    else if (unescaped.contains(" - ") && unescaped.contains(": ")) unescaped.substringAfter(": ").trim()
-                    else unescaped
-                } ?: ""
-
-                val cleanHandle = metadata?.creatorHandle ?: reel.creatorHandle?.let {
-                    android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
-                }
-
-                val parsedHandle = if (cleanHandle != null && cleanHandle.contains("@")) {
-                    Regex("(@[a-zA-Z0-9._]+)").find(cleanHandle)?.value ?: cleanHandle
-                } else cleanHandle
-
-                val realTranscript = if (!reel.transcript.isNullOrBlank()) {
-                    reel.transcript
-                } else if (metadata?.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
-                    transcriber.transcribe(metadata.audioFile).getOrNull()?.trim()?.ifBlank { null }
-                } else {
-                    null
-                }
-
-                val summaryResult = summarizer.summarize(cleanCaption, realTranscript ?: "")
-                val summary = summaryResult.getOrNull()
-
-                if (summary != null) {
-                    val updated = reel.copy(
-                        title = summary.title,
-                        oneLineSummary = summary.one_line_summary,
-                        takeawaysJson = kotlinx.serialization.json.Json.encodeToString(summary.actionable_takeaways),
-                        tagsJson = kotlinx.serialization.json.Json.encodeToString(summary.tags),
-                        creatorHandle = parsedHandle ?: reel.creatorHandle,
-                        caption = cleanCaption.ifBlank { reel.caption },
-                        transcript = realTranscript,
-                        thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
-                        status = IngestionStatus.COMPLETED,
-                        engineUsed = "${transcriber.name} + ${summarizer.name}",
-                        errorMessage = null
-                    )
-                    dao.update(updated)
-                } else {
-                    val err = summaryResult.exceptionOrNull()?.message ?: "Processing failed: Summarization returned no data"
-                    val failedReel = reel.copy(
-                        status = IngestionStatus.FAILED,
-                        errorMessage = err
-                    )
-                    dao.update(failedReel)
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("ReelRecall", "reprocessReel $id error", e)
+            reprocessMutex.withLock {
                 try {
-                    val r = dao.getReelById(id).first()
-                    if (r != null) {
-                        dao.update(r.copy(status = IngestionStatus.FAILED, errorMessage = e.message ?: "Reprocessing error"))
+                    val reel = dao.getReelById(id).first() ?: return@withLock
+                    val currentPrefs = preferencesRepo.preferencesFlow.first()
+                    val dispatcher = com.reelrecall.app.engine.DualEngineDispatcher(getApplication())
+                    val summarizer = dispatcher.resolveSummarizationEngine(currentPrefs)
+                    val transcriber = dispatcher.resolveTranscriptionEngine(currentPrefs)
+
+                    val extractionRes = com.reelrecall.app.worker.InstagramExtractor.extract(
+                        reel.canonicalUrl,
+                        getApplication<android.app.Application>().cacheDir
+                    )
+                    val metadata = extractionRes.getOrNull()
+
+                    val cleanCaption = metadata?.caption ?: reel.caption?.let {
+                        val unescaped = android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
+                        if (unescaped.contains(": \"")) unescaped.substringAfter(": \"").removeSuffix("\"").removeSuffix("\".").trim()
+                        else if (unescaped.contains(" - ") && unescaped.contains(": ")) unescaped.substringAfter(": ").trim()
+                        else unescaped
+                    } ?: ""
+
+                    val cleanHandle = metadata?.creatorHandle ?: reel.creatorHandle?.let {
+                        android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
                     }
-                } catch (_: Exception) {}
-            } finally {
-                isRetryingMap.value = isRetryingMap.value - id
+
+                    val parsedHandle = if (cleanHandle != null && cleanHandle.contains("@")) {
+                        Regex("(@[a-zA-Z0-9._]+)").find(cleanHandle)?.value ?: cleanHandle
+                    } else cleanHandle
+
+                    val realTranscript = if (!reel.transcript.isNullOrBlank()) {
+                        reel.transcript
+                    } else if (metadata?.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
+                        transcriber.transcribe(metadata.audioFile).getOrNull()?.trim()?.ifBlank { null }
+                    } else {
+                        null
+                    }
+
+                    val summaryResult = summarizer.summarize(cleanCaption, realTranscript ?: "")
+                    val summary = summaryResult.getOrNull()
+
+                    if (summary != null) {
+                        val updated = reel.copy(
+                            title = summary.title,
+                            oneLineSummary = summary.one_line_summary,
+                            takeawaysJson = kotlinx.serialization.json.Json.encodeToString(summary.actionable_takeaways),
+                            tagsJson = kotlinx.serialization.json.Json.encodeToString(summary.tags),
+                            creatorHandle = parsedHandle ?: reel.creatorHandle,
+                            caption = cleanCaption.ifBlank { reel.caption },
+                            transcript = realTranscript,
+                            thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
+                            status = IngestionStatus.COMPLETED,
+                            engineUsed = "${transcriber.name} + ${summarizer.name}",
+                            errorMessage = null
+                        )
+                        dao.update(updated)
+                    } else {
+                        val err = summaryResult.exceptionOrNull()?.message ?: "Processing failed: Summarization returned no data"
+                        val failedReel = reel.copy(
+                            status = IngestionStatus.FAILED,
+                            errorMessage = err
+                        )
+                        dao.update(failedReel)
+                    }
+
+                    // Strict delay between individual reel calls to respect Groq OTPM/RPM limits
+                    kotlinx.coroutines.delay(1500)
+                } catch (e: Exception) {
+                    android.util.Log.e("ReelRecall", "reprocessReel $id error", e)
+                    try {
+                        val r = dao.getReelById(id).first()
+                        if (r != null) {
+                            dao.update(r.copy(status = IngestionStatus.FAILED, errorMessage = e.message ?: "Reprocessing error"))
+                        }
+                    } catch (_: Exception) {}
+                } finally {
+                    isRetryingMap.value = isRetryingMap.value - id
+                }
             }
         }
     }

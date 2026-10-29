@@ -274,46 +274,30 @@ private fun ProfileMainScreen(
                 elevation = 6.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // 1. Account (Marked Coming Soon for future release)
+                // 1. Account
                 ProfileMenuRow(
                     icon = Icons.Default.Person,
                     title = "Account",
-                    badgeText = "Coming Soon",
-                    badgeColor = colors.textMuted,
+                    badgeText = if (preferences.isLoggedIn) preferences.userName.ifBlank { "Logged In" } else "Login / Cloud",
+                    badgeColor = colors.accent,
                     colors = colors,
-                    onClick = {
-                        Toast.makeText(context, "Account details coming soon", Toast.LENGTH_SHORT).show()
-                    }
+                    onClick = onNavigateToAccount
                 )
                 NeumorphicDivider(colors = colors)
 
-                // 2. Select Models (Opens Models Subscreen)
-                ProfileMenuRow(
-                    icon = Icons.Default.Memory,
-                    iconTint = colors.accent,
-                    title = "Select Models",
-                    badgeText = if (isCloudMode) "Cloud API" else "Local NPU",
-                    badgeColor = if (isCloudMode) colors.accent else CyanAccent,
-                    colors = colors,
-                    onClick = onNavigateToModels
-                )
-                NeumorphicDivider(colors = colors)
-
-                // 3. Preferences (Marked Coming Soon for future release)
+                // 2. Preferences
                 ProfileMenuRow(
                     icon = Icons.Default.Tune,
                     iconTint = ElectricIndigo,
                     title = "Preferences",
-                    badgeText = "Coming Soon",
-                    badgeColor = colors.textMuted,
+                    badgeText = preferences.summaryStyle.lowercase().replaceFirstChar { it.uppercase() },
+                    badgeColor = ElectricIndigo,
                     colors = colors,
-                    onClick = {
-                        Toast.makeText(context, "Preferences coming soon", Toast.LENGTH_SHORT).show()
-                    }
+                    onClick = onNavigateToPreferences
                 )
                 NeumorphicDivider(colors = colors)
 
-                // 4. Appearance (Neumorphic Dark / Light Theme Toggle)
+                // 3. Appearance (Neumorphic Dark / Light Theme Toggle)
                 ProfileMenuRow(
                     icon = Icons.Default.Palette,
                     title = "Appearance",
@@ -332,13 +316,25 @@ private fun ProfileMainScreen(
                 )
                 NeumorphicDivider(colors = colors)
 
+                // 4. Select Models (Opens Models Subscreen)
+                ProfileMenuRow(
+                    icon = Icons.Default.Memory,
+                    iconTint = colors.accent,
+                    title = "Select Models",
+                    badgeText = if (isCloudMode) "Cloud API" else "Local NPU",
+                    badgeColor = if (isCloudMode) colors.accent else CyanAccent,
+                    colors = colors,
+                    onClick = onNavigateToModels
+                )
+                NeumorphicDivider(colors = colors)
+
                 // 5. Data & Storage (Cloud Backup, Google Drive & Universal Export/Import)
                 ProfileMenuRow(
                     icon = Icons.Default.Storage,
                     iconTint = CyanAccent,
                     title = "Data & Storage",
-                    badgeText = "Local Only",
-                    badgeColor = colors.textMuted,
+                    badgeText = if (preferences.isCloudBackupEnabled) "Cloud Sync" else "Local Storage",
+                    badgeColor = CyanAccent,
                     colors = colors,
                     onClick = onNavigateToData
                 )
