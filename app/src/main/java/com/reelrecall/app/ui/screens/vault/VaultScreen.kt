@@ -2305,6 +2305,8 @@ fun ReelDetailScreen(
     var newTagInput by remember { mutableStateOf("") }
     var urlToOpenWithWarning by remember { mutableStateOf<String?>(null) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showNoteDialog by remember { mutableStateOf(false) }
+    var editingNoteText by remember(currentReel.id, showNoteDialog) { mutableStateOf(currentReel.userNotes ?: "") }
 
     val isRetryingMap by viewModel.isRetryingMap.collectAsState()
     val isRetrying = isRetryingMap[currentReel.id] == true
@@ -2488,48 +2490,88 @@ fun ReelDetailScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clip(RoundedCornerShape(5.dp))
-                                .background(
-                                    Brush.linearGradient(
-                                        listOf(InstagramPurple, InstagramPink, InstagramOrange)
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.weight(1f, fill = false)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(10.dp)
-                                    .border(1.2.dp, Color.White, RoundedCornerShape(3.dp))
+                                    .size(18.dp)
+                                    .clip(RoundedCornerShape(5.dp))
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(InstagramPurple, InstagramPink, InstagramOrange)
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .border(1.2.dp, Color.White, RoundedCornerShape(3.dp))
+                                )
+                            }
+
+                            Text(
+                                text = "instagram.com",
+                                fontSize = 13.sp,
+                                color = colors.textSecondary
                             )
+
+                            if (!currentReel.creatorHandle.isNullOrBlank()) {
+                                val cleanHandle = currentReel.creatorHandle
+                                    .replace("&#064;", "@")
+                                    .replace("&#x2022;", "•")
+                                    .replace("&amp;", "&")
+                                val handleOnly = Regex("(@[a-zA-Z0-9._]+)").find(cleanHandle)?.value ?: cleanHandle.substringBefore(" •").trim()
+                                Text(
+                                    text = "•  $handleOnly",
+                                    fontSize = 13.sp,
+                                    color = colors.textMuted,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
 
-                        Text(
-                            text = "instagram.com",
-                            fontSize = 13.sp,
-                            color = colors.textSecondary
-                        )
-
-                        if (!currentReel.creatorHandle.isNullOrBlank()) {
-                            val cleanHandle = currentReel.creatorHandle
-                                .replace("&#064;", "@")
-                                .replace("&#x2022;", "•")
-                                .replace("&amp;", "&")
-                            val handleOnly = Regex("(@[a-zA-Z0-9._]+)").find(cleanHandle)?.value ?: cleanHandle.substringBefore(" •").trim()
-                            Text(
-                                text = "•  $handleOnly",
-                                fontSize = 13.sp,
-                                color = colors.textMuted
-                            )
+                        // Note Button next to Instagram info
+                        Surface(
+                            onClick = {
+                                editingNoteText = currentReel.userNotes ?: notesText
+                                showNoteDialog = true
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.pillBg,
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border),
+                            modifier = Modifier.padding(start = 8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Note",
+                                    tint = colors.accent,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = if (!currentReel.userNotes.isNullOrBlank() || notesText.isNotBlank()) "Edit Note" else "Note",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colors.textPrimary
+                                )
+                            }
                         }
                     }
 
-                    // USER SAVED NOTE (Displayed right below Instagram icon and username)
+                    // USER SAVED NOTE (Displayed right below Instagram profile row)
                     val activeNote = currentReel.userNotes ?: notesText.takeIf { it.isNotBlank() }
                     if (!activeNote.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(14.dp))
@@ -2541,21 +2583,39 @@ fun ReelDetailScreen(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Row(
+                                    modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = null,
+                                            tint = colors.accent,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Text(
+                                            text = "Saved Note",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.accent,
+                                            letterSpacing = 0.5.sp
+                                        )
+                                    }
+
                                     Icon(
                                         imageVector = Icons.Default.Edit,
-                                        contentDescription = null,
-                                        tint = colors.accent,
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                    Text(
-                                        text = "Saved Note",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = colors.accent,
-                                        letterSpacing = 0.5.sp
+                                        contentDescription = "Edit Note",
+                                        tint = colors.textMuted,
+                                        modifier = Modifier
+                                            .size(14.dp)
+                                            .clickable {
+                                                editingNoteText = activeNote
+                                                showNoteDialog = true
+                                            }
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
@@ -2593,7 +2653,8 @@ fun ReelDetailScreen(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.weight(1f, fill = false)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.AutoAwesome,
@@ -2602,19 +2663,22 @@ fun ReelDetailScreen(
                                 modifier = Modifier.size(19.dp)
                             )
                             Text(
-                                text = "Executive Summary",
+                                text = "AI Summary",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary
+                                color = colors.textPrimary,
+                                maxLines = 1
                             )
                         }
 
-                        // Action Button (Run AI Summarise or Retry AI)
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        // Action Button (Run AI or Retry AI)
                         Surface(
                             onClick = {
-                                android.util.Log.d("ReelLibrary", "Top Executive Summary button clicked for ${currentReel.id}")
+                                android.util.Log.d("ReelLibrary", "Top AI Summary button clicked for ${currentReel.id}")
                                 viewModel.reprocessReel(currentReel.id)
-                                Toast.makeText(context, if (hasAiContent) "AI is regenerating summary..." else "Running AI Summarise...", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, if (hasAiContent) "AI is regenerating summary..." else "Running AI...", Toast.LENGTH_SHORT).show()
                             },
                             enabled = !isRetrying,
                             shape = RoundedCornerShape(12.dp),
@@ -2625,7 +2689,7 @@ fun ReelDetailScreen(
                             )
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(5.dp)
                             ) {
@@ -2638,7 +2702,7 @@ fun ReelDetailScreen(
                                     Text("Synthesizing...", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = colors.accent)
                                 } else if (!hasAiContent) {
                                     Icon(Icons.Default.AutoAwesome, contentDescription = "Run AI", tint = colors.accent, modifier = Modifier.size(13.dp))
-                                    Text("Run AI Summarise", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.accent)
+                                    Text("Run AI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.accent)
                                 } else {
                                     Icon(Icons.Default.Refresh, contentDescription = "Retry", tint = colors.textSecondary, modifier = Modifier.size(13.dp))
                                     Text("Retry AI", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = colors.textSecondary)
@@ -3372,105 +3436,88 @@ fun ReelDetailScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
-            // NOTES SECTION (Hyperlink detection + External link warning)
-            NeumorphicCard(
-                modifier = Modifier.fillMaxWidth(),
-                colors = colors,
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+        // NOTE EDITING DIALOG
+        if (showNoteDialog) {
+            AlertDialog(
+                onDismissRequest = { showNoteDialog = false },
+                title = {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icons.Default.Edit, contentDescription = null, tint = colors.accent, modifier = Modifier.size(16.dp))
-                            Text(
-                                text = "Notes",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary
-                            )
-                        }
-
-                        // Save Notes Button
-                        NeumorphicButton(
-                            onClick = {
-                                viewModel.updateReelNotes(currentReel.id, notesText)
-                                Toast.makeText(context, "Notes saved successfully!", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = colors,
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.height(36.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(Icons.Default.Check, contentDescription = null, tint = StatusReady, modifier = Modifier.size(14.dp))
-                                Text("Save", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    OutlinedTextField(
-                        value = notesText,
-                        onValueChange = {
-                            notesText = it
-                            viewModel.updateReelNotes(currentReel.id, it)
-                        },
-                        placeholder = { Text("Write personal notes, thoughts, or paste links here...", color = colors.textMuted, fontSize = 13.sp) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = colors.pillBg,
-                            unfocusedContainerColor = colors.pillBg,
-                            focusedBorderColor = colors.accent,
-                            unfocusedBorderColor = colors.border,
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp)
-                    )
-
-                    // Rendered notes with clickable hyperlinks if any URL is present
-                    if (notesText.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = colors.accent,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Text(
-                            text = "Interactive Note Preview (Tap any link):",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            text = if (!currentReel.userNotes.isNullOrBlank() || notesText.isNotBlank()) "Edit Reel Note" else "Add Reel Note",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                    }
+                },
+                text = {
+                    Column {
+                        Text(
+                            text = "Save personal notes, thoughts, or paste links for this reel.",
+                            fontSize = 12.sp,
                             color = colors.textMuted
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = colors.pillBg,
-                            border = androidx.compose.foundation.BorderStroke(0.6.dp, colors.border),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Box(modifier = Modifier.padding(12.dp)) {
-                                HyperlinkNotesText(
-                                    text = notesText,
-                                    colors = colors,
-                                    onUrlClick = { url ->
-                                        urlToOpenWithWarning = url
-                                    }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = editingNoteText,
+                            onValueChange = { editingNoteText = it },
+                            placeholder = {
+                                Text(
+                                    text = "Write your note or paste links here...",
+                                    color = colors.textMuted,
+                                    fontSize = 13.sp
                                 )
-                            }
-                        }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = colors.pillBg,
+                                unfocusedContainerColor = colors.pillBg,
+                                focusedBorderColor = colors.accent,
+                                unfocusedBorderColor = colors.border,
+                                focusedTextColor = colors.textPrimary,
+                                unfocusedTextColor = colors.textPrimary
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                        )
                     }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(30.dp))
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val cleanNote = editingNoteText.trim().ifBlank { null }
+                            notesText = cleanNote ?: ""
+                            viewModel.updateReelNotes(currentReel.id, cleanNote)
+                            showNoteDialog = false
+                            Toast.makeText(context, if (cleanNote != null) "Note saved!" else "Note cleared!", Toast.LENGTH_SHORT).show()
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
+                    ) {
+                        Text("Save Note", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showNoteDialog = false }) {
+                        Text("Cancel", color = colors.textMuted)
+                    }
+                },
+                containerColor = colors.surface,
+                shape = RoundedCornerShape(18.dp)
+            )
         }
 
         // EXTERNAL LINK WARNING ALERT DIALOG
