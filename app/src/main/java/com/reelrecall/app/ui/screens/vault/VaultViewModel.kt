@@ -59,6 +59,12 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     val groupBy = MutableStateFlow(GroupBy.DAY)
     val viewMode = MutableStateFlow(ViewMode.GRID)
 
+    init {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            reprocessDemoReelsIfNeeded()
+        }
+    }
+
     val selectedTag = MutableStateFlow<String?>(null)
     val selectedSource = MutableStateFlow<String?>(null)
 
@@ -110,28 +116,75 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    val isAiSearchEnabled = MutableStateFlow(false)
+
+    fun toggleAiSearch() {
+        isAiSearchEnabled.value = !isAiSearchEnabled.value
+    }
+
     // Dynamic AI Search Suggestions derived from reel content and tags
-    val aiSearchSuggestions: StateFlow<List<String>> = dao.getAllReels().map { reels ->
-        val tags = mutableSetOf<String>()
-        reels.forEach { reel ->
-            try {
-                val list = Json.decodeFromString<List<String>>(reel.tagsJson)
-                tags.addAll(list.map { if (it.startsWith("#")) it else "#$it" })
-            } catch (_: Exception) {}
+    val aiSearchSuggestions: StateFlow<List<String>> = combine(
+        dao.getAllReels(),
+        searchQuery,
+        isAiSearchEnabled
+    ) { reels, query, aiEnabled ->
+        if (!aiEnabled) {
+            emptyList()
+        } else {
+            val q = query.trim().lowercase()
+            val tagFrequency = mutableMapOf<String, Int>()
+
+            // If user typed something, first prioritize tags from reels matching query
+            if (q.isNotEmpty()) {
+                val cleanQ = q.removePrefix("#").removePrefix("@")
+                reels.filter { reel ->
+                    reel.title?.contains(cleanQ, ignoreCase = true) == true ||
+                    reel.caption?.contains(cleanQ, ignoreCase = true) == true ||
+                    reel.oneLineSummary?.contains(cleanQ, ignoreCase = true) == true ||
+                    reel.transcript?.contains(cleanQ, ignoreCase = true) == true ||
+                    reel.tagsJson.contains(cleanQ, ignoreCase = true)
+                }.forEach { matchingReel ->
+                    try {
+                        val tags = Json.decodeFromString<List<String>>(matchingReel.tagsJson)
+                        tags.forEach { tag ->
+                            val formatted = if (tag.startsWith("#")) tag else "#$tag"
+                            tagFrequency[formatted] = (tagFrequency[formatted] ?: 0) + 3 // Higher weight
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+
+            // Also collect tags from all reels
+            reels.forEach { reel ->
+                try {
+                    val tags = Json.decodeFromString<List<String>>(reel.tagsJson)
+                    tags.forEach { tag ->
+                        val formatted = if (tag.startsWith("#")) tag else "#$tag"
+                        tagFrequency[formatted] = (tagFrequency[formatted] ?: 0) + 1
+                    }
+                } catch (_: Exception) {}
+            }
+
+            if (q.isNotEmpty()) {
+                val cleanQ = q.removePrefix("#").removePrefix("@")
+                // Sort tags: those containing query first, then by frequency
+                val sorted = tagFrequency.keys.sortedWith(
+                    compareByDescending<String> { it.contains(cleanQ, ignoreCase = true) }
+                        .thenByDescending { tagFrequency[it] ?: 0 }
+                )
+                sorted.take(10)
+            } else {
+                // Top frequent tags across vault + standard defaults
+                val defaultAi = listOf("#AI", "#Coding", "#Tech", "#Tools", "#Design", "#Productivity")
+                (tagFrequency.entries.sortedByDescending { it.value }.map { it.key } + defaultAi)
+                    .distinct()
+                    .take(10)
+            }
         }
-        val defaultAi = listOf(
-            "AI & Models",
-            "Performance",
-            "Android",
-            "Takeaways",
-            "Coding",
-            "Architecture"
-        )
-        (tags.toList() + defaultAi).distinct().take(10)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Comprehensive real-time multi-field search across titles, summaries, tags, context, notes & handles
-    private val rawReelsFlow = combine(dao.getAllReels(), searchQuery) { allReels, query ->
+    private val rawReelsFlow = combine(dao.getAllReels(), searchQuery, isAiSearchEnabled) { allReels, query, aiEnabled ->
         val q = query.trim()
         if (q.isBlank()) {
             allReels
@@ -140,20 +193,26 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             allReels.filter { reel ->
                 terms.all { term ->
                     val cleanTerm = term.removePrefix("#").removePrefix("@")
-                    (reel.title?.contains(term, ignoreCase = true) == true) ||
-                    (reel.title?.contains(cleanTerm, ignoreCase = true) == true) ||
-                    (reel.oneLineSummary?.contains(term, ignoreCase = true) == true) ||
-                    (reel.oneLineSummary?.contains(cleanTerm, ignoreCase = true) == true) ||
-                    (reel.tagsJson.contains(term, ignoreCase = true)) ||
-                    (reel.tagsJson.contains(cleanTerm, ignoreCase = true)) ||
-                    (reel.takeawaysJson.contains(term, ignoreCase = true)) ||
-                    (reel.takeawaysJson.contains(cleanTerm, ignoreCase = true)) ||
-                    (reel.caption?.contains(term, ignoreCase = true) == true) ||
-                    (reel.transcript?.contains(term, ignoreCase = true) == true) ||
-                    (reel.userNotes?.contains(term, ignoreCase = true) == true) ||
-                    (reel.creatorHandle?.contains(term, ignoreCase = true) == true) ||
-                    (reel.creatorHandle?.contains(cleanTerm, ignoreCase = true) == true) ||
-                    (reel.canonicalUrl.contains(term, ignoreCase = true))
+                    val basicMatch = (reel.title?.contains(term, ignoreCase = true) == true) ||
+                        (reel.title?.contains(cleanTerm, ignoreCase = true) == true) ||
+                        (reel.caption?.contains(term, ignoreCase = true) == true) ||
+                        (reel.userNotes?.contains(term, ignoreCase = true) == true) ||
+                        (reel.creatorHandle?.contains(term, ignoreCase = true) == true) ||
+                        (reel.creatorHandle?.contains(cleanTerm, ignoreCase = true) == true) ||
+                        (reel.canonicalUrl.contains(term, ignoreCase = true))
+
+                    if (aiEnabled) {
+                        basicMatch ||
+                        (reel.oneLineSummary?.contains(term, ignoreCase = true) == true) ||
+                        (reel.oneLineSummary?.contains(cleanTerm, ignoreCase = true) == true) ||
+                        (reel.tagsJson.contains(term, ignoreCase = true)) ||
+                        (reel.tagsJson.contains(cleanTerm, ignoreCase = true)) ||
+                        (reel.takeawaysJson.contains(term, ignoreCase = true)) ||
+                        (reel.takeawaysJson.contains(cleanTerm, ignoreCase = true)) ||
+                        (reel.transcript?.contains(term, ignoreCase = true) == true)
+                    } else {
+                        basicMatch
+                    }
                 }
             }
         }
@@ -389,16 +448,18 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             for (reel in allReels) {
                 val hasOldBogusTranscript = reel.transcript?.contains("likes") == true ||
                                            reel.transcript?.contains("comments - ") == true ||
-                                           reel.transcript?.contains("top three principles", ignoreCase = true) == true
+                                           reel.transcript?.contains("Transcription generated on-device via Whisper", ignoreCase = true) == true
 
-                val isGenericOrDemo = reel.title?.contains("3 Rules for 120 FPS", ignoreCase = true) == true ||
-                                     reel.title?.contains("Key Architectural Insights", ignoreCase = true) == true ||
-                                     reel.title?.contains("Android Performance", ignoreCase = true) == true ||
-                                     reel.title?.contains("Building High Performance", ignoreCase = true) == true ||
-                                     reel.title?.contains("Comprehensive Resource List", ignoreCase = true) == true ||
-                                     reel.title?.contains("Save Time And Money Tool", ignoreCase = true) == true ||
-                                     reel.creatorHandle?.contains("&#") == true ||
-                                     reel.transcript.isNullOrBlank()
+                val isGenericOrDemo = (reel.status == IngestionStatus.COMPLETED && (
+                    reel.creatorHandle?.contains("&#") == true ||
+                    reel.title.isNullOrBlank() ||
+                    reel.oneLineSummary.isNullOrBlank() ||
+                    reel.takeawaysJson.isNullOrBlank() ||
+                    reel.takeawaysJson == "[]" ||
+                    reel.title?.contains("Zero Cloud Cost AI Vision", ignoreCase = true) == true ||
+                    reel.title?.contains("Unlocking AI Fish Tool Access", ignoreCase = true) == true ||
+                    reel.engineUsed?.contains("Local Gemma/Qwen (On-Device NPU)") == true
+                ))
 
                 val needsOptimization = hasOldBogusTranscript || isGenericOrDemo
 
@@ -426,15 +487,22 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         Regex("(@[a-zA-Z0-9._]+)").find(cleanHandle)?.value ?: cleanHandle
                     } else cleanHandle
 
-                    // Step 2: Transcribe real audio if audioFile is present
-                    val realTranscript = if (metadata?.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
-                        transcriber.transcribe(metadata.audioFile).getOrNull()?.trim()?.ifBlank { null }
+                    // Step 2: Transcribe real audio if audioFile is present and has real content
+                    val audioFile = metadata?.audioFile
+                    val freshTranscribed = if (audioFile != null && audioFile.exists() && audioFile.length() > 0) {
+                        transcriber.transcribe(audioFile).getOrNull()?.trim()?.ifBlank { null }
                     } else null
 
-                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} extracted transcript: ${realTranscript?.take(80) ?: "None"}")
+                    val realTranscript = when {
+                        !freshTranscribed.isNullOrBlank() -> freshTranscribed
+                        !reel.transcript.isNullOrBlank() && !hasOldBogusTranscript && !reel.transcript.equals("Not available", ignoreCase = true) -> reel.transcript
+                        else -> "Not available"
+                    }
+
+                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} extracted transcript: ${realTranscript.take(80)}")
 
                     // Step 3: Summarize using rich caption + real audio transcript
-                    val summaryResult = summarizer.summarize(cleanCaption, realTranscript ?: "")
+                    val summaryResult = summarizer.summarize(cleanCaption, if (realTranscript == "Not available") "" else realTranscript)
                     val summary = summaryResult.getOrNull()
                     android.util.Log.d("ReelLibrary", "Reel ${reel.id} summary: success=${summaryResult.isSuccess}, title='${summary?.title}'")
 
@@ -454,13 +522,17 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         )
                         dao.update(updated)
                     } else {
+                        val err = summaryResult.exceptionOrNull()?.message ?: "AI summarization failed"
                         val updated = reel.copy(
+                            title = cleanCaption.take(60).ifBlank { "Reel #${reel.shortcode}" },
+                            oneLineSummary = null,
+                            takeawaysJson = "[]",
                             creatorHandle = parsedHandle ?: reel.creatorHandle,
                             caption = cleanCaption.ifBlank { reel.caption },
                             transcript = realTranscript,
                             thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
                             status = IngestionStatus.FAILED,
-                            errorMessage = "Sync failed: ${summaryResult.exceptionOrNull()?.message ?: "API unavailable"}"
+                            errorMessage = err
                         )
                         dao.update(updated)
                     }
@@ -486,6 +558,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     val dispatcher = com.reelrecall.app.engine.DualEngineDispatcher(getApplication())
                     val summarizer = dispatcher.resolveSummarizationEngine(currentPrefs)
                     val transcriber = dispatcher.resolveTranscriptionEngine(currentPrefs)
+                    android.util.Log.d("ReelLibrary", "reprocessReel EXECUTING for id=$id, mode=${currentPrefs.engineMode}, summarizer=${summarizer.name}")
 
                     val extractionRes = com.reelrecall.app.worker.InstagramExtractor.extract(
                         reel.canonicalUrl,
@@ -508,15 +581,22 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         Regex("(@[a-zA-Z0-9._]+)").find(cleanHandle)?.value ?: cleanHandle
                     } else cleanHandle
 
-                    val realTranscript = if (!reel.transcript.isNullOrBlank()) {
-                        reel.transcript
-                    } else if (metadata?.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
-                        transcriber.transcribe(metadata.audioFile).getOrNull()?.trim()?.ifBlank { null }
-                    } else {
-                        null
+                    val hasBogus = reel.transcript?.contains("Transcription generated on-device via Whisper", ignoreCase = true) == true ||
+                                   reel.transcript?.contains("likes", ignoreCase = true) == true ||
+                                   reel.transcript?.contains("comments - ", ignoreCase = true) == true
+                    val validExisting = if (hasBogus) null else reel.transcript
+                    val audioFile = metadata?.audioFile
+                    val freshTranscribed = if (audioFile != null && audioFile.exists() && audioFile.length() > 0) {
+                        transcriber.transcribe(audioFile).getOrNull()?.trim()?.ifBlank { null }
+                    } else null
+
+                    val realTranscript = when {
+                        !freshTranscribed.isNullOrBlank() -> freshTranscribed
+                        !validExisting.isNullOrBlank() && !validExisting.equals("Not available", ignoreCase = true) -> validExisting
+                        else -> "Not available"
                     }
 
-                    val summaryResult = summarizer.summarize(cleanCaption, realTranscript ?: "")
+                    val summaryResult = summarizer.summarize(cleanCaption, if (realTranscript == "Not available") "" else realTranscript)
                     val summary = summaryResult.getOrNull()
 
                     if (summary != null) {
@@ -537,6 +617,13 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     } else {
                         val err = summaryResult.exceptionOrNull()?.message ?: "Processing failed: Summarization returned no data"
                         val failedReel = reel.copy(
+                            title = cleanCaption.take(60).ifBlank { "Reel #${reel.shortcode}" },
+                            oneLineSummary = null,
+                            takeawaysJson = "[]",
+                            creatorHandle = parsedHandle ?: reel.creatorHandle,
+                            caption = cleanCaption.ifBlank { reel.caption },
+                            transcript = realTranscript,
+                            thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
                             status = IngestionStatus.FAILED,
                             errorMessage = err
                         )
@@ -550,7 +637,12 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     try {
                         val r = dao.getReelById(id).first()
                         if (r != null) {
-                            dao.update(r.copy(status = IngestionStatus.FAILED, errorMessage = e.message ?: "Reprocessing error"))
+                            dao.update(r.copy(
+                                oneLineSummary = null,
+                                takeawaysJson = "[]",
+                                status = IngestionStatus.FAILED,
+                                errorMessage = e.message ?: "Reprocessing error"
+                            ))
                         }
                     } catch (_: Exception) {}
                 } finally {

@@ -41,6 +41,7 @@ import java.util.concurrent.TimeUnit
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import android.widget.Toast
 
 data class DownloadProgressState(
     val isDownloading: Boolean = false,
@@ -83,8 +84,23 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         .build()
 
     init {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.checkAndPerformDailyResetIfNeeded()
+
+            // Purge any stale dummy/mock placeholder files (< 50MB) and ensure preferences are clean
+            try {
+                val filesDir = getApplication<Application>().filesDir
+                val whisperFile = File(filesDir, "whisper-base.bin")
+                if (whisperFile.exists() && whisperFile.length() < 10_000_000L) {
+                    whisperFile.delete()
+                    repository.setLocalModelStatus(isWhisper = true, isDownloaded = false, path = null)
+                }
+                val llmFile = File(filesDir, "gemma-2-2b-it-gpu.bin")
+                if (llmFile.exists() && llmFile.length() < 50_000_000L) {
+                    llmFile.delete()
+                    repository.setLocalModelStatus(isWhisper = false, isDownloaded = false, path = null)
+                }
+            } catch (_: Exception) {}
         }
     }
 
@@ -254,52 +270,152 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
 
     // ==========================================
-    // LOCAL MODEL DOWNLOAD SIMULATION & CACHING
+    // LOCAL MODEL DOWNLOAD & CACHING
     // ==========================================
-    fun startWhisperDownload() {
-        if (_whisperProgress.value.isDownloading) return
+    private var llmDownloadJob: kotlinx.coroutines.Job? = null
+    private var whisperDownloadJob: kotlinx.coroutines.Job? = null
 
-        viewModelScope.launch(Dispatchers.IO) {
-            val totalBytes = 140L * 1024 * 1024 // 140 MB
-            _whisperProgress.value = DownloadProgressState(
-                isDownloading = true,
-                progress = 0.05f,
-                downloadedBytes = 7L * 1024 * 1024,
-                totalBytes = totalBytes,
-                speedText = "14.2 MB/s"
-            )
+    private suspend fun downloadModelStream(
+        url: String,
+        outputFileName: String,
+        isWhisper: Boolean,
+        minValidBytes: Long,
+        progressFlow: MutableStateFlow<DownloadProgressState>
+    ) = withContext(Dispatchers.IO) {
+        val context = getApplication<Application>()
+        val filesDir = context.filesDir
+        val targetFile = File(filesDir, outputFileName)
+        val tempFile = File(filesDir, "$outputFileName.tmp")
 
-            val steps = 20
-            val targetFile = File(getApplication<Application>().filesDir, "whisper-base.bin")
+        progressFlow.value = DownloadProgressState(
+            isDownloading = true,
+            progress = 0f,
+            downloadedBytes = 0L,
+            totalBytes = 0L,
+            speedText = "Connecting..."
+        )
 
-            for (i in 1..steps) {
-                delay(120) // Smooth visual progress over ~2.5 seconds
-                val currentFraction = i.toFloat() / steps
-                val currentBytes = (totalBytes * currentFraction).toLong()
-                val speed = (13.5 + (i % 3) * 0.8)
-                _whisperProgress.value = DownloadProgressState(
-                    isDownloading = true,
-                    progress = currentFraction,
-                    downloadedBytes = currentBytes,
-                    totalBytes = totalBytes,
-                    speedText = String.format("%.1f MB/s", speed)
+        try {
+            val downloadClient = OkHttpClient.Builder()
+                .followRedirects(true)
+                .followSslRedirects(true)
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .build()
+
+            val request = Request.Builder().url(url).build()
+            val response = downloadClient.newCall(request).execute()
+
+            if (!response.isSuccessful) {
+                progressFlow.value = DownloadProgressState(isDownloading = false)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Download failed (HTTP ${response.code}): ${response.message}", Toast.LENGTH_LONG).show()
+                }
+                return@withContext
+            }
+
+            val body = response.body
+            if (body == null) {
+                progressFlow.value = DownloadProgressState(isDownloading = false)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Download failed: Empty server response body", Toast.LENGTH_LONG).show()
+                }
+                return@withContext
+            }
+
+            val totalBytes = body.contentLength()
+            if (tempFile.exists()) tempFile.delete()
+
+            body.byteStream().use { inputStream ->
+                FileOutputStream(tempFile).use { outputStream ->
+                    val buffer = ByteArray(64 * 1024)
+                    var bytesReadTotal = 0L
+                    var read: Int
+                    var lastUpdateTime = SystemClock.elapsedRealtime()
+                    var lastBytes = 0L
+
+                    while (inputStream.read(buffer).also { read = it } != -1) {
+                        outputStream.write(buffer, 0, read)
+                        bytesReadTotal += read
+
+                        val currentTime = SystemClock.elapsedRealtime()
+                        val elapsedSinceLast = currentTime - lastUpdateTime
+                        if (elapsedSinceLast >= 300) {
+                            val speedBytesPerSec = ((bytesReadTotal - lastBytes) * 1000f) / elapsedSinceLast
+                            val speedText = if (speedBytesPerSec > 1024 * 1024) {
+                                String.format(Locale.US, "%.1f MB/s", speedBytesPerSec / (1024f * 1024f))
+                            } else {
+                                String.format(Locale.US, "%.0f KB/s", speedBytesPerSec / 1024f)
+                            }
+                            val progress = if (totalBytes > 0) {
+                                (bytesReadTotal.toFloat() / totalBytes).coerceIn(0f, 1f)
+                            } else 0.5f
+
+                            progressFlow.value = DownloadProgressState(
+                                isDownloading = true,
+                                progress = progress,
+                                downloadedBytes = bytesReadTotal,
+                                totalBytes = totalBytes,
+                                speedText = speedText
+                            )
+
+                            lastUpdateTime = currentTime
+                            lastBytes = bytesReadTotal
+                        }
+                    }
+                }
+            }
+
+            if (tempFile.exists() && tempFile.length() >= minValidBytes) {
+                if (targetFile.exists()) targetFile.delete()
+                tempFile.renameTo(targetFile)
+                repository.setLocalModelStatus(isWhisper, isDownloaded = true, path = targetFile.absolutePath)
+                progressFlow.value = DownloadProgressState(
+                    isDownloading = false,
+                    progress = 1f,
+                    downloadedBytes = targetFile.length(),
+                    totalBytes = targetFile.length(),
+                    speedText = "Completed"
                 )
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Model download complete! (${targetFile.length() / (1024 * 1024)} MB)", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                tempFile.delete()
+                progressFlow.value = DownloadProgressState(isDownloading = false)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Download incomplete or smaller than required size ($minValidBytes bytes).", Toast.LENGTH_LONG).show()
+                }
             }
-
-            // Write model weight placeholder file
-            try {
-                FileOutputStream(targetFile).use { it.write("whisper-base-model-weights-v1".toByteArray()) }
-            } catch (e: Exception) {
-                // Ignore fallback
+        } catch (e: Exception) {
+            tempFile.delete()
+            progressFlow.value = DownloadProgressState(isDownloading = false)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
             }
+        }
+    }
 
-            _whisperProgress.value = DownloadProgressState(isDownloading = false, progress = 1.0f)
-            repository.setLocalModelStatus(
+    fun startWhisperDownload(customUrl: String? = null) {
+        if (_whisperProgress.value.isDownloading) return
+        val url = customUrl?.trim()?.ifBlank { null }
+            ?: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin"
+        whisperDownloadJob = viewModelScope.launch {
+            downloadModelStream(
+                url = url,
+                outputFileName = "whisper-base.bin",
                 isWhisper = true,
-                isDownloaded = true,
-                path = targetFile.absolutePath
+                minValidBytes = 10_000_000L,
+                progressFlow = _whisperProgress
             )
         }
+    }
+
+    fun cancelWhisperDownload() {
+        whisperDownloadJob?.cancel()
+        whisperDownloadJob = null
+        _whisperProgress.value = DownloadProgressState(isDownloading = false)
+        File(getApplication<Application>().filesDir, "whisper-base.bin.tmp").delete()
     }
 
     fun deleteWhisperModel() {
@@ -311,50 +427,26 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun startLlmDownload() {
+    fun startLlmDownload(customUrl: String? = null) {
         if (_llmProgress.value.isDownloading) return
-
-        viewModelScope.launch(Dispatchers.IO) {
-            val totalBytes = 1400L * 1024 * 1024 // 1.4 GB
-            _llmProgress.value = DownloadProgressState(
-                isDownloading = true,
-                progress = 0.03f,
-                downloadedBytes = 42L * 1024 * 1024,
-                totalBytes = totalBytes,
-                speedText = "28.5 MB/s"
-            )
-
-            val steps = 30
-            val targetFile = File(getApplication<Application>().filesDir, "gemma-2-2b-it-gpu.bin")
-
-            for (i in 1..steps) {
-                delay(100) // Smooth visual progress over ~3 seconds
-                val currentFraction = i.toFloat() / steps
-                val currentBytes = (totalBytes * currentFraction).toLong()
-                val speed = (26.0 + (i % 4) * 1.2)
-                _llmProgress.value = DownloadProgressState(
-                    isDownloading = true,
-                    progress = currentFraction,
-                    downloadedBytes = currentBytes,
-                    totalBytes = totalBytes,
-                    speedText = String.format("%.1f MB/s", speed)
-                )
-            }
-
-            // Write model weight placeholder file
-            try {
-                FileOutputStream(targetFile).use { it.write("gemma-2-2b-weights-v1".toByteArray()) }
-            } catch (e: Exception) {
-                // Ignore fallback
-            }
-
-            _llmProgress.value = DownloadProgressState(isDownloading = false, progress = 1.0f)
-            repository.setLocalModelStatus(
+        val url = customUrl?.trim()?.ifBlank { null }
+            ?: "https://huggingface.co/litert-community/gemma-2-2b-it-gpu-int4/resolve/main/model.bin"
+        llmDownloadJob = viewModelScope.launch {
+            downloadModelStream(
+                url = url,
+                outputFileName = "gemma-2-2b-it-gpu.bin",
                 isWhisper = false,
-                isDownloaded = true,
-                path = targetFile.absolutePath
+                minValidBytes = 50_000_000L,
+                progressFlow = _llmProgress
             )
         }
+    }
+
+    fun cancelLlmDownload() {
+        llmDownloadJob?.cancel()
+        llmDownloadJob = null
+        _llmProgress.value = DownloadProgressState(isDownloading = false)
+        File(getApplication<Application>().filesDir, "gemma-2-2b-it-gpu.bin.tmp").delete()
     }
 
     fun deleteLlmModel() {
@@ -363,6 +455,72 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             if (targetFile.exists()) targetFile.delete()
             repository.setLocalModelStatus(isWhisper = false, isDownloaded = false, path = null)
             _llmProgress.value = DownloadProgressState(isDownloading = false, progress = 0f)
+        }
+    }
+
+    fun importModelFromUri(uri: Uri, isWhisper: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>()
+            val progressFlow = if (isWhisper) _whisperProgress else _llmProgress
+            val outputFileName = if (isWhisper) "whisper-base.bin" else "gemma-2-2b-it-gpu.bin"
+            val minBytes = if (isWhisper) 10_000_000L else 50_000_000L
+            val targetFile = File(context.filesDir, outputFileName)
+            val tempFile = File(context.filesDir, "$outputFileName.tmp")
+
+            progressFlow.value = DownloadProgressState(
+                isDownloading = true,
+                progress = 0f,
+                speedText = "Importing..."
+            )
+
+            try {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(tempFile).use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        var bytesCopied = 0L
+                        var read: Int
+                        var lastUpdateTime = SystemClock.elapsedRealtime()
+
+                        while (input.read(buffer).also { read = it } != -1) {
+                            output.write(buffer, 0, read)
+                            bytesCopied += read
+                            val currentTime = SystemClock.elapsedRealtime()
+                            if (currentTime - lastUpdateTime >= 300) {
+                                lastUpdateTime = currentTime
+                                val mbCopied = bytesCopied / (1024 * 1024)
+                                progressFlow.value = DownloadProgressState(
+                                    isDownloading = true,
+                                    progress = 0.5f,
+                                    downloadedBytes = bytesCopied,
+                                    speedText = "$mbCopied MB copied"
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (tempFile.exists() && tempFile.length() >= minBytes) {
+                    if (targetFile.exists()) targetFile.delete()
+                    tempFile.renameTo(targetFile)
+                    repository.setLocalModelStatus(isWhisper, isDownloaded = true, path = targetFile.absolutePath)
+                    progressFlow.value = DownloadProgressState(isDownloading = false, progress = 1f)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Model imported successfully (${targetFile.length() / (1024 * 1024)} MB)", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    tempFile.delete()
+                    progressFlow.value = DownloadProgressState(isDownloading = false)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Invalid model file: Minimum file size requirement not met.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            } catch (e: Exception) {
+                tempFile.delete()
+                progressFlow.value = DownloadProgressState(isDownloading = false)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -693,21 +851,21 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
             val elapsedLatency = (SystemClock.elapsedRealtime() - startTime).coerceAtLeast(14L)
             val currentPrefs = preferences.value
-            val whisperFile = File(getApplication<Application>().filesDir, "whisper-base.bin")
-            val llmFile = File(getApplication<Application>().filesDir, "gemma-2-2b-it-gpu.bin")
+            val customWhisperPath = currentPrefs.whisperModelPath
+            val whisperFile = if (!customWhisperPath.isNullOrBlank() && File(customWhisperPath).exists()) {
+                File(customWhisperPath)
+            } else {
+                File(getApplication<Application>().filesDir, "whisper-base.bin")
+            }
+            val customLlmPath = currentPrefs.llmModelPath
+            val llmFile = if (!customLlmPath.isNullOrBlank() && File(customLlmPath).exists()) {
+                File(customLlmPath)
+            } else {
+                File(getApplication<Application>().filesDir, "gemma-2-2b-it-gpu.bin")
+            }
 
-            val hasWhisper = currentPrefs.isWhisperModelDownloaded || whisperFile.exists()
-            val hasLlm = currentPrefs.isLlmModelDownloaded || llmFile.exists()
-
-            // Auto-ensure files exist if marked downloaded or for local testing
-            try {
-                if (hasWhisper && !whisperFile.exists()) {
-                    whisperFile.writeText("whisper-base-model-weights-v1")
-                }
-                if (hasLlm && !llmFile.exists()) {
-                    llmFile.writeText("gemma-2-2b-weights-v1")
-                }
-            } catch (_: Exception) {}
+            val hasWhisper = currentPrefs.isWhisperModelDownloaded && whisperFile.exists() && whisperFile.length() > 10_000_000L
+            val hasLlm = currentPrefs.isLlmModelDownloaded && llmFile.exists() && llmFile.length() > 50_000_000L
 
             val whisperLatency = (elapsedLatency / 2L + 8L).coerceAtLeast(12L)
             val gemmaLatency = (elapsedLatency * 2L + 16L).coerceAtLeast(38L)
@@ -720,7 +878,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 statusCode = if (hasWhisper) "200 Ready" else "404 No Weights",
                 provider = "On-Device Whisper Base",
                 model = "whisper.cpp-base",
-                errorMessage = if (hasWhisper) null else "Model weights not found. Download below."
+                errorMessage = if (hasWhisper) null else "Model weights not installed on this device."
             )
 
             // Record Gemma LLM Benchmark Log
@@ -731,7 +889,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 statusCode = if (hasLlm) "200 Ready" else "404 No Weights",
                 provider = "On-Device Gemma 2B",
                 model = "gemma-2-2b-it-gpu",
-                errorMessage = if (hasLlm) null else "Model weights not found. Download below."
+                errorMessage = if (hasLlm) null else "Model weights not installed on this device."
             )
 
             val endpointList = listOf(
@@ -739,27 +897,27 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     provider = "On-Device Whisper (Audio)",
                     isSuccess = hasWhisper,
                     statusCode = if (hasWhisper) 200 else 404,
-                    statusMessage = if (hasWhisper) "200 Ready (NPU/CPU)" else "404 Not Downloaded",
+                    statusMessage = if (hasWhisper) "200 Ready (NPU/CPU)" else "404 Not Installed",
                     latencyMs = whisperLatency,
                     tokensConsumed = 0L,
                     promptTokens = 0L,
                     completionTokens = 0L,
                     modelName = "whisper.cpp-base",
-                    errorDetails = if (hasWhisper) null else "Whisper Base model weights not downloaded. Tap Download below to install weights into internal storage.",
-                    rawResponse = "{\n  \"model\": \"whisper-base.bin\",\n  \"engine\": \"whisper.cpp\",\n  \"architecture\": \"Transformer\",\n  \"hardware\": \"${hardware.processorName}\",\n  \"cores\": ${hardware.coreCount},\n  \"quantization\": \"q5_1\",\n  \"status\": \"${if (hasWhisper) "READY" else "PENDING_DOWNLOAD"}\"\n}"
+                    errorDetails = if (hasWhisper) null else "Whisper Base model weights are not installed on this device. Configure a Groq API key in Settings for cloud transcription.",
+                    rawResponse = "{\n  \"model\": \"whisper-base.bin\",\n  \"engine\": \"whisper.cpp\",\n  \"architecture\": \"Transformer\",\n  \"hardware\": \"${hardware.processorName}\",\n  \"cores\": ${hardware.coreCount},\n  \"quantization\": \"q5_1\",\n  \"status\": \"${if (hasWhisper) "READY" else "NOT_INSTALLED"}\"\n}"
                 ),
                 CloudEndpointTestResult(
                     provider = "On-Device Gemma (LLM)",
                     isSuccess = hasLlm,
                     statusCode = if (hasLlm) 200 else 404,
-                    statusMessage = if (hasLlm) "200 Ready (NPU/GPU)" else "404 Not Downloaded",
+                    statusMessage = if (hasLlm) "200 Ready (NPU/GPU)" else "404 Not Installed",
                     latencyMs = gemmaLatency,
                     tokensConsumed = 160L,
                     promptTokens = 128L,
                     completionTokens = 32L,
                     modelName = "gemma-2-2b-it-gpu",
-                    errorDetails = if (hasLlm) null else "Gemma 2B model weights not downloaded. Tap Download below to install weights into internal storage.",
-                    rawResponse = "{\n  \"model\": \"gemma-2-2b-it-gpu.bin\",\n  \"engine\": \"MediaPipe GenAI\",\n  \"parameters\": \"2.6B\",\n  \"ram\": \"${hardware.ramDisplay}\",\n  \"execution\": \"GPU/NPU Delegate\",\n  \"context_tokens\": 2048,\n  \"status\": \"${if (hasLlm) "READY" else "PENDING_DOWNLOAD"}\"\n}"
+                    errorDetails = if (hasLlm) null else "Gemma 2B model weights are not installed on this device. Configure Groq or Gemini API key in Settings for cloud summarization.",
+                    rawResponse = "{\n  \"model\": \"gemma-2-2b-it-gpu.bin\",\n  \"engine\": \"MediaPipe GenAI\",\n  \"parameters\": \"2.6B\",\n  \"ram\": \"${hardware.ramDisplay}\",\n  \"execution\": \"GPU/NPU Delegate\",\n  \"context_tokens\": 2048,\n  \"status\": \"${if (hasLlm) "READY" else "NOT_INSTALLED"}\"\n}"
                 )
             )
 
@@ -767,7 +925,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val summaryMsg = if (allOk) {
                 "Local Engine Verified: NPU Ready • FP16 Latency ${elapsedLatency}ms • 100% Offline"
             } else {
-                "NPU/CPU Benchmark: ${elapsedLatency}ms • ${hardware.coreCount} Cores Ready • Download weights below"
+                "Local Engine: Model weights not installed on device. Configure Groq or Gemini in Cloud AI Settings."
             }
 
             _localTestResult.value = ModelTestResult(

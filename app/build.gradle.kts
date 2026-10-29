@@ -29,8 +29,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            isDebuggable = false
+        }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -51,6 +55,9 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
 }
@@ -86,6 +93,9 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
+
+    // MediaPipe GenAI for On-Device LLM Inference
+    implementation("com.google.mediapipe:tasks-genai:0.10.14")
 
     // Unit Testing
     testImplementation(libs.junit)

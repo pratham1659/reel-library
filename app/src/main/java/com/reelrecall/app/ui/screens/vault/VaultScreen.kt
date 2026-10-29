@@ -186,6 +186,7 @@ fun VaultScreen(
 
     val searchQuery by viewModel.searchQuery.collectAsState()
     val aiSuggestions by viewModel.aiSearchSuggestions.collectAsState()
+    val isAiSearchEnabled by viewModel.isAiSearchEnabled.collectAsState()
 
     BackHandler(enabled = isSearchActive) {
         viewModel.setSearchActive(false)
@@ -414,15 +415,16 @@ fun VaultScreen(
                                         Spacer(modifier = Modifier.width(6.dp))
                                     }
 
-                                    // AI BADGE / BUTTON INSIDE SEARCH BAR
+                                    // AI BADGE / BUTTON INSIDE SEARCH BAR (Toggle AI Recommendation & Search)
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
-                                        color = colors.accentBg,
-                                        border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.5f)),
+                                        color = if (isAiSearchEnabled) colors.accentBg else colors.pillBg,
+                                        border = BorderStroke(
+                                            1.dp,
+                                            if (isAiSearchEnabled) colors.accent else colors.border
+                                        ),
                                         modifier = Modifier.clickable {
-                                            // Rotate through AI suggestions
-                                            val next = aiSuggestions.firstOrNull { !searchQuery.contains(it.removePrefix("#"), ignoreCase = true) } ?: "AI"
-                                            viewModel.onSearchQueryChange(next.removePrefix("#"))
+                                            viewModel.toggleAiSearch()
                                         }
                                     ) {
                                         Row(
@@ -432,15 +434,15 @@ fun VaultScreen(
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.AutoAwesome,
-                                                contentDescription = "AI Assistant",
-                                                tint = SparkleOrange,
+                                                contentDescription = if (isAiSearchEnabled) "AI Search ON" else "AI Search OFF",
+                                                tint = if (isAiSearchEnabled) SparkleOrange else colors.textMuted,
                                                 modifier = Modifier.size(13.dp)
                                             )
                                             Text(
-                                                text = "AI",
+                                                text = if (isAiSearchEnabled) "AI ON" else "AI",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.ExtraBold,
-                                                color = colors.accent
+                                                color = if (isAiSearchEnabled) colors.accent else colors.textMuted
                                             )
                                         }
                                     }
@@ -448,59 +450,67 @@ fun VaultScreen(
                             }
                         }
 
-                        // AI SEARCH SUGGESTIONS CHIPS
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        // AI SEARCH SUGGESTIONS CHIPS (Recommends search tags when AI Search is active)
+                        AnimatedVisibility(
+                            visible = isAiSearchEnabled && aiSuggestions.isNotEmpty(),
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                modifier = Modifier.padding(end = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = null,
-                                    tint = SparkleOrange,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Text(
-                                    text = "AI Suggests:",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SparkleOrange
-                                )
-                            }
-
-                            aiSuggestions.forEach { suggestion ->
-                                val clean = suggestion.removePrefix("#")
-                                val isSelected = searchQuery.equals(clean, ignoreCase = true) || searchQuery.equals(suggestion, ignoreCase = true)
-                                Surface(
-                                    onClick = {
-                                        if (isSelected) {
-                                            viewModel.onSearchQueryChange("")
-                                        } else {
-                                            viewModel.onSearchQueryChange(clean)
-                                        }
-                                    },
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = if (isSelected) colors.accent else colors.pillBg,
-                                    border = BorderStroke(
-                                        width = 0.8.dp,
-                                        color = if (isSelected) colors.accent else colors.border
-                                    )
+                            Column {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = suggestion,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = if (isSelected) Color.White else colors.textPrimary,
-                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                        modifier = Modifier.padding(end = 4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = SparkleOrange,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Text(
+                                            text = if (searchQuery.isNotBlank()) "Recommended Tags:" else "AI Suggests:",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = SparkleOrange
+                                        )
+                                    }
+
+                                    aiSuggestions.forEach { suggestion ->
+                                        val clean = suggestion.removePrefix("#")
+                                        val isSelected = searchQuery.equals(clean, ignoreCase = true) || searchQuery.equals(suggestion, ignoreCase = true)
+                                        Surface(
+                                            onClick = {
+                                                if (isSelected) {
+                                                    viewModel.onSearchQueryChange("")
+                                                } else {
+                                                    viewModel.onSearchQueryChange(clean)
+                                                }
+                                            },
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (isSelected) colors.accent else colors.pillBg,
+                                            border = BorderStroke(
+                                                width = 0.8.dp,
+                                                color = if (isSelected) colors.accent else colors.border
+                                            )
+                                        ) {
+                                            Text(
+                                                text = suggestion,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = if (isSelected) Color.White else colors.textPrimary,
+                                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1300,8 +1310,19 @@ fun RecallReelCard(
                     }
                 }
 
+                // Notes Badge in Left Corner
+                if (!reel.userNotes.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .align(if (isSelectionMode) Alignment.BottomStart else Alignment.TopStart)
+                            .padding(8.dp)
+                    ) {
+                        NotePill()
+                    }
+                }
+
                 // Status Badge in Top Right
-                Box(modifier = Modifier.align(Alignment.TopEnd).padding(10.dp)) {
+                Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
                     RecallStatusPill(status = reel.status)
                 }
             }
@@ -1320,8 +1341,11 @@ fun RecallReelCard(
             )
 
             // 2. VIDEO SUMMARY (Executive summary)
-            val summaryText = reel.oneLineSummary
-                ?: (if (reel.status == IngestionStatus.COMPLETED) reel.caption?.take(160) else "AI is extracting summary & takeaways...")
+            val summaryText = if (reel.status == IngestionStatus.FAILED) {
+                null
+            } else {
+                reel.oneLineSummary ?: (if (reel.status == IngestionStatus.COMPLETED) reel.caption?.take(160) else "AI is extracting summary & takeaways...")
+            }
             if (!summaryText.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -1460,28 +1484,65 @@ fun RecallStatusPill(
     }
 
     Surface(
-        shape = RoundedCornerShape(6.dp),
+        shape = RoundedCornerShape(3.dp),
         color = style.bg,
-        border = androidx.compose.foundation.BorderStroke(0.8.dp, style.border)
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, style.border),
+        modifier = Modifier.height(13.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 3.5.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.5.dp)
+            horizontalArrangement = Arrangement.spacedBy(1.5.dp)
         ) {
             if (status in listOf(IngestionStatus.EXTRACTING, IngestionStatus.TRANSCRIBING, IngestionStatus.SUMMARIZING)) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(7.dp),
-                    strokeWidth = 1.dp,
+                    modifier = Modifier.size(5.dp),
+                    strokeWidth = 0.8.dp,
                     color = style.fg
                 )
             }
             Text(
                 text = style.label,
-                fontSize = 9.sp,
+                fontSize = 7.sp,
                 fontWeight = FontWeight.Bold,
                 color = style.fg,
-                letterSpacing = 0.2.sp
+                lineHeight = 7.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun NotePill(
+    isDark: Boolean = LocalIsDarkTheme.current
+) {
+    val bg = if (isDark) Color(0xFF2A200B) else Color(0xFFFEF3C7)
+    val fg = if (isDark) Color(0xFFFFC107) else Color(0xFFB45309)
+    val border = if (isDark) Color(0xFFFFC107).copy(alpha = 0.35f) else Color(0xFFFDE68A)
+
+    Surface(
+        shape = RoundedCornerShape(3.dp),
+        color = bg,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, border),
+        modifier = Modifier.height(13.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 3.5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(1.5.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = "Has Notes",
+                tint = fg,
+                modifier = Modifier.size(6.dp)
+            )
+            Text(
+                text = "Notes",
+                fontSize = 7.sp,
+                fontWeight = FontWeight.Bold,
+                color = fg,
+                lineHeight = 7.sp
             )
         }
     }
@@ -1496,6 +1557,7 @@ fun SearchKnowledgeView(
     onClose: () -> Unit
 ) {
     val query by viewModel.searchQuery.collectAsState()
+    val isAiSearchEnabled by viewModel.isAiSearchEnabled.collectAsState()
 
     Column(
         modifier = Modifier
@@ -1546,12 +1608,14 @@ fun SearchKnowledgeView(
                                 Icon(Icons.Default.Clear, contentDescription = "Clear", tint = TextMuted)
                             }
                         }
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = "AI Search",
-                            tint = SparkleOrange,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        IconButton(onClick = { viewModel.toggleAiSearch() }) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = if (isAiSearchEnabled) "AI Search ON" else "AI Search OFF",
+                                tint = if (isAiSearchEnabled) SparkleOrange else TextMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 },
                 singleLine = true,
@@ -1958,10 +2022,11 @@ fun FullTranscriptDialog(
                         .padding(14.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
+                    val isAvailable = !reel.transcript.isNullOrBlank() && !reel.transcript.equals("Not available", ignoreCase = true)
                     Text(
-                        text = reel.transcript ?: "No transcript recorded for this reel.",
+                        text = if (isAvailable) reel.transcript!! else "Spoken audio transcript is not available for this reel. AI Summary was generated directly from the post caption.",
                         fontSize = 13.sp,
-                        color = TextSecondary,
+                        color = if (isAvailable) TextSecondary else TextMuted,
                         lineHeight = 19.sp
                     )
                 }
@@ -2075,7 +2140,18 @@ fun RecallReelGridCard(
                     }
                 }
 
-                // Status pill
+                // Notes Badge in Left Corner
+                if (!reel.userNotes.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .align(if (isSelectionMode) Alignment.BottomStart else Alignment.TopStart)
+                            .padding(6.dp)
+                    ) {
+                        NotePill()
+                    }
+                }
+
+                // Status Badge in Top Right
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)) {
                     RecallStatusPill(status = reel.status)
                 }
@@ -2208,8 +2284,15 @@ fun RecallReelTable(
                         .padding(horizontal = 10.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Status
-                    Box(modifier = Modifier.width(62.dp)) {
+                    // Status & Note
+                    Row(
+                        modifier = Modifier.width(82.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (!reel.userNotes.isNullOrBlank()) {
+                            NotePill()
+                        }
                         RecallStatusPill(status = reel.status)
                     }
 
@@ -2302,6 +2385,9 @@ fun ReelDetailScreen(
     var newTagInput by remember { mutableStateOf("") }
     var urlToOpenWithWarning by remember { mutableStateOf<String?>(null) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showNoteDialog by remember { mutableStateOf(false) }
+    var editingNoteText by remember(currentReel.id, showNoteDialog) { mutableStateOf(currentReel.userNotes ?: "") }
+    var showRunAiConfirmDialog by remember { mutableStateOf(false) }
 
     val isRetryingMap by viewModel.isRetryingMap.collectAsState()
     val isRetrying = isRetryingMap[currentReel.id] == true
@@ -2325,10 +2411,9 @@ fun ReelDetailScreen(
         }
     }
 
-    // Auto-reprocess failed or unsummarized reel when opened (strictly sequential via ViewModel Mutex)
+    // Auto-reprocess queued reels when opened
     LaunchedEffect(currentReel.id) {
-        val hasContent = !currentReel.oneLineSummary.isNullOrBlank() || takeaways.isNotEmpty()
-        if ((currentReel.status == IngestionStatus.FAILED || !hasContent) && !isRetrying) {
+        if ((currentReel.status == IngestionStatus.QUEUED || currentReel.status == IngestionStatus.EXTRACTING) && !isRetrying) {
             viewModel.reprocessReel(currentReel.id)
         }
     }
@@ -2460,7 +2545,23 @@ fun ReelDetailScreen(
                         )
                     }
 
-                    Box(modifier = Modifier.align(Alignment.TopEnd).padding(10.dp)) {
+                    // Notes Badge in Left Corner
+                    if (!currentReel.userNotes.isNullOrBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(10.dp)
+                        ) {
+                            NotePill()
+                        }
+                    }
+
+                    // Status Badge in Top Right
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(10.dp)
+                    ) {
                         RecallStatusPill(status = currentReel.status)
                     }
                 }
@@ -2486,48 +2587,88 @@ fun ReelDetailScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clip(RoundedCornerShape(5.dp))
-                                .background(
-                                    Brush.linearGradient(
-                                        listOf(InstagramPurple, InstagramPink, InstagramOrange)
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.weight(1f, fill = false)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(10.dp)
-                                    .border(1.2.dp, Color.White, RoundedCornerShape(3.dp))
+                                    .size(18.dp)
+                                    .clip(RoundedCornerShape(5.dp))
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(InstagramPurple, InstagramPink, InstagramOrange)
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .border(1.2.dp, Color.White, RoundedCornerShape(3.dp))
+                                )
+                            }
+
+                            Text(
+                                text = "instagram.com",
+                                fontSize = 13.sp,
+                                color = colors.textSecondary
                             )
+
+                            if (!currentReel.creatorHandle.isNullOrBlank()) {
+                                val cleanHandle = currentReel.creatorHandle
+                                    .replace("&#064;", "@")
+                                    .replace("&#x2022;", "•")
+                                    .replace("&amp;", "&")
+                                val handleOnly = Regex("(@[a-zA-Z0-9._]+)").find(cleanHandle)?.value ?: cleanHandle.substringBefore(" •").trim()
+                                Text(
+                                    text = "•  $handleOnly",
+                                    fontSize = 13.sp,
+                                    color = colors.textMuted,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
 
-                        Text(
-                            text = "instagram.com",
-                            fontSize = 13.sp,
-                            color = colors.textSecondary
-                        )
-
-                        if (!currentReel.creatorHandle.isNullOrBlank()) {
-                            val cleanHandle = currentReel.creatorHandle
-                                .replace("&#064;", "@")
-                                .replace("&#x2022;", "•")
-                                .replace("&amp;", "&")
-                            val handleOnly = Regex("(@[a-zA-Z0-9._]+)").find(cleanHandle)?.value ?: cleanHandle.substringBefore(" •").trim()
-                            Text(
-                                text = "•  $handleOnly",
-                                fontSize = 13.sp,
-                                color = colors.textMuted
-                            )
+                        // Note Button next to Instagram info
+                        Surface(
+                            onClick = {
+                                editingNoteText = currentReel.userNotes ?: notesText
+                                showNoteDialog = true
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.pillBg,
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border),
+                            modifier = Modifier.padding(start = 8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Note",
+                                    tint = colors.accent,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = if (!currentReel.userNotes.isNullOrBlank() || notesText.isNotBlank()) "Edit Note" else "Note",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colors.textPrimary
+                                )
+                            }
                         }
                     }
 
-                    // USER SAVED NOTE (Displayed right below Instagram icon and username)
+                    // USER SAVED NOTE (Displayed right below Instagram profile row)
                     val activeNote = currentReel.userNotes ?: notesText.takeIf { it.isNotBlank() }
                     if (!activeNote.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(14.dp))
@@ -2539,21 +2680,39 @@ fun ReelDetailScreen(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Row(
+                                    modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = null,
+                                            tint = colors.accent,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Text(
+                                            text = "Saved Note",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.accent,
+                                            letterSpacing = 0.5.sp
+                                        )
+                                    }
+
                                     Icon(
                                         imageVector = Icons.Default.Edit,
-                                        contentDescription = null,
-                                        tint = colors.accent,
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                    Text(
-                                        text = "Saved Note",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = colors.accent,
-                                        letterSpacing = 0.5.sp
+                                        contentDescription = "Edit Note",
+                                        tint = colors.textMuted,
+                                        modifier = Modifier
+                                            .size(14.dp)
+                                            .clickable {
+                                                editingNoteText = activeNote
+                                                showNoteDialog = true
+                                            }
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
@@ -2591,7 +2750,8 @@ fun ReelDetailScreen(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.weight(1f, fill = false)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.AutoAwesome,
@@ -2600,28 +2760,32 @@ fun ReelDetailScreen(
                                 modifier = Modifier.size(19.dp)
                             )
                             Text(
-                                text = "Executive Summary",
+                                text = "AI Summary",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary
+                                color = colors.textPrimary,
+                                maxLines = 1
                             )
                         }
 
-                        // Action Button (Run AI Summarise or Retry AI)
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        // Action Button (Run AI or Retry AI)
                         Surface(
+                            onClick = {
+                                android.util.Log.d("ReelLibrary", "Top AI Summary button clicked for ${currentReel.id}")
+                                showRunAiConfirmDialog = true
+                            },
+                            enabled = !isRetrying,
                             shape = RoundedCornerShape(12.dp),
                             color = if (isRetrying) colors.accentBg else if (!hasAiContent) colors.accent.copy(alpha = 0.12f) else colors.pillBg,
                             border = androidx.compose.foundation.BorderStroke(
                                 if (!hasAiContent) 1.dp else 0.7.dp,
                                 if (isRetrying || !hasAiContent) colors.accent else colors.border
-                            ),
-                            modifier = Modifier.clickable(enabled = !isRetrying) {
-                                viewModel.reprocessReel(currentReel.id)
-                                Toast.makeText(context, if (hasAiContent) "AI is regenerating summary..." else "Running AI Summarise...", Toast.LENGTH_SHORT).show()
-                            }
+                            )
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(5.dp)
                             ) {
@@ -2634,7 +2798,7 @@ fun ReelDetailScreen(
                                     Text("Synthesizing...", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = colors.accent)
                                 } else if (!hasAiContent) {
                                     Icon(Icons.Default.AutoAwesome, contentDescription = "Run AI", tint = colors.accent, modifier = Modifier.size(13.dp))
-                                    Text("Run AI Summarise", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.accent)
+                                    Text("Run AI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.accent)
                                 } else {
                                     Icon(Icons.Default.Refresh, contentDescription = "Retry", tint = colors.textSecondary, modifier = Modifier.size(13.dp))
                                     Text("Retry AI", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = colors.textSecondary)
@@ -2658,7 +2822,7 @@ fun ReelDetailScreen(
                             ) {
                                 CircularProgressIndicator(modifier = Modifier.size(13.dp), strokeWidth = 2.dp, color = colors.accent)
                                 Text(
-                                    text = "Analyzing audio & synthesizing deep executive summary...",
+                                    text = "Analyzing audio & caption... Updating Title, AI Summary & Spoken Transcript...",
                                     fontSize = 11.5.sp,
                                     color = colors.accent
                                 )
@@ -2668,7 +2832,116 @@ fun ReelDetailScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    if (!hasAiContent) {
+                    val isFailed = currentReel.status == IngestionStatus.FAILED || !currentReel.errorMessage.isNullOrBlank()
+
+                    if (isFailed) {
+                        // DEDICATED AI FAILURE REASON CARD
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = StatusError.copy(alpha = 0.12f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, StatusError.copy(alpha = 0.45f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(StatusError.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = "Failed",
+                                            tint = StatusError,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "AI Processing Failed",
+                                            fontSize = 13.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = StatusError
+                                        )
+                                        Text(
+                                            text = "Selected model was unable to complete summarization",
+                                            fontSize = 11.sp,
+                                            color = colors.textMuted
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Text(
+                                    text = currentReel.errorMessage ?: "Reason: Model not available or API key not configured.",
+                                    fontSize = 12.5.sp,
+                                    color = colors.textPrimary,
+                                    lineHeight = 18.sp
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Surface(
+                                    onClick = {
+                                        android.util.Log.d("ReelLibrary", "Failure card Retry button clicked for ${currentReel.id}")
+                                        viewModel.reprocessReel(currentReel.id)
+                                        Toast.makeText(context, "Retrying AI Summarise...", Toast.LENGTH_SHORT).show()
+                                    },
+                                    enabled = !isRetrying,
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isRetrying) colors.pillBg else StatusError.copy(alpha = 0.12f),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (isRetrying) colors.border else StatusError.copy(alpha = 0.45f)
+                                    ),
+                                    modifier = Modifier.fillMaxWidth().height(44.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        if (isRetrying) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(14.dp),
+                                                strokeWidth = 2.dp,
+                                                color = colors.accent
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Retrying AI Model...",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = colors.accent
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.Refresh,
+                                                contentDescription = null,
+                                                tint = StatusError,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Retry with Selected AI",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = StatusError
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else if (!hasAiContent) {
                         // REEL > 1 MIN TOKEN SAVER CALL-TO-ACTION CARD
                         Surface(
                             shape = RoundedCornerShape(14.dp),
@@ -2725,8 +2998,7 @@ fun ReelDetailScreen(
 
                                 NeumorphicButton(
                                     onClick = {
-                                        viewModel.reprocessReel(currentReel.id)
-                                        Toast.makeText(context, "Running AI Summarise...", Toast.LENGTH_SHORT).show()
+                                        showRunAiConfirmDialog = true
                                     },
                                     enabled = !isRetrying,
                                     colors = colors,
@@ -2769,9 +3041,9 @@ fun ReelDetailScreen(
                                 }
                             }
                         }
-                    } else {
+                    } else if (currentReel.status == IngestionStatus.COMPLETED && !currentReel.oneLineSummary.isNullOrBlank()) {
                         Text(
-                            text = currentReel.oneLineSummary ?: (currentReel.caption ?: "Summary is being generated by AI..."),
+                            text = currentReel.oneLineSummary!!,
                             fontSize = 14.5.sp,
                             color = colors.textPrimary,
                             lineHeight = 22.sp,
@@ -2779,7 +3051,7 @@ fun ReelDetailScreen(
                         )
                     }
 
-                    if (takeaways.isNotEmpty()) {
+                    if (!isFailed && currentReel.status == IngestionStatus.COMPLETED && takeaways.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -2844,61 +3116,26 @@ fun ReelDetailScreen(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.GraphicEq,
-                                contentDescription = null,
-                                tint = CyanAccent,
-                                modifier = Modifier.size(19.dp)
-                            )
-                            Text(
-                                text = "🎙️ Spoken Audio Transcript",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary
-                            )
-                        }
-
-                        if (!currentReel.transcript.isNullOrBlank()) {
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = colors.pillBg,
-                                border = androidx.compose.foundation.BorderStroke(0.6.dp, colors.accent.copy(alpha = 0.4f)),
-                                modifier = Modifier.clickable {
-                                    clipboardManager.setText(AnnotatedString(currentReel.transcript))
-                                    Toast.makeText(context, "Transcript copied to clipboard!", Toast.LENGTH_SHORT).show()
-                                }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.ContentCopy,
-                                        contentDescription = "Copy",
-                                        tint = colors.accent,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Text(
-                                        text = "Copy",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = colors.accent
-                                    )
-                                }
-                            }
-                        }
+                        Icon(
+                            imageVector = Icons.Default.GraphicEq,
+                            contentDescription = null,
+                            tint = CyanAccent,
+                            modifier = Modifier.size(19.dp)
+                        )
+                        Text(
+                            text = "🎙️ Spoken Audio Transcript",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    if (!currentReel.transcript.isNullOrBlank()) {
+                    val hasValidTranscript = !currentReel.transcript.isNullOrBlank() && !currentReel.transcript.equals("Not available", ignoreCase = true)
+                    if (hasValidTranscript) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = colors.pillBg,
@@ -2909,7 +3146,7 @@ fun ReelDetailScreen(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
-                                    text = currentReel.transcript,
+                                    text = currentReel.transcript!!,
                                     fontSize = 13.5.sp,
                                     color = colors.textPrimary,
                                     lineHeight = 21.sp,
@@ -2923,7 +3160,7 @@ fun ReelDetailScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    val wordCount = currentReel.transcript.split(Regex("""\s+""")).filter { it.isNotBlank() }.size
+                                    val wordCount = currentReel.transcript!!.split(Regex("""\s+""")).filter { it.isNotBlank() }.size
                                     Text(
                                         text = "Word count: ~$wordCount words",
                                         fontSize = 11.sp,
@@ -2959,9 +3196,19 @@ fun ReelDetailScreen(
                             border = androidx.compose.foundation.BorderStroke(0.6.dp, colors.border),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(Icons.Default.GraphicEq, contentDescription = null, tint = colors.textMuted, modifier = Modifier.size(15.dp))
+                                    Text(
+                                        text = "Not available",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textMuted
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "🎙️ No spoken voiceover detected in audio. Insights & takeaways were synthesized directly from the original post caption.",
+                                    text = "Spoken audio transcript is not available for this reel. AI Summary was generated directly from the post caption.",
                                     fontSize = 12.5.sp,
                                     color = colors.textMuted,
                                     lineHeight = 18.sp
@@ -3259,105 +3506,88 @@ fun ReelDetailScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
-            // NOTES SECTION (Hyperlink detection + External link warning)
-            NeumorphicCard(
-                modifier = Modifier.fillMaxWidth(),
-                colors = colors,
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+        // NOTE EDITING DIALOG
+        if (showNoteDialog) {
+            AlertDialog(
+                onDismissRequest = { showNoteDialog = false },
+                title = {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icons.Default.Edit, contentDescription = null, tint = colors.accent, modifier = Modifier.size(16.dp))
-                            Text(
-                                text = "Notes",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary
-                            )
-                        }
-
-                        // Save Notes Button
-                        NeumorphicButton(
-                            onClick = {
-                                viewModel.updateReelNotes(currentReel.id, notesText)
-                                Toast.makeText(context, "Notes saved successfully!", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = colors,
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.height(36.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(Icons.Default.Check, contentDescription = null, tint = StatusReady, modifier = Modifier.size(14.dp))
-                                Text("Save", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    OutlinedTextField(
-                        value = notesText,
-                        onValueChange = {
-                            notesText = it
-                            viewModel.updateReelNotes(currentReel.id, it)
-                        },
-                        placeholder = { Text("Write personal notes, thoughts, or paste links here...", color = colors.textMuted, fontSize = 13.sp) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = colors.pillBg,
-                            unfocusedContainerColor = colors.pillBg,
-                            focusedBorderColor = colors.accent,
-                            unfocusedBorderColor = colors.border,
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp)
-                    )
-
-                    // Rendered notes with clickable hyperlinks if any URL is present
-                    if (notesText.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = colors.accent,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Text(
-                            text = "Interactive Note Preview (Tap any link):",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            text = if (!currentReel.userNotes.isNullOrBlank() || notesText.isNotBlank()) "Edit Reel Note" else "Add Reel Note",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                    }
+                },
+                text = {
+                    Column {
+                        Text(
+                            text = "Save personal notes, thoughts, or paste links for this reel.",
+                            fontSize = 12.sp,
                             color = colors.textMuted
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = colors.pillBg,
-                            border = androidx.compose.foundation.BorderStroke(0.6.dp, colors.border),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Box(modifier = Modifier.padding(12.dp)) {
-                                HyperlinkNotesText(
-                                    text = notesText,
-                                    colors = colors,
-                                    onUrlClick = { url ->
-                                        urlToOpenWithWarning = url
-                                    }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = editingNoteText,
+                            onValueChange = { editingNoteText = it },
+                            placeholder = {
+                                Text(
+                                    text = "Write your note or paste links here...",
+                                    color = colors.textMuted,
+                                    fontSize = 13.sp
                                 )
-                            }
-                        }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = colors.pillBg,
+                                unfocusedContainerColor = colors.pillBg,
+                                focusedBorderColor = colors.accent,
+                                unfocusedBorderColor = colors.border,
+                                focusedTextColor = colors.textPrimary,
+                                unfocusedTextColor = colors.textPrimary
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                        )
                     }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(30.dp))
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val cleanNote = editingNoteText.trim().ifBlank { null }
+                            notesText = cleanNote ?: ""
+                            viewModel.updateReelNotes(currentReel.id, cleanNote)
+                            showNoteDialog = false
+                            Toast.makeText(context, if (cleanNote != null) "Note saved!" else "Note cleared!", Toast.LENGTH_SHORT).show()
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
+                    ) {
+                        Text("Save Note", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showNoteDialog = false }) {
+                        Text("Cancel", color = colors.textMuted)
+                    }
+                },
+                containerColor = colors.surface,
+                shape = RoundedCornerShape(18.dp)
+            )
         }
 
         // EXTERNAL LINK WARNING ALERT DIALOG
@@ -3426,6 +3656,51 @@ fun ReelDetailScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { urlToOpenWithWarning = null }) {
+                        Text("Cancel", color = colors.textMuted)
+                    }
+                },
+                containerColor = colors.surface,
+                shape = RoundedCornerShape(20.dp)
+            )
+        }
+
+        // RUN AI CONFIRMATION DIALOG
+        if (showRunAiConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = { showRunAiConfirmDialog = false },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = colors.accent, modifier = Modifier.size(20.dp))
+                        Text("Run AI Analysis", fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                    }
+                },
+                text = {
+                    Text(
+                        text = "Running AI will analyze this reel and regenerate the Title, AI Summary, Key Takeaways, and Spoken Audio Transcript.\n\nDo you want to proceed?",
+                        color = colors.textSecondary,
+                        fontSize = 13.5.sp,
+                        lineHeight = 20.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showRunAiConfirmDialog = false
+                            viewModel.reprocessReel(currentReel.id)
+                            Toast.makeText(
+                                context,
+                                "Running AI... Updating Title, Summary & Spoken Transcript",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Run AI", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRunAiConfirmDialog = false }) {
                         Text("Cancel", color = colors.textMuted)
                     }
                 },

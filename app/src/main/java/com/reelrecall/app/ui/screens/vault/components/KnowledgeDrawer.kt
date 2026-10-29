@@ -22,8 +22,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +37,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -221,12 +224,19 @@ fun KnowledgeDrawerContent(
                     }
                 )
 
-                // 4. Toggle Layout View Mode (Grid / List)
+                // 4. Filter by Notes Toggle
                 NeumorphicDrawerButton(
-                    icon = Icons.Default.GridView,
-                    contentDescription = "Toggle Grid/List View",
+                    icon = Icons.Default.Edit,
+                    contentDescription = "Filter Reels with Notes",
+                    active = selectedFilter == DrawerFilter.NOTES,
                     isDark = isDarkTheme,
-                    onClick = onToggleViewMode
+                    onClick = {
+                        selectedFilter = if (selectedFilter == DrawerFilter.NOTES) {
+                            DrawerFilter.ALL
+                        } else {
+                            DrawerFilter.NOTES
+                        }
+                    }
                 )
 
                 // 5. Search Button
@@ -471,13 +481,13 @@ fun KnowledgeDrawerContent(
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Icon(Icons.Default.GridView, contentDescription = null, tint = textPrimaryColor, modifier = Modifier.size(16.dp))
-                                    Text("Toggle Grid / List View", color = textPrimaryColor, fontSize = 13.sp)
+                                    Icon(Icons.Default.Edit, contentDescription = null, tint = textPrimaryColor, modifier = Modifier.size(16.dp))
+                                    Text(if (selectedFilter == DrawerFilter.NOTES) "Show All Reels" else "Filter Reels with Notes", color = textPrimaryColor, fontSize = 13.sp)
                                 }
                             },
                             onClick = {
                                 showMenu = false
-                                onToggleViewMode()
+                                selectedFilter = if (selectedFilter == DrawerFilter.NOTES) DrawerFilter.ALL else DrawerFilter.NOTES
                             }
                         )
                         DropdownMenuItem(
@@ -516,9 +526,14 @@ fun KnowledgeDrawerContent(
                         )
                     }
                 } else {
+                    val drawerScrollState = rememberLazyListState()
                     LazyColumn(
+                        state = drawerScrollState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth().weight(1f)
+                        contentPadding = PaddingValues(vertical = 4.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
                     ) {
                         items(filteredReels, key = { it.id }) { reel ->
                             DrawerReelCard(
@@ -835,6 +850,34 @@ private fun DrawerReelCard(
                     fontSize = 10.5.sp,
                     color = dateColor
                 )
+                if (!reel.userNotes.isNullOrBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(3.dp),
+                        color = if (isDark) Color(0xFF2A200B) else Color(0xFFFEF3C7),
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, if (isDark) Color(0xFFFFC107).copy(alpha = 0.4f) else Color(0xFFFDE68A)),
+                        modifier = Modifier.height(13.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 3.5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(1.5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = if (isDark) Color(0xFFFFC107) else Color(0xFFB45309),
+                                modifier = Modifier.size(6.dp)
+                            )
+                            Text(
+                                text = "Notes",
+                                fontSize = 7.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) Color(0xFFFFC107) else Color(0xFFB45309),
+                                lineHeight = 7.sp
+                            )
+                        }
+                    }
+                }
             }
         }
     }

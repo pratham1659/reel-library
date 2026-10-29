@@ -31,84 +31,92 @@ class DualEngineDispatcher(
     }
 
     fun resolveTranscriptionEngine(prefs: AppPreferences): TranscriptionEngine {
-        val isOnline = isNetworkAvailable()
+        val whisperPath = prefs.whisperModelPath
+        val whisperFile = if (!whisperPath.isNullOrBlank() && File(whisperPath).exists()) {
+            File(whisperPath)
+        } else {
+            File(context.filesDir, "whisper-base.bin")
+        }
 
         return when (prefs.engineMode) {
             EngineMode.CLOUD_ONLY -> {
                 if (prefs.groqApiKey.isNotBlank()) {
                     GroqWhisperEngine(prefs.groqApiKey)
                 } else {
-                    FailingTranscriptionEngine("Cloud transcription requires a Groq API key.")
+                    FailingTranscriptionEngine("Engine Mode is set to CLOUD_ONLY: Groq API key is missing. Local fallback is strictly disallowed.")
                 }
             }
 
             EngineMode.LOCAL_ONLY -> {
-                val whisperFile = File(context.filesDir, "whisper-base.bin")
-                if (!whisperFile.exists()) {
-                    try {
-                        whisperFile.writeText("whisper-base-model-weights-v1")
-                    } catch (e: Exception) {
-                        // Ignore fallback creation error
-                    }
+                if (!whisperFile.exists() || whisperFile.length() < 10_000_000L) {
+                    FailingTranscriptionEngine("Engine Mode is set to LOCAL_ONLY: On-device Whisper model weights not installed (${whisperFile.name}). Cloud fallback is strictly disallowed.")
+                } else {
+                    LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
                 }
-                LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
             }
 
             EngineMode.AUTO_HYBRID -> {
+                val isOnline = isNetworkAvailable()
                 if (isOnline && prefs.groqApiKey.isNotBlank()) {
                     GroqWhisperEngine(prefs.groqApiKey)
                 } else {
-                    val whisperFile = File(context.filesDir, "whisper-base.bin")
-                    if (!whisperFile.exists()) {
-                        try {
-                            whisperFile.writeText("whisper-base-model-weights-v1")
-                        } catch (e: Exception) {
-                            // Ignore fallback creation error
-                        }
+                    if (!whisperFile.exists() || whisperFile.length() < 10_000_000L) {
+                        FailingTranscriptionEngine("Whisper transcription unavailable: Cloud requires a Groq API key and on-device Whisper weights are not installed.")
+                    } else {
+                        LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
                     }
-                    LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
                 }
             }
         }
     }
 
     fun resolveSummarizationEngine(prefs: AppPreferences): SummarizationEngine {
-        val isOnline = isNetworkAvailable()
+        val llmPath = prefs.llmModelPath
+        val llmFile = if (!llmPath.isNullOrBlank() && File(llmPath).exists()) {
+            File(llmPath)
+        } else {
+            File(context.filesDir, "gemma-2-2b-it-gpu.bin")
+        }
 
         return when (prefs.engineMode) {
             EngineMode.CLOUD_ONLY -> {
                 if (prefs.groqApiKey.isNotBlank()) {
                     GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
+                } else if (prefs.geminiApiKey.isNotBlank()) {
+                    GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
                 } else {
-                    FailingSummarizerEngine("Cloud API key missing. Please configure your Groq API key in Settings.")
+                    FailingSummarizerEngine("Engine Mode is set to CLOUD_ONLY: Cloud API key (Groq or Gemini) is missing. Local fallback is strictly disallowed.")
                 }
             }
 
             EngineMode.LOCAL_ONLY -> {
-                val llmFile = File(context.filesDir, "gemma-2-2b-it-gpu.bin")
-                if (!llmFile.exists()) {
-                    try {
-                        llmFile.writeText("gemma-2-2b-weights-v1")
-                    } catch (e: Exception) {
-                        // Ignore fallback creation error
-                    }
+                if (!llmFile.exists() || llmFile.length() < 50_000_000L) {
+                    FailingSummarizerEngine("Engine Mode is set to LOCAL_ONLY: On-device MediaPipe LLM weights not installed (${llmFile.name}). Cloud fallback is strictly disallowed.")
+                } else {
+                    LocalMediaPipeSummarizerEngine(
+                        context = context,
+                        modelFile = llmFile,
+                        onTokensUsed = onTokensUsed
+                    )
                 }
-                LocalMediaPipeSummarizerEngine(llmFile, onTokensUsed = onTokensUsed)
             }
 
             EngineMode.AUTO_HYBRID -> {
+                val isOnline = isNetworkAvailable()
                 if (isOnline && prefs.groqApiKey.isNotBlank()) {
                     GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
+                } else if (isOnline && prefs.geminiApiKey.isNotBlank()) {
+                    GeminiSummarizerEngine(prefs.geminiApiKey, onTokensUsed = onTokensUsed)
                 } else {
-                    val llmFile = File(context.filesDir, "gemma-2-2b-it-gpu.bin")
-                    if (!llmFile.exists()) {
-                        try {
-                            llmFile.writeText("gemma-2-2b-weights-v1")
-                        } catch (e: Exception) {
-                            // Ignore fallback creation error
-                        }
+                    if (!llmFile.exists() || llmFile.length() < 50_000_000L) {
+                        FailingSummarizerEngine("Summarization unavailable: Cloud API key missing and on-device LLM weights are not installed.")
+                    } else {
+                        LocalMediaPipeSummarizerEngine(
+                            context = context,
+                            modelFile = llmFile,
+                            onTokensUsed = onTokensUsed
+                        )
                     }
-                    LocalMediaPipeSummarizerEngine(llmFile, onTokensUsed = onTokensUsed)
                 }
             }
         }

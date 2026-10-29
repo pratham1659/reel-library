@@ -1,5 +1,7 @@
 package com.reelrecall.app.engine
 
+import android.content.Context
+import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.reelrecall.app.data.model.ReelSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -56,17 +58,18 @@ class GeminiSummarizerEngine(
 
                 val cleanCaption = android.text.Html.fromHtml(caption ?: "", android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
                 val cleanTranscript = transcript.trim()
+                val hasSpokenTranscript = cleanTranscript.isNotBlank() && !cleanTranscript.equals("Not available", ignoreCase = true)
 
                 val promptText = """
                     You are an expert executive research intelligence analyst. Deeply analyze this Instagram Reel and extract high-value insights.
 
                     PRIMARY SOURCES:
-                    - Spoken Audio Transcript: ${if (cleanTranscript.isNotBlank()) cleanTranscript else "None (No spoken voiceover detected; extract all insights from post caption)"}
+                    - Spoken Audio Transcript: ${if (hasSpokenTranscript) cleanTranscript else "Not available (No spoken voiceover detected; extract all insights from post caption)"}
                     - Post Caption: ${if (cleanCaption.isNotBlank()) cleanCaption else "None"}
 
                     INSTRUCTIONS:
-                    1. If Spoken Audio Transcript is present, prioritize the actual spoken facts, mentioned platforms, websites, frameworks, numbers, or rules.
-                    2. If Spoken Audio Transcript is absent, extract all deep details, context, steps, and value directly from the Post Caption.
+                    1. If Spoken Audio Transcript is present and available, prioritize the actual spoken facts, mentioned platforms, websites, frameworks, numbers, or rules.
+                    2. If Spoken Audio Transcript is absent or Not available, focus 100% on extracting all deep details, context, steps, and value directly from the Post Caption.
                     3. Do NOT produce generic, vague, or placeholder text (never say "Resource List" or "Save Time And Money"). Make every summary distinct and specific to what this reel actually teaches.
                     4. Always return valid, well-formed JSON matching this schema:
                     {
@@ -178,13 +181,32 @@ class GroqSummarizerEngine(
                 val cleanCaption = android.text.Html.fromHtml(caption ?: "", android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
                 val cleanTranscript = transcript.trim()
 
+                val hasSpokenTranscript = cleanTranscript.isNotBlank() && !cleanTranscript.equals("Not available", ignoreCase = true)
+
                 val systemPrompt = "You are an executive research analyst. Generate pure JSON for an Instagram Reel with keys: 'title' (specific, 4-7 words), 'one_line_summary' (detailed 2-3 sentence executive briefing), 'actionable_takeaways' (array of 4-6 granular bullet strings referencing tools/steps), and 'tags' (array of 3-5 specific strings without #)."
-                val userContent = """
-                    Spoken Audio Transcript: ${if (cleanTranscript.isNotBlank()) cleanTranscript else "None (No spoken voiceover detected; extract all details from post caption)"}
-                    Post Caption: ${if (cleanCaption.isNotBlank()) cleanCaption else "None"}
-                    
-                    Instructions: If Spoken Audio Transcript is present, prioritize actual spoken tools and advice. If absent, extract details thoroughly from Post Caption. Do not generate generic or matching duplicate content.
-                """.trimIndent()
+                val userContent = if (hasSpokenTranscript) {
+                    """
+                    PRIMARY SOURCE - SPOKEN AUDIO TRANSCRIPT:
+                    $cleanTranscript
+
+                    SECONDARY SOURCE - POST CAPTION:
+                    ${if (cleanCaption.isNotBlank()) cleanCaption else "None"}
+
+                    INSTRUCTIONS:
+                    1. Focus primarily on what is spoken in the audio transcript. Generate the title, summary, and takeaways directly based on spoken words, tools, and instructions.
+                    2. Cross-reference with the caption for links or spelling.
+                    """.trimIndent()
+                } else {
+                    """
+                    PRIMARY SOURCE - POST CAPTION (Spoken Audio Transcript is Not Available):
+                    ${if (cleanCaption.isNotBlank()) cleanCaption else "Instagram Reel"}
+
+                    INSTRUCTIONS:
+                    1. Spoken audio transcript is NOT available for this reel.
+                    2. Focus 100% on deeply analyzing the Post Caption. Extract all context, steps, workflows, tools, and takeaways directly from the caption.
+                    3. Make the title and summary distinct and specific based on the caption text.
+                    """.trimIndent()
+                }
 
                 val candidateModels = listOf("qwen/qwen3.8-27b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant")
                 var lastError: Exception? = null
@@ -263,99 +285,144 @@ class GroqSummarizerEngine(
 }
 
 /**
- * Local on-device summarization engine using MediaPipe GenAI / Qwen 2.5 / Gemma 2B.
+ * Local on-device summarization engine using MediaPipe Tasks GenAI (Gemma 2B / MediaPipe LLM tasks).
+ * Executes strictly on-device using local model weights (.bin or .task).
+ * If model weights are not downloaded or inference fails, it strictly fails without fallback.
  */
 class LocalMediaPipeSummarizerEngine(
+    private val context: Context,
     private val modelFile: File?,
     private val onTokensUsed: ((promptTokens: Long, completionTokens: Long, latencyMs: Long, provider: String) -> Unit)? = null
 ) : SummarizationEngine {
 
-    override val name: String = "Local Gemma/Qwen (On-Device NPU)"
+    override val name: String = "Local Gemma/Qwen (On-Device MediaPipe)"
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun summarize(caption: String?, transcript: String): Result<ReelSummary> =
-        withContext(Dispatchers.Default) {
-            val startTime = android.os.SystemClock.elapsedRealtime()
+        withContext(Dispatchers.IO) {
+            val targetFile = modelFile ?: File(context.filesDir, "gemma-2-2b-it-gpu.bin")
 
-            // Ensure model file exists or auto-recover
-            if (modelFile != null && !modelFile.exists()) {
-                try {
-                    modelFile.parentFile?.mkdirs()
-                    modelFile.writeText("gemma-2-2b-weights-v1")
-                } catch (e: Exception) {
-                    // Ignore fallback creation error
-                }
+            // Real quantized LLM weights require at least 50MB (typically ~1.3GB to 1.5GB)
+            if (!targetFile.exists() || targetFile.length() < 50_000_000L) {
+                return@withContext Result.failure(
+                    IllegalStateException(
+                        "On-device LLM model weights not installed on this device (${targetFile.name}). Engine Mode is set to LOCAL_ONLY; no cloud fallback allowed."
+                    )
+                )
             }
 
+            // Clean input sources
             val cleanCaption = android.text.Html.fromHtml(caption ?: "", android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
             val cleanTranscript = transcript.trim()
-            val rawContent = (cleanTranscript.ifBlank { cleanCaption }).trim()
+            val hasSpokenTranscript = cleanTranscript.isNotBlank() && !cleanTranscript.equals("Not available", ignoreCase = true)
+            val content = (if (hasSpokenTranscript) cleanTranscript else cleanCaption).trim()
 
-            if (rawContent.isBlank()) {
-                // Graceful fallback for reels without spoken voiceover or long captions
-                val fallbackSummary = ReelSummary(
-                    title = "Instagram Reel Video",
-                    one_line_summary = "Instagram reel indexed locally on-device. Audio voiceover was not detected or reel contains background audio/music.",
-                    actionable_takeaways = listOf(
-                        "• Saved and indexed 100% offline in Reel Library",
-                        "• Processed via On-Device NPU/CPU without cloud data exposure"
-                    ),
-                    tags = listOf("#Reel", "#Offline", "#Saved")
-                )
-                val latency = (android.os.SystemClock.elapsedRealtime() - startTime).coerceAtLeast(24L)
-                onTokensUsed?.invoke(24L, 32L, latency, "On-Device Gemma 2B")
-                return@withContext Result.success(fallbackSummary)
-            }
-
-            // Perform on-device NLP extraction
-            val sentences = rawContent.split(Regex("(?<=[.!?\\n])\\s+"))
-                .map { it.trim() }
-                .filter { it.length > 10 }
-
-            val title = sentences.firstOrNull()?.take(60)?.replace(Regex("[^a-zA-Z0-9\\s]"), "")?.trim()?.ifBlank { null }
-                ?: (cleanCaption.take(50).ifBlank { null })
-                ?: "On-Device Reel Summary"
-
-            val summaryText = if (sentences.size > 1) {
-                sentences.take(3).joinToString(" ")
-            } else {
-                rawContent.take(180)
-            }
-
-            val takeaways = if (sentences.size >= 2) {
-                sentences.take(4).map { "• ${it.trim().removePrefix("•").trim()}" }
-            } else {
-                listOf(
-                    "• Key insight: ${rawContent.take(100)}",
-                    "• Processed 100% locally via on-device NPU/CPU"
+            if (content.isBlank()) {
+                return@withContext Result.failure(
+                    IllegalStateException("Cannot summarize reel: Spoken audio transcript and post caption are both empty.")
                 )
             }
 
-            val words = rawContent.split(Regex("[^a-zA-Z0-9]+"))
-                .map { it.lowercase() }
-                .filter { it.length in 4..14 && it !in setOf("this", "that", "with", "from", "have", "were", "what", "when", "your", "they", "there", "about") }
-                .distinct()
-                .take(4)
+            val startTime = android.os.SystemClock.elapsedRealtime()
 
-            val tags = if (words.isNotEmpty()) {
-                words.map { "#${it.replaceFirstChar { char -> char.uppercase() }}" }
-            } else {
-                listOf("#OnDevice", "#AI", "#Offline")
-            }
+            try {
+                // Initialize MediaPipe Tasks GenAI LlmInference
+                val options = LlmInference.LlmInferenceOptions.builder()
+                    .setModelPath(targetFile.absolutePath)
+                    .setMaxTokens(1024)
+                    .setTemperature(0.2f)
+                    .setTopK(40)
+                    .build()
 
-            val promptTokens = (rawContent.length / 4L).coerceIn(16L, 512L)
-            val compTokens = (summaryText.length / 4L).coerceIn(20L, 256L)
-            val elapsedLatency = (android.os.SystemClock.elapsedRealtime() - startTime).coerceAtLeast(42L)
+                val llmInference = LlmInference.createFromOptions(context, options)
 
-            onTokensUsed?.invoke(promptTokens, compTokens, elapsedLatency, "On-Device Gemma 2B")
+                try {
+                    val prompt = """
+                        <start_of_turn>user
+                        You are an executive research analyst. Deeply analyze this Instagram Reel and extract high-value insights.
 
-            Result.success(
-                ReelSummary(
-                    title = title,
-                    one_line_summary = summaryText,
-                    actionable_takeaways = takeaways,
-                    tags = tags
+                        Spoken Audio Transcript: ${if (hasSpokenTranscript) cleanTranscript else "Not available (Extract from post caption)"}
+                        Post Caption: ${if (cleanCaption.isNotBlank()) cleanCaption else "None"}
+
+                        Instructions:
+                        1. ${if (hasSpokenTranscript) "Prioritize real tools, websites, and steps spoken in the audio transcript." else "Spoken transcript is not available. Extract all tools, websites, and steps directly from the Post Caption."}
+                        2. Return pure valid JSON strictly matching this schema:
+                        {
+                          "title": "Distinct, punchy title (4 to 7 words)",
+                          "one_line_summary": "Comprehensive 2-3 sentence executive briefing.",
+                          "actionable_takeaways": [
+                            "4 to 6 specific, practical, granular bullet points"
+                          ],
+                          "tags": [
+                            "3 to 5 highly relevant topic strings without #"
+                          ]
+                        }
+                        <end_of_turn>
+                        <start_of_turn>model
+                    """.trimIndent()
+
+                    val promptTokens = try {
+                        llmInference.sizeInTokens(prompt).toLong()
+                    } catch (e: Exception) {
+                        (prompt.length / 4L).coerceIn(16L, 1024L)
+                    }
+
+                    val rawResponse = llmInference.generateResponse(prompt)
+                    val latency = android.os.SystemClock.elapsedRealtime() - startTime
+
+                    if (rawResponse.isBlank()) {
+                        return@withContext Result.failure(
+                            IllegalStateException("Local MediaPipe model returned empty output.")
+                        )
+                    }
+
+                    val cleanedJson = rawResponse.trim()
+                        .removePrefix("```json")
+                        .removePrefix("```")
+                        .removeSuffix("```")
+                        .trim()
+
+                    val summary = try {
+                        json.decodeFromString<ReelSummary>(cleanedJson)
+                    } catch (e: Exception) {
+                        // Extract JSON block between first '{' and last '}'
+                        val startIdx = cleanedJson.indexOf('{')
+                        val endIdx = cleanedJson.lastIndexOf('}')
+                        if (startIdx != -1 && endIdx > startIdx) {
+                            val candidate = cleanedJson.substring(startIdx, endIdx + 1)
+                            json.decodeFromString<ReelSummary>(candidate)
+                        } else {
+                            // If model output natural text instead of JSON, parse safely
+                            val lines = cleanedJson.lines().filter { it.isNotBlank() }
+                            val fallbackTitle = lines.firstOrNull()?.take(60) ?: cleanCaption.take(50).ifBlank { "Local AI Summary" }
+                            val fallbackSummary = lines.drop(1).take(3).joinToString(" ").ifBlank { cleanedJson.take(200) }
+                            ReelSummary(
+                                title = fallbackTitle,
+                                one_line_summary = fallbackSummary,
+                                actionable_takeaways = lines.filter { it.startsWith("-") || it.startsWith("*") || it.matches(Regex("""^\d+\..*""")) }.take(5).ifEmpty { listOf(fallbackSummary) },
+                                tags = listOf("OnDeviceAI", "MediaPipe", "Offline")
+                            )
+                        }
+                    }
+
+                    val compTokens = (rawResponse.length / 4L).coerceAtLeast(10L)
+                    onTokensUsed?.invoke(promptTokens, compTokens, latency, "On-Device MediaPipe (${targetFile.nameWithoutExtension})")
+
+                    Result.success(summary)
+                } finally {
+                    try {
+                        llmInference.close()
+                    } catch (_: Exception) {}
+                }
+            } catch (e: Throwable) {
+                Result.failure(
+                    IllegalStateException(
+                        "Local MediaPipe inference execution failed: ${e.message ?: e.javaClass.simpleName}. Engine Mode is LOCAL_ONLY; no cloud fallback allowed.",
+                        e
+                    )
                 )
-            )
+            }
         }
 }
 

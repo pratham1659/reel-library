@@ -98,23 +98,21 @@ class LocalWhisperEngine(
 
     override suspend fun transcribe(audioFile: File): Result<String> = withContext(Dispatchers.Default) {
         val startTime = android.os.SystemClock.elapsedRealtime()
-        
-        // Ensure model file exists or auto-recover
         val targetFile = modelFile ?: File(audioFile.parentFile, "whisper-base.bin")
-        if (!targetFile.exists()) {
-            try {
-                targetFile.parentFile?.mkdirs()
-                targetFile.writeText("whisper-base-model-weights-v1")
-            } catch (e: Exception) {
-                // Ignore fallback creation error
-            }
+
+        // Only transcribe if authentic local model weights (> 10MB) are present
+        if (!targetFile.exists() || targetFile.length() < 10_000_000L) {
+            return@withContext Result.failure(
+                IllegalStateException("Local Whisper weights not downloaded into storage.")
+            )
         }
 
-        // Simulate native JNI / whisper.cpp inference latency
         val elapsedLatency = (android.os.SystemClock.elapsedRealtime() - startTime).coerceAtLeast(32L)
         onTokensUsed?.invoke(0L, 0L, elapsedLatency, "On-Device Whisper Base")
 
-        Result.success("Transcription generated on-device via Whisper: Audio processed successfully.")
+        Result.failure(
+            IllegalStateException("On-device Whisper native inference runtime is not loaded.")
+        )
     }
 }
 

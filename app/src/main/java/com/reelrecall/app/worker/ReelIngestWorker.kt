@@ -48,11 +48,12 @@ class ReelIngestWorker(
             val currentPrefs = preferencesRepository.preferencesFlow.first()
             val transcriptionEngine = dispatcher.resolveTranscriptionEngine(currentPrefs)
 
-            val transcript = if (metadata.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
+            val rawTranscript = if (metadata.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
                 transcriptionEngine.transcribe(metadata.audioFile).getOrNull()?.trim()?.ifBlank { null }
             } else {
                 null
             }
+            val transcript = rawTranscript ?: "Not available"
 
             // Check reel duration: if > 1 minute (60,000ms), extract all details & transcript
             // but skip AI token summarization until user explicitly runs it from the Reel Detail page.
@@ -78,10 +79,14 @@ class ReelIngestWorker(
                 android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
             }
 
-            if (durationMs > 60_000L) {
-                // RULE: Long Reel (> 1 min) -> Save all extracted details without consuming AI summarization tokens
+            val shouldSkipAiForDuration = durationMs > 60_000L && currentPrefs.engineMode == com.reelrecall.app.data.repository.EngineMode.CLOUD_ONLY
+
+            if (shouldSkipAiForDuration) {
+                // RULE: Long Reel (> 1 min) in Cloud Mode -> Save all extracted details without consuming paid/free API rate limits
                 if (existing != null) {
-                    val fallbackTitle = cleanCaption?.take(60)?.ifBlank { null }
+                    val sanitizedCaption = cleanCaption?.replace(Regex("""(?i)^(comment|type|drop|dm|send)\s+["']?[a-zA-Z0-9_-]+["']?\s+(and|to|for|&).*?([.!?\n]|$)"""), "")?.trim()
+                    val fallbackTitle = sanitizedCaption?.take(60)?.ifBlank { null }
+                        ?: cleanCaption?.take(60)?.ifBlank { null }
                         ?: "Instagram Reel by ${cleanHandle ?: "@creator"}"
                     val updated = existing.copy(
                         creatorHandle = cleanHandle ?: existing.creatorHandle,
@@ -109,7 +114,7 @@ class ReelIngestWorker(
             dao.updateStatus(reelId, IngestionStatus.SUMMARIZING)
 
             val summarizationEngine = dispatcher.resolveSummarizationEngine(currentPrefs)
-            val summaryResult = summarizationEngine.summarize(metadata.caption, transcript ?: "")
+            val summaryResult = summarizationEngine.summarize(metadata.caption, if (transcript == "Not available") "" else transcript)
 
             val summary = summaryResult.getOrElse { originalErr ->
                 return handleError(reelId, "Processing failed: ${originalErr.message}")
