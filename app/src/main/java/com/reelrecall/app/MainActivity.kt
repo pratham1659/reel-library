@@ -152,6 +152,8 @@ class MainActivity : ComponentActivity() {
                                     vaultViewModel.toggleSelectionMode(true)
                                 },
                                 onToggleViewMode = {
+                                    scope.launch { drawerState.close() }
+                                    currentTab = 0
                                     val currentMode = vaultViewModel.viewMode.value
                                     val newMode = if (currentMode == ViewMode.GRID) {
                                         ViewMode.LIST

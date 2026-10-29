@@ -278,10 +278,12 @@ private fun ProfileMainScreen(
                 ProfileMenuRow(
                     icon = Icons.Default.Person,
                     title = "Account",
-                    badgeText = if (preferences.isLoggedIn) preferences.userName.ifBlank { "Logged In" } else "Login / Cloud",
-                    badgeColor = colors.accent,
+                    badgeText = "Coming Soon",
+                    badgeColor = Color(0xFFFFB74D),
                     colors = colors,
-                    onClick = onNavigateToAccount
+                    onClick = {
+                        Toast.makeText(context, "Account & Cloud Profiles are coming soon!", Toast.LENGTH_SHORT).show()
+                    }
                 )
                 NeumorphicDivider(colors = colors)
 
@@ -290,10 +292,12 @@ private fun ProfileMainScreen(
                     icon = Icons.Default.Tune,
                     iconTint = ElectricIndigo,
                     title = "Preferences",
-                    badgeText = preferences.summaryStyle.lowercase().replaceFirstChar { it.uppercase() },
-                    badgeColor = ElectricIndigo,
+                    badgeText = "Coming Soon",
+                    badgeColor = Color(0xFFFFB74D),
                     colors = colors,
-                    onClick = onNavigateToPreferences
+                    onClick = {
+                        Toast.makeText(context, "Preferences customization is coming soon!", Toast.LENGTH_SHORT).show()
+                    }
                 )
                 NeumorphicDivider(colors = colors)
 

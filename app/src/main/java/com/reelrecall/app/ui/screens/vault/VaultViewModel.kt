@@ -169,8 +169,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     companion object {
-        const val INITIAL_PAGE_SIZE = 24
-        const val PAGE_SIZE_INCREMENT = 20
+        const val INITIAL_PAGE_SIZE = 10
+        const val PAGE_SIZE_INCREMENT = 10
     }
 
     val visibleItemsCount = MutableStateFlow(INITIAL_PAGE_SIZE)

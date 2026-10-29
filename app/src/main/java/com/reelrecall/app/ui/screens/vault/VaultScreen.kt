@@ -592,7 +592,7 @@ fun VaultScreen(
                             val layoutInfo = gridState.layoutInfo
                             val total = layoutInfo.totalItemsCount
                             val lastVisible = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
-                            total > 0 && lastVisible >= (total - 4)
+                            total > 0 && lastVisible >= (total - 2)
                         }
                     }
 
@@ -601,7 +601,7 @@ fun VaultScreen(
                             val layoutInfo = listState.layoutInfo
                             val total = layoutInfo.totalItemsCount
                             val lastVisible = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
-                            total > 0 && lastVisible >= (total - 3)
+                            total > 0 && lastVisible >= (total - 2)
                         }
                     }
 
