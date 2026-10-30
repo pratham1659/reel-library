@@ -126,6 +126,27 @@ android {
             useLegacyPackaging = true
         }
     }
+
+    applicationVariants.all {
+        val variant = this
+        if (variant.buildType.name == "release") {
+            variant.outputs.all {
+                val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
+                output?.outputFileName = "ReelLibrary-release-v1.0.apk"
+            }
+        }
+    }
+}
+
+val copyReleaseApk by tasks.registering(Copy::class) {
+    from(layout.buildDirectory.dir("outputs/apk/release"))
+    include("*.apk")
+    into(rootProject.layout.projectDirectory.dir("release"))
+    rename { "ReelLibrary-release-v1.0.apk" }
+}
+
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    finalizedBy(copyReleaseApk)
 }
 
 dependencies {
