@@ -297,4 +297,47 @@ final class DatabaseAndSecurityTests: XCTestCase {
         XCTAssertEqual(sorted.first?.title, "Alpha")
         XCTAssertEqual(sorted.last?.title, "Beta")
     }
+
+    // MARK: - Shared Reel Queue & Instagram Parser Tests
+
+    func testSharedReelQueueEnqueueDequeue() {
+        let queue = SharedReelQueue.shared
+        queue.clear()
+
+        queue.enqueue(url: "https://www.instagram.com/reel/DfGaK8uJvSK/")
+        queue.enqueue(url: "https://www.instagram.com/reel/DfIsPdqhonr/")
+        // Duplicate should be ignored
+        queue.enqueue(url: "https://www.instagram.com/reel/DfGaK8uJvSK/")
+
+        let pending = queue.peek()
+        XCTAssertEqual(pending.count, 2)
+        XCTAssertEqual(pending[0].url, "https://www.instagram.com/reel/DfGaK8uJvSK/")
+        XCTAssertEqual(pending[1].url, "https://www.instagram.com/reel/DfIsPdqhonr/")
+
+        let dequeued = queue.dequeueAll()
+        XCTAssertEqual(dequeued.count, 2)
+
+        let afterEmpty = queue.peek()
+        XCTAssertEqual(afterEmpty.count, 0)
+    }
+
+    func testInstagramUrlParserVariants() {
+        let u1 = "https://www.instagram.com/reel/DfGaK8uJvSK/?igsh=MTc4MmM1YmI2Ng=="
+        let p1 = InstagramUrlParser.parse(u1)
+        XCTAssertNotNil(p1)
+        XCTAssertEqual(p1?.shortcode, "DfGaK8uJvSK")
+        XCTAssertEqual(p1?.canonicalUrl, "https://www.instagram.com/reel/DfGaK8uJvSK/")
+
+        let u2 = "https://instagram.com/reels/DdGftkws5fa/"
+        let p2 = InstagramUrlParser.parse(u2)
+        XCTAssertNotNil(p2)
+        XCTAssertEqual(p2?.shortcode, "DdGftkws5fa")
+        XCTAssertEqual(p2?.canonicalUrl, "https://www.instagram.com/reel/DdGftkws5fa/")
+
+        let u3 = "Check out this reel: https://www.instagram.com/share/reel/DfH0cwFRkZn/"
+        let p3 = InstagramUrlParser.parse(u3)
+        XCTAssertNotNil(p3)
+        XCTAssertEqual(p3?.shortcode, "DfH0cwFRkZn")
+        XCTAssertEqual(p3?.canonicalUrl, "https://www.instagram.com/reel/DfH0cwFRkZn/")
+    }
 }

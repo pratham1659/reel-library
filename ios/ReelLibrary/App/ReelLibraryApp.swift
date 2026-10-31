@@ -4,6 +4,9 @@
 //
 
 import SwiftUI
+import OSLog
+
+private let logger = Logger(subsystem: "io.github.alokkr016.reellibrary", category: "ReelLibraryApp")
 
 @main
 struct ReelLibraryApp: App {
@@ -37,21 +40,27 @@ struct ReelLibraryApp: App {
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                     checkForPendingSharedReels()
                 }
+                .onReceive(NotificationCenter.default.publisher(for: UIScene.didActivateNotification)) { _ in
+                    checkForPendingSharedReels()
+                }
         }
     }
 
     private func checkForPendingSharedReels() {
-        // 1. General system clipboard check (works reliably across isolated iOS sandboxes)
-        if let clip = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines),
-           clip.contains("instagram.com") {
-            if let parsed = InstagramUrlParser.parse(clip) {
+        // 1. Drain the Shared Keychain Queue (primary cross-sandbox bridge for personal dev accounts)
+        let queuedItems = SharedReelQueue.shared.dequeueAll()
+        for item in queuedItems {
+            if let parsed = InstagramUrlParser.parse(item.url) {
                 if !vaultViewModel.reels.contains(where: { $0.canonicalUrl == parsed.canonicalUrl }) {
+                    logger.notice("Ingesting queued reel from SharedReelQueue: \(parsed.canonicalUrl, privacy: .public)")
                     vaultViewModel.ingestUrl(parsed.canonicalUrl)
                 }
+            } else if !vaultViewModel.reels.contains(where: { $0.canonicalUrl == item.url }) {
+                vaultViewModel.ingestUrl(item.url)
             }
         }
 
-        // 2. Custom pasteboard type check
+        // 2. Custom pasteboard type check (direct clipboard exchange)
         let pasteboardType = "io.github.alokkr016.reellibrary.shared_url"
         if UIPasteboard.general.contains(pasteboardTypes: [pasteboardType]) {
             if let raw = UIPasteboard.general.value(forPasteboardType: pasteboardType) as? String, !raw.isEmpty {
@@ -62,7 +71,19 @@ struct ReelLibraryApp: App {
             }
         }
 
-        // 3. App Group pending queue (when provisioned)
+        // 3. General system clipboard check (if user copied link manually)
+        if UIPasteboard.general.hasStrings {
+            if let clip = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines),
+               clip.contains("instagram.com") {
+                if let parsed = InstagramUrlParser.parse(clip) {
+                    if !vaultViewModel.reels.contains(where: { $0.canonicalUrl == parsed.canonicalUrl }) {
+                        vaultViewModel.ingestUrl(parsed.canonicalUrl)
+                    }
+                }
+            }
+        }
+
+        // 4. App Group pending queue (when provisioned)
         if let defaults = UserDefaults(suiteName: AppDatabase.appGroupIdentifier) {
             let pending = defaults.stringArray(forKey: "pending_shared_urls") ?? []
             if !pending.isEmpty {

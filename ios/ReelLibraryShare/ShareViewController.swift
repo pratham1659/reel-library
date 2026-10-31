@@ -3,7 +3,7 @@ import Social
 import UniformTypeIdentifiers
 import OSLog
 
-private let logger = Logger(subsystem: "com.reellibrary.app.share", category: "ShareViewController")
+private let logger = Logger(subsystem: "io.github.alokkr016.reellibrary.share", category: "ShareViewController")
 
 final class ShareViewController: UIViewController {
     override func viewDidLoad() {
@@ -84,18 +84,22 @@ final class ShareViewController: UIViewController {
 
     @MainActor
     private func handleExtractedReel(_ parsed: ParsedReel) {
-        // Step 1: Write canonical URL to system general clipboard and private pasteboard
+        // Step 1: Enqueue into Shared Keychain Queue (bridges isolated sandboxes without App Groups)
+        SharedReelQueue.shared.enqueue(url: parsed.canonicalUrl)
+
+        // Step 2: Also write canonical URL to system general clipboard and private pasteboard
         UIPasteboard.general.string = parsed.canonicalUrl
+        UIPasteboard.general.url = URL(string: parsed.canonicalUrl)
         let pasteboardType = "io.github.alokkr016.reellibrary.shared_url"
         UIPasteboard.general.setValue(parsed.canonicalUrl, forPasteboardType: pasteboardType)
 
-        // Step 2: Persist into SQLite database
+        // Step 3: Persist into local extension SQLite database
         do {
             let database = AppDatabase.shared
             let dao = database.reelDao
 
             if let existing = try dao.findByCanonicalUrl(parsed.canonicalUrl) {
-                logger.info("Reel already exists in vault: #\(existing.id ?? -1)")
+                logger.info("Reel already exists in extension vault: #\(existing.id ?? -1)")
             } else {
                 var newRecord = ReelRecord(
                     canonicalUrl: parsed.canonicalUrl,
@@ -103,7 +107,7 @@ final class ShareViewController: UIViewController {
                     status: .queued
                 )
                 try dao.insert(&newRecord)
-                logger.info("Queued shared reel #\(newRecord.id ?? -1) into database.")
+                logger.info("Queued shared reel #\(newRecord.id ?? -1) into extension database.")
             }
 
             if let defaults = UserDefaults(suiteName: AppDatabase.appGroupIdentifier) {
@@ -117,56 +121,63 @@ final class ShareViewController: UIViewController {
             logger.error("Failed to write queued reel to database: \(error.localizedDescription)")
         }
 
-        // Step 3: Trigger haptic feedback
+        // Step 4: Trigger haptic feedback
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(.success)
 
-        // Step 4: Show visual confirmation HUD
+        // Step 5: Show visual confirmation HUD
         showSuccessHud()
 
-        // Step 5: Also attempt to open main app via custom URL scheme
-        openHostApp(with: parsed.canonicalUrl)
-
-        // Step 6: Dismiss after brief visual confirmation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
-            self?.completeRequest()
-        }
+        // Step 6: Attempt to open main app via custom URL scheme with graceful dismissal
+        openHostAppAndDismiss(with: parsed.canonicalUrl)
     }
 
     private func showSuccessHud() {
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.backgroundColor = UIColor(red: 0.10, green: 0.12, blue: 0.16, alpha: 0.95)
+        container.backgroundColor = UIColor(red: 0.10, green: 0.12, blue: 0.16, alpha: 0.96)
         container.layer.cornerRadius = 18
-        container.layer.borderWidth = 1
-        container.layer.borderColor = UIColor(red: 0.0, green: 0.85, blue: 0.95, alpha: 0.4).cgColor
+        container.layer.borderWidth = 1.2
+        container.layer.borderColor = UIColor(red: 0.0, green: 0.85, blue: 0.95, alpha: 0.5).cgColor
         container.layer.shadowColor = UIColor.black.cgColor
-        container.layer.shadowOpacity = 0.4
-        container.layer.shadowRadius = 12
-        container.layer.shadowOffset = CGSize(width: 0, height: 4)
+        container.layer.shadowOpacity = 0.5
+        container.layer.shadowRadius = 16
+        container.layer.shadowOffset = CGSize(width: 0, height: 6)
 
         let stack = UIStackView()
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .horizontal
-        stack.spacing = 10
+        stack.spacing = 12
         stack.alignment = .center
 
         let icon = UIImageView(image: UIImage(systemName: "checkmark.circle.fill"))
         icon.tintColor = UIColor(red: 0.0, green: 0.85, blue: 0.95, alpha: 1.0)
         icon.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            icon.widthAnchor.constraint(equalToConstant: 24),
-            icon.heightAnchor.constraint(equalToConstant: 24)
+            icon.widthAnchor.constraint(equalToConstant: 28),
+            icon.heightAnchor.constraint(equalToConstant: 28)
         ])
 
-        let label = UILabel()
-        label.text = "Saved to Reel Library"
-        label.textColor = .white
-        label.font = UIFont.systemFont(ofSize: 15, weight: .bold)
+        let textStack = UIStackView()
+        textStack.axis = .vertical
+        textStack.spacing = 2
+
+        let titleLabel = UILabel()
+        titleLabel.text = "Saved to Reel Library"
+        titleLabel.textColor = .white
+        titleLabel.font = UIFont.systemFont(ofSize: 15, weight: .bold)
+
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = "Queued for AI Ingestion"
+        subtitleLabel.textColor = UIColor(red: 0.0, green: 0.85, blue: 0.95, alpha: 0.85)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+
+        textStack.addArrangedSubview(titleLabel)
+        textStack.addArrangedSubview(subtitleLabel)
 
         stack.addArrangedSubview(icon)
-        stack.addArrangedSubview(label)
+        stack.addArrangedSubview(textStack)
         container.addSubview(stack)
         view.addSubview(container)
 
@@ -187,36 +198,31 @@ final class ShareViewController: UIViewController {
         }
     }
 
-    private func openHostApp(with canonicalUrl: String) {
+    private func openHostAppAndDismiss(with canonicalUrl: String) {
         guard let encoded = canonicalUrl.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
               let url = URL(string: "reellibrary://ingest?url=\(encoded)") else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+                self?.completeRequest()
+            }
             return
         }
 
-        // Method 1: Standard NSExtensionContext openURL
-        self.extensionContext?.open(url, completionHandler: nil)
-
-        // Method 2: Extension context dynamic selector
-        let extSelector = sel_registerName("openURL:completionHandler:")
-        if let context = self.extensionContext, (context as AnyObject).responds(to: extSelector) {
-            (context as AnyObject).perform(extSelector, with: url, with: nil)
-        }
-
-        // Method 3: Traverse UIResponder chain for openURL:
-        let selector = sel_registerName("openURL:")
-        var responder: UIResponder? = self
-        while let current = responder {
-            if current.responds(to: selector) {
-                current.perform(selector, with: url)
-                return
+        // Try standard NSExtensionContext openURL
+        var didOpen = false
+        if let context = self.extensionContext {
+            context.open(url) { [weak self] success in
+                didOpen = success
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    self?.completeRequest()
+                }
             }
-            responder = current.next
         }
 
-        // Method 4: UIApplication sharedApplication via dynamic class lookup
-        if let appClass = NSClassFromString("UIApplication") as? NSObject.Type,
-           let shared = appClass.perform(sel_registerName("sharedApplication"))?.takeUnretainedValue() as? NSObject {
-            shared.perform(selector, with: url)
+        // Fallback dismissal timer in case openURL does not fire completion block
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
+            if !didOpen {
+                self?.completeRequest()
+            }
         }
     }
 

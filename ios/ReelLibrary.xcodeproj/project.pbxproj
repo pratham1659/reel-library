@@ -41,6 +41,7 @@
 		7F50B9649AE682471C4F2F8B /* AudioExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB4D43446E609CEF96EBD15F /* AudioExtractor.swift */; };
 		88BFCDA533E1588CCAB6051C /* VaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2029F2718C0781DADE6FA42B /* VaultView.swift */; };
 		8E076FC867ADAC0FA7BD3173 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF903BBF72488B1D2305E882 /* ShareViewController.swift */; };
+		8EC1B2D2FB438273D67C5BA2 /* SharedReelQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B0A52FC6F09739EC93FED1E /* SharedReelQueue.swift */; };
 		91154F9A455AFDF1FB1970F6 /* ReelDao.swift in Sources */ = {isa = PBXBuildFile; fileRef = 163BCBDB3CC34F0D3A53682A /* ReelDao.swift */; };
 		91D240E009E19DE485F9BA89 /* FilterModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3764AF8112A48DF1DC8A5CB6 /* FilterModels.swift */; };
 		9E1027C79234B25767186B2B /* DatabaseAndSecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F47F916F7873491A2E139F76 /* DatabaseAndSecurityTests.swift */; };
@@ -56,6 +57,7 @@
 		B94645AE7324540CE95F798E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F7FDF2E2ADCCC2CF3DD7F9D5 /* Assets.xcassets */; };
 		B95FC57FF1F98AA96779F9DF /* ReelDao.swift in Sources */ = {isa = PBXBuildFile; fileRef = 163BCBDB3CC34F0D3A53682A /* ReelDao.swift */; };
 		B9B74ECFDBC79D7B32817161 /* PreferencesRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F02DAF157CEC1DBCC70E5536 /* PreferencesRepository.swift */; };
+		BF4D751807AAE7B8B1DF15BE /* SharedReelQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B0A52FC6F09739EC93FED1E /* SharedReelQueue.swift */; };
 		BFEB51A808CBAE8F7CADE63B /* SummarizationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F62051E3BE50E8F0FD33EF /* SummarizationEngine.swift */; };
 		C7AAA4DA6495BA9FD49DCF9E /* KnowledgeDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 273CB68B8E6AFCAA7E59443C /* KnowledgeDrawer.swift */; };
 		C911AC47B85488996291F511 /* IngestionStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F556934620E5EF105C25B10 /* IngestionStatus.swift */; };
@@ -117,6 +119,7 @@
 		426D09235A005E7F03AA9B08 /* ReelLibrary.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ReelLibrary.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C0C99074963039C11D1F746 /* ReelCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReelCardView.swift; sourceTree = "<group>"; };
 		4F762BA51C1A57C62304BAA9 /* SortFilterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SortFilterSheet.swift; sourceTree = "<group>"; };
+		5B0A52FC6F09739EC93FED1E /* SharedReelQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedReelQueue.swift; sourceTree = "<group>"; };
 		5B80A0D3D9E24C337881F670 /* OpenAISummarizerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAISummarizerEngine.swift; sourceTree = "<group>"; };
 		664F5D19571D4127B0E2F2CA /* LocalSummarizerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSummarizerEngine.swift; sourceTree = "<group>"; };
 		6A009A0A9BE66E39F340ECAC /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
@@ -246,6 +249,7 @@
 			isa = PBXGroup;
 			children = (
 				BF81A9A8AFD47284EAB506EF /* KeychainVault.swift */,
+				5B0A52FC6F09739EC93FED1E /* SharedReelQueue.swift */,
 			);
 			path = Security;
 			sourceTree = "<group>";
@@ -554,6 +558,7 @@
 				15018975AC09175E188FE127 /* ReelRepository.swift in Sources */,
 				64FA01976B8EF44F92D6EADE /* SettingsView.swift in Sources */,
 				47ABB9FC69713DD972B3E4FD /* SettingsViewModel.swift in Sources */,
+				BF4D751807AAE7B8B1DF15BE /* SharedReelQueue.swift in Sources */,
 				E1CDF9BAD273BBD0B663AB1F /* SortFilterSheet.swift in Sources */,
 				A6FA0B2C31325E8406FAC43A /* StatusBadge.swift in Sources */,
 				BFEB51A808CBAE8F7CADE63B /* SummarizationEngine.swift in Sources */,
@@ -583,6 +588,7 @@
 				A0C7C103AB7A0226EB16277E /* ReelRecord.swift in Sources */,
 				B4B299217C0D7F3A15C4D62A /* ReelRepository.swift in Sources */,
 				8E076FC867ADAC0FA7BD3173 /* ShareViewController.swift in Sources */,
+				8EC1B2D2FB438273D67C5BA2 /* SharedReelQueue.swift in Sources */,
 				2277AB75CD9D3B570DC2B033 /* TokenUsageDao.swift in Sources */,
 				B1510BF0DAF2F37A4197F932 /* TokenUsageRecord.swift in Sources */,
 			);
