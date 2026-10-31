@@ -1,13 +1,16 @@
 # Reel Library 📱⚡
 
 [![Android](https://img.shields.io/badge/Platform-Android_8.0+_(API_26--36)-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
+[![iOS](https://img.shields.io/badge/Platform-iOS_17.0+-000000?logo=apple&logoColor=white)](https://developer.apple.com/ios/)
+[![Swift](https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/UI-Jetpack_Compose_Material_3-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![SwiftUI](https://img.shields.io/badge/UI-SwiftUI_Obsidian_Neumorphic-007AFF?logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
 [![Groq LPU](https://img.shields.io/badge/Inference-Groq_LPU_Whisper_%26_Qwen-F55036)](https://groq.com)
-[![Security](https://img.shields.io/badge/Security-Hardware_Keystore_%2B_R8-10B981)](https://developer.android.com/training/articles/keystore)
+[![Security](https://img.shields.io/badge/Security-Keychain_%2B_Keystore-10B981)](https://developer.apple.com/documentation/security/keychain_services)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-**Reel Library** is a native Android intelligence vault that transforms fleeting Instagram Reels into structured, searchable knowledge assets. Captured seamlessly via the system share sheet, each reel is ingested in the background, its audio transcribed into clean Hinglish/English text, and synthesized into actionable executive briefings using hybrid on-device and ultra-low-latency cloud intelligence.
+**Reel Library** is a multi-platform native mobile intelligence vault (Android & iOS) that transforms fleeting Instagram Reels into structured, searchable knowledge assets. Captured seamlessly via the system share sheet, each reel is ingested in the background, its audio transcribed into clean Hinglish/English text, and synthesized into actionable executive briefings using hybrid on-device and ultra-low-latency cloud intelligence.
 
 ---
 
@@ -148,6 +151,25 @@ adb install -r release/ReelLibrary-release-v1.0.apk
    ./gradlew validateSigningRelease assembleRelease
    ```
    The finalized package will be output to `release/ReelLibrary-release-v1.0.apk`.
+
+### iOS Build Instructions (Swift 6 & Xcode)
+
+1. **Prerequisites**:
+   - macOS 14.0+ (Sonoma or Sequoia)
+   - Xcode 15.0+ or 16.0+ (Swift 6.0)
+   - XcodeGen (`brew install xcodegen`)
+
+2. **Generate Xcode Project & Run Tests**:
+   ```bash
+   cd ios
+   xcodegen generate
+   xcodebuild test -scheme ReelLibraryTests -destination 'platform=iOS Simulator,name=iPhone 17'
+   ```
+
+3. **Open & Run in Xcode**:
+   ```bash
+   open ios/ReelLibrary.xcodeproj
+   ```
 
 ---
 

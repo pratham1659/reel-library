@@ -85,3 +85,12 @@ secrets.properties
 
 # Room schema export
 /app/schemas/
+
+# Xcode / iOS
+**/DerivedData/
+ios/build/
+*.xcuserstate
+project.xcworkspace/xcuserdata/
+*.xcuserdatad/
+.swiftpm/
+
