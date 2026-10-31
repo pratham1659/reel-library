@@ -128,7 +128,7 @@ async function getLatestRelease(env, ctx) {
     // Format: "1.2.0" -> 1*1000 + 2*100 + 0 = 1200 or custom mapping
     // We can also extract "versionCode: 2" from release body if present
     let versionCode = 2;
-    const codeMatch = release.body?.match(/versionCode[:=\s]+(\d+)/i);
+    const codeMatch = release.body?.match(/`?versionCode`?[:=\s]+(\d+)/i);
     if (codeMatch) {
       versionCode = parseInt(codeMatch[1], 10);
     } else {
