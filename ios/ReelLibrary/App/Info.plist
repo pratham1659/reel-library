@@ -28,7 +28,7 @@
             <key>CFBundleTypeRole</key>
             <string>Editor</string>
             <key>CFBundleURLName</key>
-            <string>com.reellibrary.app</string>
+            <string>io.github.alokkr016.reellibrary</string>
             <key>CFBundleURLSchemes</key>
             <array>
                 <string>reellibrary</string>
