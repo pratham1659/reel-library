@@ -34,6 +34,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.alokkr016.reellibrary
         INFOPLIST_FILE: ReelLibrary/App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ReelLibrary/App/ReelLibrary.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:

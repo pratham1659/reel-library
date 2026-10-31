@@ -22,6 +22,33 @@ struct ReelLibraryApp: App {
                 .onOpenURL { url in
                     handleIncomingURL(url)
                 }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                    checkForPendingSharedReels()
+                }
+                .onAppear {
+                    checkForPendingSharedReels()
+                }
+        }
+    }
+
+    private func checkForPendingSharedReels() {
+        let pasteboardType = "io.github.alokkr016.reellibrary.shared_url"
+        if UIPasteboard.general.contains(pasteboardTypes: [pasteboardType]) {
+            if let raw = UIPasteboard.general.value(forPasteboardType: pasteboardType) as? String, !raw.isEmpty {
+                vaultViewModel.ingestUrl(raw)
+                UIPasteboard.general.setValue("", forPasteboardType: pasteboardType)
+            }
+        }
+
+        // Also check App Group pending queue if available
+        if let defaults = UserDefaults(suiteName: AppDatabase.appGroupIdentifier) {
+            let pending = defaults.stringArray(forKey: "pending_shared_urls") ?? []
+            if !pending.isEmpty {
+                defaults.removeObject(forKey: "pending_shared_urls")
+                for urlStr in pending {
+                    vaultViewModel.ingestUrl(urlStr)
+                }
+            }
         }
     }
 
