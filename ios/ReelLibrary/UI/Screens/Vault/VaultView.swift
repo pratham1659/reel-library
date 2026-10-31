@@ -330,8 +330,7 @@ public struct VaultView: View {
                 if viewModel.viewMode == .grid {
                     LazyVGrid(
                         columns: [
-                            GridItem(.flexible(), spacing: 12),
-                            GridItem(.flexible(), spacing: 12)
+                            GridItem(.adaptive(minimum: 165, maximum: 300), spacing: 12)
                         ],
                         spacing: 14
                     ) {
