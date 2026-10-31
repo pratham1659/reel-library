@@ -1,0 +1,7 @@
+name = "reel-library-update"
+main = "cloudflare-worker/index.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+GITHUB_OWNER = "pratham1659"
+GITHUB_REPO = "reel-library"
