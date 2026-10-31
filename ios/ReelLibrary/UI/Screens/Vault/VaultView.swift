@@ -135,6 +135,9 @@ public struct VaultView: View {
         .sheet(isPresented: $viewModel.isSettingsOpen) {
             SettingsView()
         }
+        .onAppear {
+            viewModel.loadReels()
+        }
         .alert("Add Instagram Reel", isPresented: $isShowingUrlPrompt) {
             TextField("Paste Instagram Reel URL...", text: $pastedUrlString)
                 .textInputAutocapitalization(.never)

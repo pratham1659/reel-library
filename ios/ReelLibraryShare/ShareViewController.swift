@@ -84,7 +84,8 @@ final class ShareViewController: UIViewController {
 
     @MainActor
     private func handleExtractedReel(_ parsed: ParsedReel) {
-        // Step 1: Write to Shared General Pasteboard for cross-sandbox sync
+        // Step 1: Write canonical URL to system general clipboard and private pasteboard
+        UIPasteboard.general.string = parsed.canonicalUrl
         let pasteboardType = "io.github.alokkr016.reellibrary.shared_url"
         UIPasteboard.general.setValue(parsed.canonicalUrl, forPasteboardType: pasteboardType)
 
@@ -192,7 +193,16 @@ final class ShareViewController: UIViewController {
             return
         }
 
-        // Method 1: Traverse UIResponder chain for openURL:
+        // Method 1: Standard NSExtensionContext openURL
+        self.extensionContext?.open(url, completionHandler: nil)
+
+        // Method 2: Extension context dynamic selector
+        let extSelector = sel_registerName("openURL:completionHandler:")
+        if let context = self.extensionContext, (context as AnyObject).responds(to: extSelector) {
+            (context as AnyObject).perform(extSelector, with: url, with: nil)
+        }
+
+        // Method 3: Traverse UIResponder chain for openURL:
         let selector = sel_registerName("openURL:")
         var responder: UIResponder? = self
         while let current = responder {
@@ -203,18 +213,7 @@ final class ShareViewController: UIViewController {
             responder = current.next
         }
 
-        // Method 2: Extension context openURL:completionHandler:
-        let extSelector = sel_registerName("openURL:completionHandler:")
-        var extResponder: UIResponder? = self
-        while let current = extResponder {
-            if current.responds(to: extSelector) {
-                current.perform(extSelector, with: url, with: nil)
-                return
-            }
-            extResponder = current.next
-        }
-
-        // Method 3: UIApplication sharedApplication via dynamic class lookup
+        // Method 4: UIApplication sharedApplication via dynamic class lookup
         if let appClass = NSClassFromString("UIApplication") as? NSObject.Type,
            let shared = appClass.perform(sel_registerName("sharedApplication"))?.takeUnretainedValue() as? NSObject {
             shared.perform(selector, with: url)
