@@ -1,5 +1,7 @@
 package com.reelrecall.app.ui.screens.vault.components
 
+import com.reelrecall.app.BuildConfig
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -574,7 +576,7 @@ fun KnowledgeDrawerContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Reel Library Engine v1.0",
+                    text = "Reel Library Engine v${BuildConfig.VERSION_NAME}",
                     fontSize = 11.sp,
                     color = textMutedColor
                 )

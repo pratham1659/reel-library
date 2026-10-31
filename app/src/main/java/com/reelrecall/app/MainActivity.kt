@@ -487,7 +487,7 @@ fun InstagramStyleSplashScreen(isDarkTheme: Boolean) {
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "AI-Powered Video Knowledge • v1.0.0",
+                text = "AI-Powered Video Knowledge • v${BuildConfig.VERSION_NAME}",
                 fontSize = 12.sp,
                 color = textMuted,
                 fontWeight = FontWeight.Normal
@@ -517,7 +517,7 @@ fun InstagramStyleSplashScreen(isDarkTheme: Boolean) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "v1.0.0",
+                text = "v${BuildConfig.VERSION_NAME}",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 color = textMuted.copy(alpha = 0.7f)
