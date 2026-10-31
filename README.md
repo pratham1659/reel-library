@@ -18,10 +18,12 @@
 
 ## 🌟 Key Highlights
 
-### ⚡ Dual-Engine Intelligence Architecture
-- **Cloud-Fast Mode (Groq LPU)**:
-  - Sub-second speech-to-text via **Whisper Large v3 Turbo** (`whisper-large-v3-turbo`) with Roman Latin Hinglish formatting.
-  - Multi-tiered executive summarization with automatic fallback (`qwen/qwen3.8-27b` ➔ `llama-3.3-70b-versatile` ➔ `llama-3.1-8b-instant`).
+### ⚡ Multi-Provider Cloud & On-Device Intelligence Architecture
+- **Multi-Cloud AI Provider Selection**:
+  - **Groq Cloud (LPU)**: Sub-second transcription via **Whisper Large v3 Turbo** and summarization via **Llama 3.3 70B** and **Qwen 2.5**.
+  - **OpenAI**: Multimodal analysis and synthesis via **GPT-4o / GPT-4o-mini** and high-fidelity speech recognition via **Whisper-1**.
+  - **Anthropic Claude**: Deep executive analysis via **Claude 3.5 Sonnet / Claude 3.5 Haiku** paired with hybrid audio transcription (OpenAI/Groq/WhisperKit).
+  - **Custom / OpenAI-Compatible**: Plug in any self-hosted or proxy endpoint including **OpenRouter**, **DeepSeek**, **Together AI**, **Ollama**, or **vLLM**.
 - **Local On-Device Mode**:
   - **iOS/iPadOS**: 100% offline, privacy-preserving speech transcription powered by **WhisperKit** running on the Apple Neural Engine (ANE) and local quantized models.
   - **Android**: 100% offline LLM inference using **MediaPipe Tasks GenAI** (quantized Gemma 2B) and local whisper weights.
@@ -101,7 +103,7 @@ flowchart TD
 | **Background Processing** | AndroidX WorkManager 2.10.0 | `BGProcessingTask` + `URLSession` |
 | **Networking** | Square OkHttp 4.12.0 | Native Swift `URLSession` |
 | **On-Device AI** | Google MediaPipe Tasks GenAI | Apple Neural Engine via WhisperKit CoreML |
-| **Cloud Intelligence** | Groq LPU (Whisper + Qwen / LLaMA) | Groq LPU (Whisper + Qwen / LLaMA) |
+| **Cloud Intelligence** | Groq LPU (Whisper + Qwen / LLaMA) | Groq LPU, OpenAI (GPT-4o), Claude 3.5, Custom APIs |
 
 ---
 
@@ -138,7 +140,7 @@ flowchart TD
 
 ## 🔒 Security & Privacy Policy
 
-Reel Library does not collect, sell, or transmit your personal data to any third-party analytics or tracking servers. All indexing, notes, and full-text searches happen **100% locally on your device**. Cloud AI requests only occur in Cloud Mode using your personal Groq API key directly with Groq's official API.
+Reel Library does not collect, sell, or transmit your personal data to any third-party analytics or tracking servers. All indexing, notes, and full-text searches happen **100% locally on your device**. Cloud AI requests only occur in Cloud Mode using your personal API key directly with your configured provider's official API (Groq, OpenAI, Anthropic, or your custom endpoint). API keys are stored exclusively in the hardware-backed Secure Enclave Keychain.
 
 ---
 

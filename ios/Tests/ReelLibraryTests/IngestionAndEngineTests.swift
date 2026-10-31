@@ -211,4 +211,93 @@ final class IngestionAndEngineTests: XCTestCase {
         let handleFromTitle = InstagramExtractor.extractCreatorHandle(from: titleWithOnInstagram)
         XCTAssertEqual(handleFromTitle, "@johndoe")
     }
+
+    // MARK: - Multi-Provider AI Intelligence Tests
+
+    func testAIProviderEnumProperties() {
+        XCTAssertEqual(AIProvider.groq.shortName, "Groq")
+        XCTAssertEqual(AIProvider.openAI.shortName, "OpenAI")
+        XCTAssertEqual(AIProvider.claude.shortName, "Claude")
+        XCTAssertEqual(AIProvider.custom.shortName, "Custom")
+
+        XCTAssertTrue(AIProvider.groq.defaultBaseUrl.contains("groq.com"))
+        XCTAssertTrue(AIProvider.openAI.defaultBaseUrl.contains("openai.com"))
+        XCTAssertTrue(AIProvider.claude.defaultBaseUrl.contains("anthropic.com"))
+        XCTAssertTrue(AIProvider.custom.defaultBaseUrl.contains("openrouter.ai"))
+
+        XCTAssertEqual(AIProvider.openAI.defaultSummarizerModel, "gpt-4o-mini")
+        XCTAssertEqual(AIProvider.openAI.defaultTranscriptionModel, "whisper-1")
+        XCTAssertEqual(AIProvider.claude.defaultSummarizerModel, "claude-3-5-haiku-20241022")
+        XCTAssertEqual(AIProvider.claude.defaultTranscriptionModel, "")
+    }
+
+    func testDualEngineDispatcherMultiProviderSummarization() {
+        let dispatcher = DualEngineDispatcher()
+
+        // 1. Groq Mode
+        var groqPrefs = AppPreferences(engineMode: .cloudOnly, selectedProvider: .groq, groqApiKey: "gsk_test123")
+        var engine = dispatcher.resolveSummarizationEngine(prefs: groqPrefs)
+        XCTAssertTrue(engine is GroqSummarizerEngine)
+
+        // 2. OpenAI Mode
+        let openAIPrefs = AppPreferences(engineMode: .cloudOnly, selectedProvider: .openAI, openAIApiKey: "sk-test123")
+        engine = dispatcher.resolveSummarizationEngine(prefs: openAIPrefs)
+        XCTAssertTrue(engine is OpenAISummarizerEngine)
+        XCTAssertEqual(engine.name, "OpenAI")
+
+        // 3. Claude Mode
+        let claudePrefs = AppPreferences(engineMode: .cloudOnly, selectedProvider: .claude, claudeApiKey: "sk-ant-test123")
+        engine = dispatcher.resolveSummarizationEngine(prefs: claudePrefs)
+        XCTAssertTrue(engine is AnthropicClaudeSummarizerEngine)
+
+        // 4. Custom Mode
+        let customPrefs = AppPreferences(
+            engineMode: .cloudOnly,
+            selectedProvider: .custom,
+            customApiKey: "sk-or-test123",
+            customBaseUrl: "https://api.deepseek.com/v1",
+            customSummarizerModel: "deepseek-chat"
+        )
+        engine = dispatcher.resolveSummarizationEngine(prefs: customPrefs)
+        XCTAssertTrue(engine is OpenAISummarizerEngine)
+        XCTAssertEqual(engine.name, "Custom (deepseek-chat)")
+
+        // 5. Missing key returns FailingSummarizerEngine
+        groqPrefs.groqApiKey = ""
+        engine = dispatcher.resolveSummarizationEngine(prefs: groqPrefs)
+        XCTAssertTrue(engine is FailingSummarizerEngine)
+    }
+
+    func testDualEngineDispatcherClaudeHybridTranscription() {
+        let dispatcher = DualEngineDispatcher()
+
+        // Claude with OpenAI key available resolves OpenAI Whisper
+        let claudeWithOpenAI = AppPreferences(
+            engineMode: .cloudOnly,
+            selectedProvider: .claude,
+            openAIApiKey: "sk-openai-key",
+            claudeApiKey: "sk-ant-key"
+        )
+        let engineWithOpenAI = dispatcher.resolveTranscriptionEngine(prefs: claudeWithOpenAI)
+        XCTAssertTrue(engineWithOpenAI is OpenAIWhisperEngine)
+
+        // Claude with only Groq key available resolves Groq Whisper
+        let claudeWithGroq = AppPreferences(
+            engineMode: .cloudOnly,
+            selectedProvider: .claude,
+            groqApiKey: "gsk-groq-key",
+            claudeApiKey: "sk-ant-key"
+        )
+        let engineWithGroq = dispatcher.resolveTranscriptionEngine(prefs: claudeWithGroq)
+        XCTAssertTrue(engineWithGroq is GroqWhisperEngine)
+
+        // Claude with no transcription key informs user
+        let claudeWithoutAudio = AppPreferences(
+            engineMode: .cloudOnly,
+            selectedProvider: .claude,
+            claudeApiKey: "sk-ant-key"
+        )
+        let engineWithoutAudio = dispatcher.resolveTranscriptionEngine(prefs: claudeWithoutAudio)
+        XCTAssertTrue(engineWithoutAudio is FailingTranscriptionEngine)
+    }
 }

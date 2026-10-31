@@ -209,6 +209,52 @@ final class DatabaseAndSecurityTests: XCTestCase {
         XCTAssertEqual(keychainVault.getGroqApiKey(), "")
     }
 
+    func testKeychainVaultMultiProviderKeys() {
+        let openAIKey = "sk-proj-test12345678"
+        let claudeKey = "sk-ant-api03-testkey987"
+        let customKey = "sk-or-v1-customkey333"
+
+        keychainVault.setOpenAIApiKey(openAIKey)
+        keychainVault.setClaudeApiKey(claudeKey)
+        keychainVault.setCustomApiKey(customKey)
+
+        XCTAssertEqual(keychainVault.getOpenAIApiKey(), openAIKey)
+        XCTAssertEqual(keychainVault.getClaudeApiKey(), claudeKey)
+        XCTAssertEqual(keychainVault.getCustomApiKey(), customKey)
+
+        XCTAssertEqual(keychainVault.apiKey(for: .openAI), openAIKey)
+        XCTAssertEqual(keychainVault.apiKey(for: .claude), claudeKey)
+        XCTAssertEqual(keychainVault.apiKey(for: .custom), customKey)
+
+        // Delete individually
+        keychainVault.deleteApiKey(for: .openAI)
+        XCTAssertEqual(keychainVault.getOpenAIApiKey(), "")
+        XCTAssertEqual(keychainVault.getClaudeApiKey(), claudeKey)
+
+        keychainVault.deleteApiKey(for: .claude)
+        keychainVault.deleteApiKey(for: .custom)
+        XCTAssertEqual(keychainVault.getClaudeApiKey(), "")
+        XCTAssertEqual(keychainVault.getCustomApiKey(), "")
+    }
+
+    func testPreferencesRepositoryMultiProvider() {
+        let testDefaults = UserDefaults(suiteName: "test.preferences.\(UUID().uuidString)")!
+        let repo = PreferencesRepository(userDefaults: testDefaults, keychainVault: keychainVault)
+
+        repo.setSelectedProvider(.claude)
+        repo.setClaudeApiKey("sk-ant-test1234")
+        repo.setOpenAIApiKey("sk-openai-test5678")
+        repo.setCustomSettings(baseUrl: "https://api.deepseek.com/v1", summarizerModel: "deepseek-chat", transcriptionModel: "whisper-1")
+
+        let prefs = repo.getPreferences()
+        XCTAssertEqual(prefs.selectedProvider, .claude)
+        XCTAssertEqual(prefs.claudeApiKey, "sk-ant-test1234")
+        XCTAssertEqual(prefs.openAIApiKey, "sk-openai-test5678")
+        XCTAssertEqual(prefs.customBaseUrl, "https://api.deepseek.com/v1")
+        XCTAssertEqual(prefs.customSummarizerModel, "deepseek-chat")
+        XCTAssertEqual(prefs.customTranscriptionModel, "whisper-1")
+    }
+
     // MARK: - Filter Models & Dynamic Query Tests
 
     func testFilterAndSortReels() throws {

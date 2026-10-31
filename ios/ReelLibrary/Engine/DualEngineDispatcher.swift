@@ -83,25 +83,25 @@ public final class DualEngineDispatcher: Sendable {
     // MARK: - Resolve Transcription Engine
 
     public func resolveTranscriptionEngine(prefs: AppPreferences) -> any TranscriptionEngine {
-        let apiKey = prefs.groqApiKey.isEmpty ? KeychainVault.shared.getGroqApiKey() : prefs.groqApiKey
+        let provider = prefs.selectedProvider
 
-        let onWhisperTelemetry: GroqWhisperEngine.AudioTelemetryCallback = { [weak self] audioSeconds, wordsCount, latencyMs in
+        let onCloudWhisperTelemetry: GroqWhisperEngine.AudioTelemetryCallback = { [weak self] audioSeconds, wordsCount, latencyMs in
             self?.recordTokenUsage(
                 promptTokens: Int(audioSeconds),
                 completionTokens: wordsCount,
                 latencyMs: latencyMs,
-                provider: "Groq LPU ~ Whisper",
-                model: "whisper-large-v3-turbo",
+                provider: "\(provider.shortName) Whisper",
+                model: "whisper",
                 engineType: "CLOUD"
             )
         }
 
-        let onLocalWhisperTelemetry: WhisperKitEngine.LocalWhisperTelemetry = { [weak self] prompt, comp, latencyMs, provider in
+        let onLocalWhisperTelemetry: WhisperKitEngine.LocalWhisperTelemetry = { [weak self] prompt, comp, latencyMs, providerName in
             self?.recordTokenUsage(
                 promptTokens: prompt,
                 completionTokens: comp,
                 latencyMs: latencyMs,
-                provider: provider,
+                provider: providerName,
                 model: "WhisperKit",
                 engineType: "LOCAL"
             )
@@ -116,14 +116,61 @@ public final class DualEngineDispatcher: Sendable {
             whisperFileExists = defaultModelUrl.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
         }
 
+        func makeCloudTranscriptionEngine() -> (any TranscriptionEngine)? {
+            switch provider {
+            case .groq:
+                let key = prefs.groqApiKey.isEmpty ? KeychainVault.shared.getGroqApiKey() : prefs.groqApiKey
+                guard !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+                return GroqWhisperEngine(apiKey: key, onAudioTranscribed: onCloudWhisperTelemetry)
+
+            case .openAI:
+                let key = prefs.openAIApiKey.isEmpty ? KeychainVault.shared.getOpenAIApiKey() : prefs.openAIApiKey
+                guard !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+                return OpenAIWhisperEngine(apiKey: key, model: "whisper-1", providerDisplayName: "OpenAI Whisper", onAudioTranscribed: onCloudWhisperTelemetry)
+
+            case .claude:
+                // Claude does not provide audio transcription. Seamlessly use OpenAI Whisper, Groq Whisper, or nil.
+                let openAIKey = prefs.openAIApiKey.isEmpty ? KeychainVault.shared.getOpenAIApiKey() : prefs.openAIApiKey
+                if !openAIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return OpenAIWhisperEngine(apiKey: openAIKey, model: "whisper-1", providerDisplayName: "OpenAI Whisper (Claude Hybrid)", onAudioTranscribed: onCloudWhisperTelemetry)
+                }
+                let groqKey = prefs.groqApiKey.isEmpty ? KeychainVault.shared.getGroqApiKey() : prefs.groqApiKey
+                if !groqKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return GroqWhisperEngine(apiKey: groqKey, onAudioTranscribed: onCloudWhisperTelemetry)
+                }
+                return nil
+
+            case .custom:
+                let customKey = prefs.customApiKey.isEmpty ? KeychainVault.shared.getCustomApiKey() : prefs.customApiKey
+                let model = prefs.customTranscriptionModel.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !customKey.isEmpty && !model.isEmpty {
+                    return OpenAIWhisperEngine(apiKey: customKey, baseUrl: prefs.customBaseUrl, model: model, providerDisplayName: "Custom Whisper", onAudioTranscribed: onCloudWhisperTelemetry)
+                }
+                // Fallback to OpenAI or Groq if available
+                let openAIKey = prefs.openAIApiKey.isEmpty ? KeychainVault.shared.getOpenAIApiKey() : prefs.openAIApiKey
+                if !openAIKey.isEmpty {
+                    return OpenAIWhisperEngine(apiKey: openAIKey, onAudioTranscribed: onCloudWhisperTelemetry)
+                }
+                let groqKey = prefs.groqApiKey.isEmpty ? KeychainVault.shared.getGroqApiKey() : prefs.groqApiKey
+                if !groqKey.isEmpty {
+                    return GroqWhisperEngine(apiKey: groqKey, onAudioTranscribed: onCloudWhisperTelemetry)
+                }
+                return nil
+            }
+        }
+
         switch prefs.engineMode {
         case .cloudOnly:
-            if !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return GroqWhisperEngine(apiKey: apiKey, onAudioTranscribed: onWhisperTelemetry)
+            if let cloudEngine = makeCloudTranscriptionEngine() {
+                return cloudEngine
             } else {
-                return FailingTranscriptionEngine(
-                    reason: "Engine Mode is set to CLOUD_ONLY: Groq API key is missing. Local fallback is strictly disallowed."
-                )
+                let keyMissingReason: String
+                if provider == .claude {
+                    keyMissingReason = "Engine Mode is set to CLOUD_ONLY with Claude: Claude lacks an audio API. Please add an OpenAI or Groq API key in Settings for transcription."
+                } else {
+                    keyMissingReason = "Engine Mode is set to CLOUD_ONLY: \(provider.displayName) API key is missing. Local fallback is strictly disallowed."
+                }
+                return FailingTranscriptionEngine(reason: keyMissingReason)
             }
 
         case .localOnly:
@@ -137,12 +184,12 @@ public final class DualEngineDispatcher: Sendable {
 
         case .autoHybrid:
             let isOnline = reachabilityMonitor.isReachable
-            if isOnline && !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return GroqWhisperEngine(apiKey: apiKey, onAudioTranscribed: onWhisperTelemetry)
+            if isOnline, let cloudEngine = makeCloudTranscriptionEngine() {
+                return cloudEngine
             } else {
                 if !whisperFileExists && !prefs.isWhisperModelDownloaded {
                     return FailingTranscriptionEngine(
-                        reason: "Whisper transcription unavailable: Cloud requires a Groq API key (or active internet) and on-device WhisperKit weights are not installed."
+                        reason: "Whisper transcription unavailable: \(provider.displayName) requires an API key (or active internet) and on-device WhisperKit weights are not installed."
                     )
                 } else {
                     return WhisperKitEngine(modelFolderUrl: customWhisperUrl, onTokensUsed: onLocalWhisperTelemetry)
@@ -154,25 +201,25 @@ public final class DualEngineDispatcher: Sendable {
     // MARK: - Resolve Summarization Engine
 
     public func resolveSummarizationEngine(prefs: AppPreferences) -> any SummarizationEngine {
-        let apiKey = prefs.groqApiKey.isEmpty ? KeychainVault.shared.getGroqApiKey() : prefs.groqApiKey
+        let provider = prefs.selectedProvider
 
-        let onCloudTokensUsed: GroqSummarizerEngine.TokenTelemetryCallback = { [weak self] promptTokens, completionTokens, latencyMs, provider in
+        let onCloudTokensUsed: GroqSummarizerEngine.TokenTelemetryCallback = { [weak self] promptTokens, completionTokens, latencyMs, providerName in
             self?.recordTokenUsage(
                 promptTokens: promptTokens,
                 completionTokens: completionTokens,
                 latencyMs: latencyMs,
-                provider: provider,
-                model: provider,
+                provider: providerName,
+                model: providerName,
                 engineType: "CLOUD"
             )
         }
 
-        let onLocalTokensUsed: LocalSummarizerEngine.LocalSummarizerTelemetry = { [weak self] promptTokens, completionTokens, latencyMs, provider in
+        let onLocalTokensUsed: LocalSummarizerEngine.LocalSummarizerTelemetry = { [weak self] promptTokens, completionTokens, latencyMs, providerName in
             self?.recordTokenUsage(
                 promptTokens: promptTokens,
                 completionTokens: completionTokens,
                 latencyMs: latencyMs,
-                provider: provider,
+                provider: providerName,
                 model: "Local LLM",
                 engineType: "LOCAL"
             )
@@ -187,13 +234,44 @@ public final class DualEngineDispatcher: Sendable {
             llmFileExists = defaultModelUrl.map { FileManager.default.fileExists(atPath: $0.path) } ?? false
         }
 
+        func makeCloudSummarizerEngine() -> (any SummarizationEngine)? {
+            switch provider {
+            case .groq:
+                let key = prefs.groqApiKey.isEmpty ? KeychainVault.shared.getGroqApiKey() : prefs.groqApiKey
+                guard !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+                return GroqSummarizerEngine(apiKey: key, onTokensUsed: onCloudTokensUsed)
+
+            case .openAI:
+                let key = prefs.openAIApiKey.isEmpty ? KeychainVault.shared.getOpenAIApiKey() : prefs.openAIApiKey
+                guard !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+                return OpenAISummarizerEngine(apiKey: key, candidateModels: ["gpt-4o-mini", "gpt-4o"], providerDisplayName: "OpenAI", onTokensUsed: onCloudTokensUsed)
+
+            case .claude:
+                let key = prefs.claudeApiKey.isEmpty ? KeychainVault.shared.getClaudeApiKey() : prefs.claudeApiKey
+                guard !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+                return AnthropicClaudeSummarizerEngine(apiKey: key, candidateModels: ["claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022"], onTokensUsed: onCloudTokensUsed)
+
+            case .custom:
+                let key = prefs.customApiKey.isEmpty ? KeychainVault.shared.getCustomApiKey() : prefs.customApiKey
+                let model = prefs.customSummarizerModel.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+                return OpenAISummarizerEngine(
+                    apiKey: key,
+                    baseUrl: prefs.customBaseUrl,
+                    candidateModels: [model.isEmpty ? "deepseek/deepseek-chat" : model],
+                    providerDisplayName: "Custom (\(model.isEmpty ? "Default" : model))",
+                    onTokensUsed: onCloudTokensUsed
+                )
+            }
+        }
+
         switch prefs.engineMode {
         case .cloudOnly:
-            if !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return GroqSummarizerEngine(apiKey: apiKey, onTokensUsed: onCloudTokensUsed)
+            if let cloudEngine = makeCloudSummarizerEngine() {
+                return cloudEngine
             } else {
                 return FailingSummarizerEngine(
-                    reason: "Engine Mode is set to CLOUD_ONLY: Groq API key is missing. Local fallback is strictly disallowed."
+                    reason: "Engine Mode is set to CLOUD_ONLY: \(provider.displayName) API key is missing. Local fallback is strictly disallowed."
                 )
             }
 
@@ -208,12 +286,12 @@ public final class DualEngineDispatcher: Sendable {
 
         case .autoHybrid:
             let isOnline = reachabilityMonitor.isReachable
-            if isOnline && !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return GroqSummarizerEngine(apiKey: apiKey, onTokensUsed: onCloudTokensUsed)
+            if isOnline, let cloudEngine = makeCloudSummarizerEngine() {
+                return cloudEngine
             } else {
                 if !llmFileExists && !prefs.isLlmModelDownloaded {
                     return FailingSummarizerEngine(
-                        reason: "Summarization unavailable: Groq API key missing (or offline) and on-device LLM weights are not installed."
+                        reason: "Summarization unavailable: \(provider.displayName) API key missing (or offline) and on-device LLM weights are not installed."
                     )
                 } else {
                     return LocalSummarizerEngine(modelFileUrl: customLlmUrl, onTokensUsed: onLocalTokensUsed)

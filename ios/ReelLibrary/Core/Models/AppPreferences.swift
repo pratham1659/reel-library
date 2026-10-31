@@ -5,6 +5,94 @@
 
 import Foundation
 
+/// Supported Cloud & Local AI Intelligence Providers.
+public enum AIProvider: String, CaseIterable, Codable, Sendable {
+    case groq = "GROQ"
+    case openAI = "OPENAI"
+    case claude = "CLAUDE"
+    case custom = "CUSTOM"
+
+    public var displayName: String {
+        switch self {
+        case .groq:
+            return "Groq Cloud (LPU)"
+        case .openAI:
+            return "OpenAI (GPT-4o & Whisper)"
+        case .claude:
+            return "Anthropic Claude (3.5)"
+        case .custom:
+            return "Custom / OpenAI-Compatible"
+        }
+    }
+
+    public var shortName: String {
+        switch self {
+        case .groq: return "Groq"
+        case .openAI: return "OpenAI"
+        case .claude: return "Claude"
+        case .custom: return "Custom"
+        }
+    }
+
+    public var badgeText: String {
+        switch self {
+        case .groq: return "Free-Tier"
+        case .openAI: return "GPT-4o / Whisper"
+        case .claude: return "Claude 3.5"
+        case .custom: return "OpenRouter / DeepSeek"
+        }
+    }
+
+    public var subtitle: String {
+        switch self {
+        case .groq:
+            return "Ultra-fast inference (Llama 3.3, Qwen 2.5, Whisper Large v3)"
+        case .openAI:
+            return "State-of-the-art multimodal AI (GPT-4o, GPT-4o-mini, Whisper-1)"
+        case .claude:
+            return "Nuanced reasoning & executive briefs (Claude 3.5 Sonnet / Haiku)"
+        case .custom:
+            return "Connect OpenRouter, DeepSeek, Ollama, Together AI, or local vLLM"
+        }
+    }
+
+    public var defaultBaseUrl: String {
+        switch self {
+        case .groq: return "https://api.groq.com/openai/v1"
+        case .openAI: return "https://api.openai.com/v1"
+        case .claude: return "https://api.anthropic.com/v1"
+        case .custom: return "https://openrouter.ai/api/v1"
+        }
+    }
+
+    public var defaultSummarizerModel: String {
+        switch self {
+        case .groq: return "llama-3.3-70b-versatile"
+        case .openAI: return "gpt-4o-mini"
+        case .claude: return "claude-3-5-haiku-20241022"
+        case .custom: return "deepseek/deepseek-chat"
+        }
+    }
+
+    public var defaultTranscriptionModel: String {
+        switch self {
+        case .groq: return "whisper-large-v3-turbo"
+        case .openAI: return "whisper-1"
+        case .claude: return "" // Claude has no transcription endpoint; falls back to OpenAI/Groq/WhisperKit
+        case .custom: return "whisper-1"
+        }
+    }
+
+    public var consoleUrl: String {
+        switch self {
+        case .groq: return "https://console.groq.com/keys"
+        case .openAI: return "https://platform.openai.com/api-keys"
+        case .claude: return "https://console.anthropic.com/settings/keys"
+        case .custom: return "https://openrouter.ai/keys"
+        }
+    }
+}
+
 /// Active processing engine selection.
 public enum EngineMode: String, CaseIterable, Codable, Sendable {
     case cloudOnly = "CLOUD_ONLY"
@@ -14,7 +102,7 @@ public enum EngineMode: String, CaseIterable, Codable, Sendable {
     public var displayName: String {
         switch self {
         case .cloudOnly:
-            return "Cloud Free-Tier (Groq LPU)"
+            return "Cloud API (Groq, OpenAI, Claude)"
         case .localOnly:
             return "100% On-Device (WhisperKit)"
         case .autoHybrid:
@@ -25,11 +113,11 @@ public enum EngineMode: String, CaseIterable, Codable, Sendable {
     public var modeDescription: String {
         switch self {
         case .cloudOnly:
-            return "Sub-second cloud transcription and summarization via free Groq API keys."
+            return "Direct cloud transcription and summarization via your configured AI provider."
         case .localOnly:
             return "Completely offline and private. Uses Apple Neural Engine with local CoreML models."
         case .autoHybrid:
-            return "Uses Groq Cloud for maximum speed when online, automatically falling back to on-device models when offline."
+            return "Uses cloud models for maximum speed when online, automatically falling back to on-device models when offline."
         }
     }
 }
@@ -37,7 +125,14 @@ public enum EngineMode: String, CaseIterable, Codable, Sendable {
 /// Global user configuration and live telemetry statistics.
 public struct AppPreferences: Codable, Sendable, Equatable {
     public var engineMode: EngineMode
+    public var selectedProvider: AIProvider
     public var groqApiKey: String
+    public var openAIApiKey: String
+    public var claudeApiKey: String
+    public var customApiKey: String
+    public var customBaseUrl: String
+    public var customSummarizerModel: String
+    public var customTranscriptionModel: String
     public var isWhisperModelDownloaded: Bool
     public var isLlmModelDownloaded: Bool
     public var whisperModelPath: String?
@@ -84,7 +179,14 @@ public struct AppPreferences: Codable, Sendable, Equatable {
 
     public init(
         engineMode: EngineMode = .cloudOnly,
+        selectedProvider: AIProvider = .groq,
         groqApiKey: String = "",
+        openAIApiKey: String = "",
+        claudeApiKey: String = "",
+        customApiKey: String = "",
+        customBaseUrl: String = "https://openrouter.ai/api/v1",
+        customSummarizerModel: String = "deepseek/deepseek-chat",
+        customTranscriptionModel: String = "whisper-1",
         isWhisperModelDownloaded: Bool = false,
         isLlmModelDownloaded: Bool = false,
         whisperModelPath: String? = nil,
@@ -124,7 +226,14 @@ public struct AppPreferences: Codable, Sendable, Equatable {
         lastDailyResetTime: Int64 = 0
     ) {
         self.engineMode = engineMode
+        self.selectedProvider = selectedProvider
         self.groqApiKey = groqApiKey
+        self.openAIApiKey = openAIApiKey
+        self.claudeApiKey = claudeApiKey
+        self.customApiKey = customApiKey
+        self.customBaseUrl = customBaseUrl
+        self.customSummarizerModel = customSummarizerModel
+        self.customTranscriptionModel = customTranscriptionModel
         self.isWhisperModelDownloaded = isWhisperModelDownloaded
         self.isLlmModelDownloaded = isLlmModelDownloaded
         self.whisperModelPath = whisperModelPath
