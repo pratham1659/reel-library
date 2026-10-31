@@ -72,6 +72,13 @@ public final class PreferencesRepository: @unchecked Sendable {
         }
     }
 
+    public func setSelectedProvider(_ provider: AIProvider) {
+        mutatePreferences { prefs in
+            prefs.selectedProvider = provider
+            userDefaults.set(provider.rawValue, forKey: Keys.selectedProvider)
+        }
+    }
+
     public func setGroqApiKey(_ key: String) {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
@@ -88,6 +95,78 @@ public final class PreferencesRepository: @unchecked Sendable {
         keychainVault.deleteGroqApiKey()
         mutatePreferences { prefs in
             prefs.groqApiKey = ""
+        }
+    }
+
+    public func setOpenAIApiKey(_ key: String) {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            deleteOpenAIApiKey()
+        } else {
+            keychainVault.setOpenAIApiKey(trimmed)
+            mutatePreferences { prefs in
+                prefs.openAIApiKey = trimmed
+            }
+        }
+    }
+
+    public func deleteOpenAIApiKey() {
+        keychainVault.deleteOpenAIApiKey()
+        mutatePreferences { prefs in
+            prefs.openAIApiKey = ""
+        }
+    }
+
+    public func setClaudeApiKey(_ key: String) {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            deleteClaudeApiKey()
+        } else {
+            keychainVault.setClaudeApiKey(trimmed)
+            mutatePreferences { prefs in
+                prefs.claudeApiKey = trimmed
+            }
+        }
+    }
+
+    public func deleteClaudeApiKey() {
+        keychainVault.deleteClaudeApiKey()
+        mutatePreferences { prefs in
+            prefs.claudeApiKey = ""
+        }
+    }
+
+    public func setCustomApiKey(_ key: String) {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            deleteCustomApiKey()
+        } else {
+            keychainVault.setCustomApiKey(trimmed)
+            mutatePreferences { prefs in
+                prefs.customApiKey = trimmed
+            }
+        }
+    }
+
+    public func deleteCustomApiKey() {
+        keychainVault.deleteCustomApiKey()
+        mutatePreferences { prefs in
+            prefs.customApiKey = ""
+        }
+    }
+
+    public func setCustomSettings(
+        baseUrl: String,
+        summarizerModel: String,
+        transcriptionModel: String
+    ) {
+        mutatePreferences { prefs in
+            prefs.customBaseUrl = baseUrl
+            prefs.customSummarizerModel = summarizerModel
+            prefs.customTranscriptionModel = transcriptionModel
+            userDefaults.set(baseUrl, forKey: Keys.customBaseUrl)
+            userDefaults.set(summarizerModel, forKey: Keys.customSummarizerModel)
+            userDefaults.set(transcriptionModel, forKey: Keys.customTranscriptionModel)
         }
     }
 
@@ -374,11 +453,29 @@ public final class PreferencesRepository: @unchecked Sendable {
     private static func loadPreferences(from defaults: UserDefaults, keychain: KeychainVault) -> AppPreferences {
         let engineString = defaults.string(forKey: Keys.engineMode) ?? EngineMode.cloudOnly.rawValue
         let engineMode = EngineMode(rawValue: engineString) ?? .cloudOnly
+
+        let providerString = defaults.string(forKey: Keys.selectedProvider) ?? AIProvider.groq.rawValue
+        let selectedProvider = AIProvider(rawValue: providerString) ?? .groq
+
         let groqApiKey = keychain.getGroqApiKey()
+        let openAIApiKey = keychain.getOpenAIApiKey()
+        let claudeApiKey = keychain.getClaudeApiKey()
+        let customApiKey = keychain.getCustomApiKey()
+
+        let customBaseUrl = defaults.string(forKey: Keys.customBaseUrl) ?? "https://openrouter.ai/api/v1"
+        let customSummarizerModel = defaults.string(forKey: Keys.customSummarizerModel) ?? "deepseek/deepseek-chat"
+        let customTranscriptionModel = defaults.string(forKey: Keys.customTranscriptionModel) ?? "whisper-1"
 
         return AppPreferences(
             engineMode: engineMode,
+            selectedProvider: selectedProvider,
             groqApiKey: groqApiKey,
+            openAIApiKey: openAIApiKey,
+            claudeApiKey: claudeApiKey,
+            customApiKey: customApiKey,
+            customBaseUrl: customBaseUrl,
+            customSummarizerModel: customSummarizerModel,
+            customTranscriptionModel: customTranscriptionModel,
             isWhisperModelDownloaded: defaults.bool(forKey: Keys.isWhisperDownloaded),
             isLlmModelDownloaded: defaults.bool(forKey: Keys.isLlmDownloaded),
             whisperModelPath: defaults.string(forKey: Keys.whisperPath),
@@ -421,6 +518,10 @@ public final class PreferencesRepository: @unchecked Sendable {
 
     private enum Keys {
         static let engineMode = "engine_mode"
+        static let selectedProvider = "selected_provider"
+        static let customBaseUrl = "custom_base_url"
+        static let customSummarizerModel = "custom_summarizer_model"
+        static let customTranscriptionModel = "custom_transcription_model"
         static let isWhisperDownloaded = "is_whisper_downloaded"
         static let isLlmDownloaded = "is_llm_downloaded"
         static let whisperPath = "whisper_path"

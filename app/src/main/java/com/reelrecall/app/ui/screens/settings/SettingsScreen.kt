@@ -119,6 +119,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reelrecall.app.data.repository.AppPreferences
 import com.reelrecall.app.data.repository.EngineMode
+import com.reelrecall.app.data.repository.AIProvider
 import com.reelrecall.app.ui.theme.CyanAccent
 import com.reelrecall.app.ui.theme.ElectricIndigo
 import com.reelrecall.app.ui.theme.NeumorphicButton
@@ -1053,6 +1054,24 @@ private fun SelectModelsScreen(
         groqApiKeyInput = preferences.groqApiKey
     }
 
+    val activeProvider = preferences.selectedProvider
+    val currentApiKey = when (activeProvider) {
+        AIProvider.GROQ -> preferences.groqApiKey
+        AIProvider.OPENAI -> preferences.openAIApiKey
+        AIProvider.CLAUDE -> preferences.claudeApiKey
+        AIProvider.CUSTOM -> preferences.customApiKey
+    }
+
+    var customBaseUrlInput by remember { mutableStateOf(preferences.customBaseUrl) }
+    var customSummarizerModelInput by remember { mutableStateOf(preferences.customSummarizerModel) }
+    var customTranscriptionModelInput by remember { mutableStateOf(preferences.customTranscriptionModel) }
+
+    LaunchedEffect(preferences.customBaseUrl, preferences.customSummarizerModel, preferences.customTranscriptionModel) {
+        customBaseUrlInput = preferences.customBaseUrl
+        customSummarizerModelInput = preferences.customSummarizerModel
+        customTranscriptionModelInput = preferences.customTranscriptionModel
+    }
+
     val showLocalLlmInUi = false
     val isCloudMode = preferences.engineMode != EngineMode.LOCAL_ONLY
 
@@ -1087,8 +1106,8 @@ private fun SelectModelsScreen(
 
     // Key Delete Confirmation Dialog
     if (keyToDelete != null) {
-        val titleText = "Delete Groq API Key?"
-        val bodyText = "Are you sure you want to completely delete your Groq API key from the Keystore vault? Cloud audio transcription and summarization will be disabled until a key is added."
+        val titleText = "Delete ${activeProvider.shortName} API Key?"
+        val bodyText = "Are you sure you want to completely delete your ${activeProvider.displayName} API key from the Keystore vault?"
 
         AlertDialog(
             onDismissRequest = { keyToDelete = null },
@@ -1119,9 +1138,16 @@ private fun SelectModelsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        groqApiKeyInput = ""
-                        viewModel.deleteGroqApiKey()
-                        Toast.makeText(context, "Groq key completely deleted from vault", Toast.LENGTH_SHORT).show()
+                        when (activeProvider) {
+                            AIProvider.GROQ -> {
+                                groqApiKeyInput = ""
+                                viewModel.deleteGroqApiKey()
+                            }
+                            AIProvider.OPENAI -> viewModel.deleteOpenAIApiKey()
+                            AIProvider.CLAUDE -> viewModel.deleteClaudeApiKey()
+                            AIProvider.CUSTOM -> viewModel.deleteCustomApiKey()
+                        }
+                        Toast.makeText(context, "${activeProvider.shortName} key completely deleted from vault", Toast.LENGTH_SHORT).show()
                         keyToDelete = null
                     }
                 ) {
@@ -1262,12 +1288,12 @@ private fun SelectModelsScreen(
                             }
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
-                                Text(text = "Cloud API Credentials", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                                Text(text = "Free tier from Groq — Whisper audio + LLM text summarization", fontSize = 11.sp, color = colors.textSecondary)
+                                Text(text = "Cloud AI Providers", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                                Text(text = "Select cloud engine, API keys & custom endpoints", fontSize = 11.sp, color = colors.textSecondary)
                             }
                         }
 
-                        val isApiKeySet = groqApiKeyInput.isNotBlank() || preferences.groqApiKey.isNotBlank()
+                        val isApiKeySet = currentApiKey.isNotBlank()
                         val cardBadgeText = when {
                             !isApiKeySet -> "API Not Set"
                             cloudTestResult.isSuccess == true -> "API Ready"
@@ -1294,9 +1320,188 @@ private fun SelectModelsScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                    // Groq Key Input Header with Clear Button
+                    // PROVIDER SELECTOR (Segmented Row)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(colors.surface)
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        AIProvider.entries.forEach { provider ->
+                            val isSelected = activeProvider == provider
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) CyanAccent.copy(alpha = 0.18f) else Color.Transparent)
+                                    .clickable { viewModel.setSelectedProvider(provider) }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = provider.shortName,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) CyanAccent else colors.textSecondary,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Active Provider Description & Subtitle
+                    Column {
+                        Text(
+                            text = activeProvider.displayName,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                        Text(
+                            text = activeProvider.subtitle,
+                            fontSize = 11.sp,
+                            color = colors.textSecondary,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+
+                    // If Claude: show note about Claude + Whisper hybrid
+                    if (activeProvider == AIProvider.CLAUDE) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.pillBg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.25f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Claude excels at executive synthesis. For audio transcription, Reel Library seamlessly uses your saved OpenAI/Groq Whisper key or local on-device Whisper.",
+                                    fontSize = 10.5.sp,
+                                    color = colors.textSecondary,
+                                    lineHeight = 14.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // If Custom: show Base URL, Summarizer Model, and Audio Model text fields
+                    if (activeProvider == AIProvider.CUSTOM) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Column {
+                                Text(
+                                    text = "API BASE URL",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textMuted
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                OutlinedTextField(
+                                    value = customBaseUrlInput,
+                                    onValueChange = {
+                                        customBaseUrlInput = it
+                                        viewModel.setCustomSettings(it, customSummarizerModelInput, customTranscriptionModelInput)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    placeholder = { Text("https://openrouter.ai/api/v1", color = colors.textMuted, fontSize = 11.sp) },
+                                    singleLine = true,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = CyanAccent,
+                                        unfocusedBorderColor = colors.border,
+                                        focusedContainerColor = colors.pillBg,
+                                        unfocusedContainerColor = colors.pillBg,
+                                        focusedTextColor = colors.textPrimary,
+                                        unfocusedTextColor = colors.textPrimary
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "SUMMARIZER MODEL",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textMuted
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OutlinedTextField(
+                                        value = customSummarizerModelInput,
+                                        onValueChange = {
+                                            customSummarizerModelInput = it
+                                            viewModel.setCustomSettings(customBaseUrlInput, it, customTranscriptionModelInput)
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        placeholder = { Text("deepseek-chat", color = colors.textMuted, fontSize = 11.sp) },
+                                        singleLine = true,
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = CyanAccent,
+                                            unfocusedBorderColor = colors.border,
+                                            focusedContainerColor = colors.pillBg,
+                                            unfocusedContainerColor = colors.pillBg,
+                                            focusedTextColor = colors.textPrimary,
+                                            unfocusedTextColor = colors.textPrimary
+                                        ),
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "AUDIO MODEL",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textMuted
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OutlinedTextField(
+                                        value = customTranscriptionModelInput,
+                                        onValueChange = {
+                                            customTranscriptionModelInput = it
+                                            viewModel.setCustomSettings(customBaseUrlInput, customSummarizerModelInput, it)
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        placeholder = { Text("whisper-1", color = colors.textMuted, fontSize = 11.sp) },
+                                        singleLine = true,
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = CyanAccent,
+                                            unfocusedBorderColor = colors.border,
+                                            focusedContainerColor = colors.pillBg,
+                                            unfocusedContainerColor = colors.pillBg,
+                                            focusedTextColor = colors.textPrimary,
+                                            unfocusedTextColor = colors.textPrimary
+                                        ),
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Key Input Header with Delete Button
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1304,27 +1509,20 @@ private fun SelectModelsScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f, fill = false)) {
                             Text(
-                                text = "Groq API Key",
-                                fontSize = 12.sp,
+                                text = "${activeProvider.shortName} API Key".uppercase(),
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = colors.textPrimary,
                                 maxLines = 1,
                                 softWrap = false
                             )
-                            Text(
-                                text = "Whisper Audio + Llama 3.3 Summarization",
-                                fontSize = 10.sp,
-                                color = colors.textSecondary,
-                                maxLines = 1,
-                                softWrap = false
-                            )
                         }
-                        if (groqApiKeyInput.isNotBlank()) {
+                        if (currentApiKey.isNotBlank()) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
                                 color = StatusError.copy(alpha = 0.12f),
                                 modifier = Modifier.clickable {
-                                    keyToDelete = "Groq"
+                                    keyToDelete = activeProvider.shortName
                                 }
                             ) {
                                 Row(
@@ -1352,7 +1550,7 @@ private fun SelectModelsScreen(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
-                        value = groqApiKeyInput,
+                        value = currentApiKey,
                         onValueChange = {}, // Read-only: direct manual text copying/editing blocked for vault security
                         readOnly = true,
                         enabled = isCloudMode,
@@ -1361,7 +1559,7 @@ private fun SelectModelsScreen(
                         singleLine = true,
                         visualTransformation = MaskApiKeyVisualTransformation(visibleChars = 3),
                         trailingIcon = {
-                            if (groqApiKeyInput.isBlank()) {
+                            if (currentApiKey.isBlank()) {
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
                                     color = CyanAccent.copy(alpha = 0.15f),
@@ -1372,9 +1570,16 @@ private fun SelectModelsScreen(
                                         .clickable {
                                             val clip = clipboardManager.getText()?.text?.trim()
                                             if (!clip.isNullOrBlank()) {
-                                                groqApiKeyInput = clip
-                                                viewModel.setGroqApiKey(clip)
-                                                Toast.makeText(context, "Groq key securely saved to Keystore vault", Toast.LENGTH_SHORT).show()
+                                                when (activeProvider) {
+                                                    AIProvider.GROQ -> {
+                                                        groqApiKeyInput = clip
+                                                        viewModel.setGroqApiKey(clip)
+                                                    }
+                                                    AIProvider.OPENAI -> viewModel.setOpenAIApiKey(clip)
+                                                    AIProvider.CLAUDE -> viewModel.setClaudeApiKey(clip)
+                                                    AIProvider.CUSTOM -> viewModel.setCustomApiKey(clip)
+                                                }
+                                                Toast.makeText(context, "${activeProvider.shortName} key securely saved to Keystore vault", Toast.LENGTH_SHORT).show()
                                             } else {
                                                 Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
                                             }
@@ -1452,39 +1657,41 @@ private fun SelectModelsScreen(
                             )
                         }
 
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = CyanAccent.copy(alpha = 0.10f),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .clickable {
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://console.groq.com/keys"))
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Cannot open browser", Toast.LENGTH_SHORT).show()
+                        if (activeProvider.consoleUrl.isNotBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = CyanAccent.copy(alpha = 0.10f),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable {
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(activeProvider.consoleUrl))
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Cannot open browser", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "Get Free Groq Key",
-                                    fontSize = 10.sp,
-                                    color = CyanAccent,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                                Spacer(modifier = Modifier.width(3.dp))
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                    contentDescription = "Open Groq Console",
-                                    tint = CyanAccent,
-                                    modifier = Modifier.size(12.dp)
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Get ${activeProvider.shortName} Key",
+                                        fontSize = 10.sp,
+                                        color = CyanAccent,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                        contentDescription = "Open Console",
+                                        tint = CyanAccent,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -1499,7 +1706,7 @@ private fun SelectModelsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedButton(
-                            onClick = { viewModel.testCloudConnection(groqApiKeyInput) },
+                            onClick = { viewModel.testCloudConnection(currentApiKey) },
                             enabled = isCloudMode && !cloudTestResult.isTesting,
                             shape = RoundedCornerShape(10.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, if (isCloudMode) CyanAccent else colors.border),

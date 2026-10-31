@@ -285,7 +285,7 @@ public struct ReelDetailModal: View {
 
                 Spacer()
 
-                if let transcript = reel.transcript, !transcript.isEmpty {
+                if TranscriptOutcome.hasSpokenTranscript(reel.transcript), let transcript = reel.transcript {
                     Text("\(transcript.count) chars")
                         .font(.appMonoSmall)
                         .foregroundStyle(Color.textMuted)
@@ -315,7 +315,7 @@ public struct ReelDetailModal: View {
                 }
             }
 
-            if let transcript = reel.transcript, !transcript.isEmpty {
+            if TranscriptOutcome.hasSpokenTranscript(reel.transcript), let transcript = reel.transcript {
                 Text(transcript)
                     .font(.appBodyRegular)
                     .foregroundStyle(Color.textSecondary)
@@ -331,9 +331,15 @@ public struct ReelDetailModal: View {
                             .stroke(Color.obsidianCardBorder, lineWidth: 1)
                     )
             } else {
-                Text("Transcript is processing or unavailable.")
+                Text(reel.transcriptNote?.isEmpty == false ? reel.transcriptNote! : TranscriptOutcome.captionOnly)
                     .font(.appBodyRegular)
                     .foregroundStyle(Color.textMuted)
+                Button("Retry transcription") {
+                    onReprocess()
+                }
+                .font(.appCaptionSmall)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.activeBlue)
             }
         }
     }

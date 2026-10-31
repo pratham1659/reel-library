@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import com.reelrecall.app.engine.TranscriptOutcome
 import java.io.File
 import java.io.FileOutputStream
 
@@ -16,7 +17,8 @@ object InstagramExtractor {
         val creatorHandle: String?,
         val videoUrl: String?,
         val thumbnailUrl: String?,
-        val audioFile: File? = null
+        val audioFile: File? = null,
+        val audioNote: String? = null
     )
 
     private val OG_TITLE_REGEX = """<meta property="og:title" content="([^"]*)"\s*/?>""".toRegex()
@@ -150,9 +152,11 @@ object InstagramExtractor {
                 }
             }
 
-            // Download media stream if direct videoUrl is available
-            var downloadedFile: File? = null
+            // Download the reel, then keep only the audio track for transcription.
+            var audioFile: File? = null
+            var audioNote: String? = null
             if (!videoUrl.isNullOrBlank()) {
+                var downloadedFile: File? = null
                 try {
                     val mediaRequest = Request.Builder()
                         .url(videoUrl!!)
@@ -161,7 +165,7 @@ object InstagramExtractor {
 
                     client.newCall(mediaRequest).execute().use { res ->
                         if (res.isSuccessful && res.body != null) {
-                            val tempFile = File(cacheDir, "reel_audio_${System.currentTimeMillis()}.mp4")
+                            val tempFile = File(cacheDir, "reel_video_${System.currentTimeMillis()}.mp4")
                             FileOutputStream(tempFile).use { out ->
                                 res.body!!.byteStream().copyTo(out)
                             }
@@ -172,7 +176,25 @@ object InstagramExtractor {
                     }
                 } catch (e: Exception) {
                     android.util.Log.w("InstagramExtractor", "Failed downloading MP4 video", e)
+                    audioNote = e.message?.takeIf { it.isNotBlank() } ?: TranscriptOutcome.DOWNLOAD_FAILED
                 }
+
+                val videoFile = downloadedFile
+                if (videoFile != null) {
+                    val m4a = File(cacheDir, "reel_audio_${System.currentTimeMillis()}.m4a")
+                    val extracted = ReelAudioExtractor.extractM4a(videoFile, m4a)
+                    videoFile.delete()
+                    extracted.fold(
+                        onSuccess = { audioFile = it },
+                        onFailure = { error ->
+                            audioNote = error.message?.takeIf { it.isNotBlank() } ?: "Audio export failed."
+                        }
+                    )
+                } else if (audioNote == null) {
+                    audioNote = TranscriptOutcome.DOWNLOAD_FAILED
+                }
+            } else {
+                audioNote = TranscriptOutcome.NO_MEDIA
             }
 
             Result.success(
@@ -181,7 +203,8 @@ object InstagramExtractor {
                     creatorHandle = creator ?: "@instagram_creator",
                     videoUrl = videoUrl,
                     thumbnailUrl = thumbnailUrl,
-                    audioFile = downloadedFile
+                    audioFile = audioFile,
+                    audioNote = audioNote
                 )
             )
 

@@ -47,7 +47,7 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
             throw NSError(
                 domain: "WhisperKitEngine",
                 code: 503,
-                userInfo: [NSLocalizedDescriptionKey: "On-device WhisperKit model weights not installed on this device. Cloud fallback is strictly disallowed in Local Only mode."]
+                userInfo: [NSLocalizedDescriptionKey: TranscriptOutcome.localUnimplemented]
             )
         }
 
@@ -58,7 +58,7 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
         throw NSError(
             domain: "WhisperKitEngine",
             code: 501,
-            userInfo: [NSLocalizedDescriptionKey: "On-device WhisperKit native CoreML runtime inference package is awaiting local model download."]
+            userInfo: [NSLocalizedDescriptionKey: TranscriptOutcome.localUnimplemented]
         )
     }
 }

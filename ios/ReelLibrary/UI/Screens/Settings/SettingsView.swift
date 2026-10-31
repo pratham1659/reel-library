@@ -22,8 +22,10 @@ public struct SettingsView: View {
                     // 1. Engine Mode Selection
                     engineModeSection
 
-                    // 2. Groq Cloud API Key Management
-                    apiKeySection
+                    // 2. AI Intelligence Provider & Credentials
+                    if viewModel.engineMode != .localOnly {
+                        aiProviderSection
+                    }
 
                     // 3. Real-Time Cloud Telemetry Dashboard
                     telemetrySection
@@ -47,7 +49,7 @@ public struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        viewModel.saveGroqApiKey()
+                        viewModel.saveAllSettings()
                         dismiss()
                     }
                     .font(.appBodyLead)
@@ -131,49 +133,191 @@ public struct SettingsView: View {
         }
     }
 
-    // MARK: - 2. Groq Cloud API Key
-    private var apiKeySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(title: "GROQ API KEY", icon: "key.fill")
+    // MARK: - 2. AI Intelligence Provider & Credentials
+    private var aiProviderSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(title: "AI INTELLIGENCE PROVIDER", icon: "brain.head.profile")
 
-            VStack(alignment: .leading, spacing: 10) {
+            // Provider Selector Tabs
+            ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    Group {
-                        if isShowingKeyVisible {
-                            TextField("Enter Groq API Key (gsk_...)", text: $viewModel.groqApiKey)
-                        } else {
-                            SecureField("Enter Groq API Key (gsk_...)", text: $viewModel.groqApiKey)
-                        }
-                    }
-                    .font(.appBodyRegular)
-                    .foregroundStyle(Color.textPrimary)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
+                    ForEach(AIProvider.allCases, id: \.self) { provider in
+                        Button {
+                            viewModel.selectedProvider = provider
+                            viewModel.connectionTestResult = nil
+                        } label: {
+                            VStack(spacing: 4) {
+                                Text(provider.shortName)
+                                    .font(.appBodyLead)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(viewModel.selectedProvider == provider ? Color.white : Color.textSecondary)
 
-                    Button {
-                        isShowingKeyVisible.toggle()
-                    } label: {
-                        Image(systemName: isShowingKeyVisible ? "eye.slash" : "eye")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Color.textMuted)
-                    }
-
-                    Button {
-                        if let clip = UIPasteboard.general.string {
-                            viewModel.groqApiKey = clip
+                                Text(provider.badgeText)
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(viewModel.selectedProvider == provider ? Color.activeBlue : Color.textMuted)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(viewModel.selectedProvider == provider ? Color.activeBlue.opacity(0.18) : Color.obsidianPill)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(viewModel.selectedProvider == provider ? Color.activeBlue : Color.obsidianPillBorder, lineWidth: 1.5)
+                            )
                         }
-                    } label: {
-                        Text("Paste")
-                            .font(.appCaptionSmall)
-                            .foregroundStyle(Color.cyanAccent)
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(12)
-                .background(RoundedRectangle(cornerRadius: 12).fill(Color.obsidianPill))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.obsidianPillBorder, lineWidth: 1))
+            }
 
+            // Active Provider Details & Credentials
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(viewModel.selectedProvider.displayName)
+                        .font(.appBodyLead)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.textPrimary)
+
+                    Text(viewModel.selectedProvider.subtitle)
+                        .font(.appCaptionSmall)
+                        .foregroundStyle(Color.textSecondary)
+                }
+
+                // If Claude is active: Explain hybrid transcription
+                if viewModel.selectedProvider == .claude {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.cyanAccent)
+                            .padding(.top, 2)
+
+                        Text("Claude excels at executive synthesis. For audio transcription, Reel Library seamlessly uses your saved OpenAI/Groq Whisper key or local on-device WhisperKit.")
+                            .font(.appCaptionSmall)
+                            .foregroundStyle(Color.textSecondary)
+                            .lineSpacing(2)
+                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.obsidianPill))
+                }
+
+                // If Custom is active: Expose Base URL, Summarizer Model, and Transcription Model
+                if viewModel.selectedProvider == .custom {
+                    VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("API BASE URL")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(Color.textMuted)
+
+                            TextField("https://openrouter.ai/api/v1", text: $viewModel.customBaseUrl)
+                                .font(.appMonoSmall)
+                                .foregroundStyle(Color.textPrimary)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                                .padding(10)
+                                .background(RoundedRectangle(cornerRadius: 10).fill(Color.obsidianPill))
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.obsidianPillBorder, lineWidth: 1))
+                        }
+
+                        HStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("SUMMARIZER MODEL")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(Color.textMuted)
+
+                                TextField("deepseek/deepseek-chat", text: $viewModel.customSummarizerModel)
+                                    .font(.appMonoSmall)
+                                    .foregroundStyle(Color.textPrimary)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .padding(10)
+                                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.obsidianPill))
+                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.obsidianPillBorder, lineWidth: 1))
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("AUDIO MODEL")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(Color.textMuted)
+
+                                TextField("whisper-1", text: $viewModel.customTranscriptionModel)
+                                    .font(.appMonoSmall)
+                                    .foregroundStyle(Color.textPrimary)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .padding(10)
+                                    .background(RoundedRectangle(cornerRadius: 10).fill(Color.obsidianPill))
+                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.obsidianPillBorder, lineWidth: 1))
+                            }
+                        }
+                    }
+                }
+
+                // API Key Input
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("\(viewModel.selectedProvider.shortName.uppercased()) API KEY")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.textMuted)
+
+                        Spacer()
+
+                        if let consoleUrl = URL(string: viewModel.selectedProvider.consoleUrl) {
+                            Link(destination: consoleUrl) {
+                                HStack(spacing: 3) {
+                                    Text("Get Key")
+                                    Image(systemName: "arrow.up.right")
+                                }
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(Color.activeBlue)
+                            }
+                        }
+                    }
+
+                    HStack(spacing: 8) {
+                        let keyBinding = Binding<String>(
+                            get: { viewModel.activeApiKey() },
+                            set: { viewModel.setActiveApiKey($0) }
+                        )
+
+                        Group {
+                            if isShowingKeyVisible {
+                                TextField(apiKeyPlaceholder(for: viewModel.selectedProvider), text: keyBinding)
+                            } else {
+                                SecureField(apiKeyPlaceholder(for: viewModel.selectedProvider), text: keyBinding)
+                            }
+                        }
+                        .font(.appBodyRegular)
+                        .foregroundStyle(Color.textPrimary)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+
+                        Button {
+                            isShowingKeyVisible.toggle()
+                        } label: {
+                            Image(systemName: isShowingKeyVisible ? "eye.slash" : "eye")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color.textMuted)
+                        }
+
+                        Button {
+                            if let clip = UIPasteboard.general.string {
+                                viewModel.setActiveApiKey(clip)
+                            }
+                        } label: {
+                            Text("Paste")
+                                .font(.appCaptionSmall)
+                                .foregroundStyle(Color.cyanAccent)
+                        }
+                    }
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.obsidianPill))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.obsidianPillBorder, lineWidth: 1))
+                }
+
+                // Test Connection & Verification
                 HStack {
-                    // Test Connection Button
                     Button {
                         viewModel.testConnection()
                     } label: {
@@ -199,20 +343,29 @@ public struct SettingsView: View {
 
                     Spacer()
 
-                    // Status Result
                     if let result = viewModel.connectionTestResult {
                         Text(result)
                             .font(.appCaptionSmall)
                             .foregroundStyle(viewModel.isConnectionSuccess ? Color.statusReady : Color.statusError)
+                            .multilineTextAlignment(.trailing)
                     }
                 }
 
-                Text("Your API key is saved directly to Apple's Secure Enclave Keychain and is never synced to external servers.")
+                Text("All API keys are securely stored in Apple's Secure Enclave Keychain and never uploaded to any intermediary servers.")
                     .font(.appCaptionSmall)
                     .foregroundStyle(Color.textMuted)
             }
             .padding(16)
             .neumorphicCard(cornerRadius: 16)
+        }
+    }
+
+    private func apiKeyPlaceholder(for provider: AIProvider) -> String {
+        switch provider {
+        case .groq: return "Enter Groq API Key (gsk_...)"
+        case .openAI: return "Enter OpenAI API Key (sk-...)"
+        case .claude: return "Enter Anthropic API Key (sk-ant-...)"
+        case .custom: return "Enter API Key / Bearer token"
         }
     }
 

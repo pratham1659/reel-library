@@ -52,18 +52,51 @@ class DualEngineDispatcher(
             File(context.filesDir, "whisper-base.bin")
         }
 
+        fun makeCloudTranscriptionEngine(): TranscriptionEngine? {
+            return when (prefs.selectedProvider) {
+                com.reelrecall.app.data.repository.AIProvider.GROQ -> {
+                    if (prefs.groqApiKey.isNotBlank()) GroqWhisperEngine(prefs.groqApiKey, onAudioTranscribed = onWhisperAudioTranscribed) else null
+                }
+                com.reelrecall.app.data.repository.AIProvider.OPENAI -> {
+                    if (prefs.openAIApiKey.isNotBlank()) OpenAIWhisperEngine(prefs.openAIApiKey, model = "whisper-1", onAudioTranscribed = onWhisperAudioTranscribed) else null
+                }
+                com.reelrecall.app.data.repository.AIProvider.CLAUDE -> {
+                    if (prefs.openAIApiKey.isNotBlank()) {
+                        OpenAIWhisperEngine(prefs.openAIApiKey, model = "whisper-1", name = "OpenAI Whisper (Claude Hybrid)", onAudioTranscribed = onWhisperAudioTranscribed)
+                    } else if (prefs.groqApiKey.isNotBlank()) {
+                        GroqWhisperEngine(prefs.groqApiKey, onAudioTranscribed = onWhisperAudioTranscribed)
+                    } else null
+                }
+                com.reelrecall.app.data.repository.AIProvider.CUSTOM -> {
+                    if (prefs.customApiKey.isNotBlank() && prefs.customTranscriptionModel.isNotBlank()) {
+                        OpenAIWhisperEngine(prefs.customApiKey, baseUrl = prefs.customBaseUrl, model = prefs.customTranscriptionModel, name = "Custom Whisper", onAudioTranscribed = onWhisperAudioTranscribed)
+                    } else if (prefs.openAIApiKey.isNotBlank()) {
+                        OpenAIWhisperEngine(prefs.openAIApiKey, model = "whisper-1", onAudioTranscribed = onWhisperAudioTranscribed)
+                    } else if (prefs.groqApiKey.isNotBlank()) {
+                        GroqWhisperEngine(prefs.groqApiKey, onAudioTranscribed = onWhisperAudioTranscribed)
+                    } else null
+                }
+            }
+        }
+
         return when (prefs.engineMode) {
             EngineMode.CLOUD_ONLY -> {
-                if (prefs.groqApiKey.isNotBlank()) {
-                    GroqWhisperEngine(prefs.groqApiKey, onAudioTranscribed = onWhisperAudioTranscribed)
+                val cloudEngine = makeCloudTranscriptionEngine()
+                if (cloudEngine != null) {
+                    cloudEngine
                 } else {
-                    FailingTranscriptionEngine("Engine Mode is set to CLOUD_ONLY: Groq API key is missing. Local fallback is strictly disallowed.")
+                    val msg = if (prefs.selectedProvider == com.reelrecall.app.data.repository.AIProvider.CLAUDE) {
+                        "Engine Mode is set to CLOUD_ONLY with Claude: Claude lacks an audio API. Please add an OpenAI or Groq API key in Settings for transcription."
+                    } else {
+                        "Engine Mode is set to CLOUD_ONLY: ${prefs.selectedProvider.displayName} API key is missing. Local fallback is strictly disallowed."
+                    }
+                    FailingTranscriptionEngine(msg)
                 }
             }
 
             EngineMode.LOCAL_ONLY -> {
                 if (!whisperFile.exists() || whisperFile.length() < 10_000_000L) {
-                    FailingTranscriptionEngine("Engine Mode is set to LOCAL_ONLY: On-device Whisper model weights not installed (${whisperFile.name}). Cloud fallback is strictly disallowed.")
+                    FailingTranscriptionEngine("Engine Mode is set to LOCAL_ONLY: ${TranscriptOutcome.LOCAL_UNIMPLEMENTED}")
                 } else {
                     LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
                 }
@@ -71,11 +104,12 @@ class DualEngineDispatcher(
 
             EngineMode.AUTO_HYBRID -> {
                 val isOnline = isNetworkAvailable()
-                if (isOnline && prefs.groqApiKey.isNotBlank()) {
-                    GroqWhisperEngine(prefs.groqApiKey, onAudioTranscribed = onWhisperAudioTranscribed)
+                val cloudEngine = if (isOnline) makeCloudTranscriptionEngine() else null
+                if (cloudEngine != null) {
+                    cloudEngine
                 } else {
                     if (!whisperFile.exists() || whisperFile.length() < 10_000_000L) {
-                        FailingTranscriptionEngine("Whisper transcription unavailable: Cloud requires a Groq API key and on-device Whisper weights are not installed.")
+                        FailingTranscriptionEngine("Whisper transcription unavailable: ${prefs.selectedProvider.displayName} requires an API key (or active internet) and on-device Whisper weights are not installed.")
                     } else {
                         LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
                     }
@@ -92,12 +126,39 @@ class DualEngineDispatcher(
             File(context.filesDir, "gemma-2-2b-it-gpu.bin")
         }
 
+        fun makeCloudSummarizerEngine(): SummarizationEngine? {
+            return when (prefs.selectedProvider) {
+                com.reelrecall.app.data.repository.AIProvider.GROQ -> {
+                    if (prefs.groqApiKey.isNotBlank()) GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed) else null
+                }
+                com.reelrecall.app.data.repository.AIProvider.OPENAI -> {
+                    if (prefs.openAIApiKey.isNotBlank()) OpenAISummarizerEngine(prefs.openAIApiKey, candidateModels = listOf("gpt-4o-mini", "gpt-4o"), name = "OpenAI", onTokensUsed = onTokensUsed) else null
+                }
+                com.reelrecall.app.data.repository.AIProvider.CLAUDE -> {
+                    if (prefs.claudeApiKey.isNotBlank()) AnthropicClaudeSummarizerEngine(prefs.claudeApiKey, onTokensUsed = onTokensUsed) else null
+                }
+                com.reelrecall.app.data.repository.AIProvider.CUSTOM -> {
+                    val model = prefs.customSummarizerModel.ifBlank { "deepseek/deepseek-chat" }
+                    if (prefs.customApiKey.isNotBlank()) {
+                        OpenAISummarizerEngine(
+                            apiKey = prefs.customApiKey,
+                            baseUrl = prefs.customBaseUrl,
+                            candidateModels = listOf(model),
+                            name = "Custom ($model)",
+                            onTokensUsed = onTokensUsed
+                        )
+                    } else null
+                }
+            }
+        }
+
         return when (prefs.engineMode) {
             EngineMode.CLOUD_ONLY -> {
-                if (prefs.groqApiKey.isNotBlank()) {
-                    GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
+                val cloudEngine = makeCloudSummarizerEngine()
+                if (cloudEngine != null) {
+                    cloudEngine
                 } else {
-                    FailingSummarizerEngine("Engine Mode is set to CLOUD_ONLY: Groq API key is missing. Local fallback is strictly disallowed.")
+                    FailingSummarizerEngine("Engine Mode is set to CLOUD_ONLY: ${prefs.selectedProvider.displayName} API key is missing. Local fallback is strictly disallowed.")
                 }
             }
 
@@ -115,11 +176,12 @@ class DualEngineDispatcher(
 
             EngineMode.AUTO_HYBRID -> {
                 val isOnline = isNetworkAvailable()
-                if (isOnline && prefs.groqApiKey.isNotBlank()) {
-                    GroqSummarizerEngine(prefs.groqApiKey, onTokensUsed = onTokensUsed)
+                val cloudEngine = if (isOnline) makeCloudSummarizerEngine() else null
+                if (cloudEngine != null) {
+                    cloudEngine
                 } else {
                     if (!llmFile.exists() || llmFile.length() < 50_000_000L) {
-                        FailingSummarizerEngine("Summarization unavailable: Groq API key missing and on-device LLM weights are not installed.")
+                        FailingSummarizerEngine("Summarization unavailable: ${prefs.selectedProvider.displayName} API key missing and on-device LLM weights are not installed.")
                     } else {
                         LocalMediaPipeSummarizerEngine(
                             context = context,
@@ -140,7 +202,7 @@ class DualEngineDispatcher(
     }
 }
 
-class FailingTranscriptionEngine(private val reason: String) : TranscriptionEngine {
+class FailingTranscriptionEngine(val reason: String) : TranscriptionEngine {
     override val name: String = "Transcription Engine Error"
     override suspend fun transcribe(audioFile: File): Result<String> {
         return Result.failure(IllegalStateException(reason))

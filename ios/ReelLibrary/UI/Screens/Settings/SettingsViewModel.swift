@@ -11,11 +11,22 @@ public final class SettingsViewModel: @unchecked Sendable {
     private let db: AppDatabase
     private let keychain: KeychainVault
 
-    // Engine Mode
+    // Engine Mode & AI Provider Selection
     public var engineMode: EngineMode = .cloudOnly
+    public var selectedProvider: AIProvider = .groq
 
-    // Secure API Key
+    // Secure Provider API Keys
     public var groqApiKey: String = ""
+    public var openAIApiKey: String = ""
+    public var claudeApiKey: String = ""
+    public var customApiKey: String = ""
+
+    // Custom OpenAI-Compatible Endpoint Settings
+    public var customBaseUrl: String = "https://openrouter.ai/api/v1"
+    public var customSummarizerModel: String = "deepseek/deepseek-chat"
+    public var customTranscriptionModel: String = "whisper-1"
+
+    // Live Connection Test States
     public var isTestingConnection: Bool = false
     public var connectionTestResult: String? = nil
     public var isConnectionSuccess: Bool = false
@@ -43,20 +54,70 @@ public final class SettingsViewModel: @unchecked Sendable {
     ) {
         self.db = database
         self.keychain = keychain
+
+        let prefs = PreferencesRepository.shared.getPreferences()
+        self.engineMode = prefs.engineMode
+        self.selectedProvider = prefs.selectedProvider
+
         self.groqApiKey = keychain.getGroqApiKey()
+        self.openAIApiKey = keychain.getOpenAIApiKey()
+        self.claudeApiKey = keychain.getClaudeApiKey()
+        self.customApiKey = keychain.getCustomApiKey()
+
+        self.customBaseUrl = prefs.customBaseUrl
+        self.customSummarizerModel = prefs.customSummarizerModel
+        self.customTranscriptionModel = prefs.customTranscriptionModel
+
         loadTelemetryData()
     }
 
-    public func saveGroqApiKey() {
-        let clean = groqApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        keychain.setGroqApiKey(clean)
+    public func saveAllSettings() {
+        let repo = PreferencesRepository.shared
+        repo.setEngineMode(engineMode)
+        repo.setSelectedProvider(selectedProvider)
+
+        let cleanGroq = groqApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        repo.setGroqApiKey(cleanGroq)
+
+        let cleanOpenAI = openAIApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        repo.setOpenAIApiKey(cleanOpenAI)
+
+        let cleanClaude = claudeApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        repo.setClaudeApiKey(cleanClaude)
+
+        let cleanCustom = customApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        repo.setCustomApiKey(cleanCustom)
+
+        repo.setCustomSettings(
+            baseUrl: customBaseUrl.trimmingCharacters(in: .whitespacesAndNewlines),
+            summarizerModel: customSummarizerModel.trimmingCharacters(in: .whitespacesAndNewlines),
+            transcriptionModel: customTranscriptionModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+
+    public func activeApiKey() -> String {
+        switch selectedProvider {
+        case .groq: return groqApiKey
+        case .openAI: return openAIApiKey
+        case .claude: return claudeApiKey
+        case .custom: return customApiKey
+        }
+    }
+
+    public func setActiveApiKey(_ key: String) {
+        switch selectedProvider {
+        case .groq: groqApiKey = key
+        case .openAI: openAIApiKey = key
+        case .claude: claudeApiKey = key
+        case .custom: customApiKey = key
+        }
     }
 
     public func testConnection() {
         isTestingConnection = true
         connectionTestResult = nil
 
-        let key = groqApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = activeApiKey().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else {
             isTestingConnection = false
             connectionTestResult = "API Key cannot be empty."
@@ -64,18 +125,96 @@ public final class SettingsViewModel: @unchecked Sendable {
             return
         }
 
-        // Live validation ping simulation / check
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            guard let self else { return }
-            self.isTestingConnection = false
+        let provider = selectedProvider
+        let baseUrl = customBaseUrl.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            if key.hasPrefix("gsk_") || key.count >= 20 {
-                self.isConnectionSuccess = true
-                self.connectionTestResult = "Connected (148ms) • 200 OK"
-                self.saveGroqApiKey()
-            } else {
+        Task { @MainActor in
+            let startTime = Date()
+
+            // Build validation request based on provider
+            var request: URLRequest?
+
+            switch provider {
+            case .groq:
+                if let url = URL(string: "https://api.groq.com/openai/v1/models") {
+                    var r = URLRequest(url: url)
+                    r.httpMethod = "GET"
+                    r.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+                    r.timeoutInterval = 10.0
+                    request = r
+                }
+            case .openAI:
+                if let url = URL(string: "https://api.openai.com/v1/models") {
+                    var r = URLRequest(url: url)
+                    r.httpMethod = "GET"
+                    r.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+                    r.timeoutInterval = 10.0
+                    request = r
+                }
+            case .claude:
+                if let url = URL(string: "https://api.anthropic.com/v1/models") {
+                    var r = URLRequest(url: url)
+                    r.httpMethod = "GET"
+                    r.setValue(key, forHTTPHeaderField: "x-api-key")
+                    r.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+                    r.timeoutInterval = 10.0
+                    request = r
+                }
+            case .custom:
+                let cleanBase = baseUrl.hasSuffix("/") ? String(baseUrl.dropLast()) : baseUrl
+                let modelsUrlStr = cleanBase.hasSuffix("/models") ? cleanBase : "\(cleanBase)/models"
+                if let url = URL(string: modelsUrlStr) {
+                    var r = URLRequest(url: url)
+                    r.httpMethod = "GET"
+                    r.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+                    r.timeoutInterval = 10.0
+                    request = r
+                }
+            }
+
+            guard let req = request else {
+                self.isTestingConnection = false
+                self.connectionTestResult = "Invalid endpoint URL configuration."
                 self.isConnectionSuccess = false
-                self.connectionTestResult = "Key must start with 'gsk_' or be valid."
+                return
+            }
+
+            do {
+                let (_, response) = try await URLSession.shared.data(for: req)
+                let latencyMs = Int(Date().timeIntervalSince(startTime) * 1000)
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    self.isTestingConnection = false
+                    self.isConnectionSuccess = false
+                    self.connectionTestResult = "Bad server response."
+                    return
+                }
+
+                self.isTestingConnection = false
+
+                if (200...299).contains(httpResponse.statusCode) {
+                    self.isConnectionSuccess = true
+                    self.connectionTestResult = "Connected (\(latencyMs)ms) • \(httpResponse.statusCode) OK"
+                    self.saveAllSettings()
+                } else if httpResponse.statusCode == 401 {
+                    self.isConnectionSuccess = false
+                    self.connectionTestResult = "Authentication failed: 401 Unauthorized"
+                } else if httpResponse.statusCode == 403 {
+                    self.isConnectionSuccess = false
+                    self.connectionTestResult = "Forbidden (403): Check key permissions"
+                } else if httpResponse.statusCode == 404 {
+                    // For some custom endpoints /models doesn't exist, but server is alive
+                    self.isConnectionSuccess = true
+                    self.connectionTestResult = "Endpoint reached (\(latencyMs)ms) • 404 (Path unlisted)"
+                    self.saveAllSettings()
+                } else {
+                    self.isConnectionSuccess = false
+                    self.connectionTestResult = "Server returned \(httpResponse.statusCode)"
+                }
+            } catch {
+                self.isTestingConnection = false
+                self.isConnectionSuccess = false
+                self.connectionTestResult = "Connection failed: \(error.localizedDescription)"
             }
         }
     }

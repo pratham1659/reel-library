@@ -12,7 +12,7 @@ public struct ParsedReel: Sendable, Equatable {
 
 public enum InstagramUrlParser: Sendable {
     private static let reelRegex: NSRegularExpression = {
-        let pattern = #"https?://(?:www\.)?instagram\.com/(?:reel|p)/([A-Za-z0-9_-]+)"#
+        let pattern = #"https?://(?:[a-zA-Z0-9_\.]+\.)?instagram\.com/(?:reel|reels|p|share/reel)/([A-Za-z0-9_-]+)"#
         // Safe forced unwrap on constant pattern
         return try! NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
     }()

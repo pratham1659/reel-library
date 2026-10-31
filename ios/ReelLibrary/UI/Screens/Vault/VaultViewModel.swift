@@ -249,29 +249,29 @@ public final class VaultViewModel: @unchecked Sendable {
     }
 
     public func reprocessReel(id: Int64) {
-        guard let index = reels.firstIndex(where: { $0.id == id }) else { return }
-        var reel = reels[index]
-        reel.status = .extracting
-        do {
-            try db.reelDao.update(reel)
-            reels[index] = reel
-            selectedReelForDetail = reel
-
-            // Simulate simulated processing completion
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                guard let self else { return }
-                if let idx = self.reels.firstIndex(where: { $0.id == id }) {
-                    var updated = self.reels[idx]
-                    updated.status = .completed
-                    try? self.db.reelDao.update(updated)
-                    self.reels[idx] = updated
-                    if self.selectedReelForDetail?.id == id {
-                        self.selectedReelForDetail = updated
-                    }
+        guard let reel = reels.first(where: { $0.id == id }) else { return }
+        let canonicalUrl = reel.canonicalUrl
+        Task {
+            do {
+                try await ReelIngestService.shared.ingest(reelId: id, canonicalUrl: canonicalUrl)
+            } catch {
+                DispatchQueue.main.async { [weak self] in
+                    self?.errorMessage = "Reprocess failed: \(error.localizedDescription)"
                 }
             }
-        } catch {
-            self.errorMessage = "Reprocess failed: \(error.localizedDescription)"
+            DispatchQueue.main.async { [weak self] in
+                self?.reloadReel(id: id)
+            }
+        }
+    }
+
+    private func reloadReel(id: Int64) {
+        guard let fresh = try? db.reelDao.getById(id) else { return }
+        if let index = reels.firstIndex(where: { $0.id == id }) {
+            reels[index] = fresh
+        }
+        if selectedReelForDetail?.id == id {
+            selectedReelForDetail = fresh
         }
     }
 
@@ -373,10 +373,23 @@ public final class VaultViewModel: @unchecked Sendable {
     }
 
     public func checkPendingSharedUrls() {
-        let defaults = UserDefaults(suiteName: "group.com.reellibrary.vault")
+        // 1. Check Shared Keychain Queue (primary cross-sandbox bridge)
+        let sharedItems = SharedReelQueue.shared.dequeueAll()
+        for item in sharedItems {
+            let targetUrl = InstagramUrlParser.parse(item.url)?.canonicalUrl ?? item.url
+            if !reels.contains(where: { $0.canonicalUrl == targetUrl }) {
+                ingestUrl(targetUrl)
+            }
+        }
+
+        // 2. Check App Group UserDefaults if provisioned
+        let defaults = UserDefaults(suiteName: AppDatabase.appGroupIdentifier)
         if let pending = defaults?.stringArray(forKey: "pending_shared_urls"), !pending.isEmpty {
             for url in pending {
-                ingestUrl(url)
+                let targetUrl = InstagramUrlParser.parse(url)?.canonicalUrl ?? url
+                if !reels.contains(where: { $0.canonicalUrl == targetUrl }) {
+                    ingestUrl(targetUrl)
+                }
             }
             defaults?.removeObject(forKey: "pending_shared_urls")
         }

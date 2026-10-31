@@ -47,6 +47,7 @@ data class ReelEntity(
     val engineUsed: String? = null,   // "Cloud (Groq LPU)" or "Local (Whisper + Gemma)"
     val status: IngestionStatus = IngestionStatus.QUEUED,
     val errorMessage: String? = null,
+    val transcriptNote: String? = null,
     val userNotes: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 )

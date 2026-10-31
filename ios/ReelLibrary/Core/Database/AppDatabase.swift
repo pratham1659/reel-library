@@ -14,7 +14,7 @@ private let logger = Logger(subsystem: "com.reellibrary.app", category: "AppData
 public final class AppDatabase: Sendable {
     public let dbQueue: DatabaseQueue
 
-    public static let appGroupIdentifier = "group.com.reellibrary.vault"
+    public static let appGroupIdentifier = "group.io.github.alokkr016.reellibrary"
     public static let databaseFilename = "reel_library.sqlite"
 
     /// Shared singleton instance pointing to the App Group container or local Application Support.
@@ -176,6 +176,21 @@ public final class AppDatabase: Sendable {
                     VALUES (new.id, new.title, new.oneLineSummary, new.transcript, new.caption, new.tagsJson);
                 END;
                 """)
+        }
+
+        migrator.registerMigration("v2_transcript_note") { db in
+            let columns = try db.columns(in: "reels")
+            if !columns.contains(where: { $0.name == "transcriptNote" }) {
+                try db.alter(table: "reels") { table in
+                    table.add(column: "transcriptNote", .text)
+                }
+            }
+            try db.execute(sql: """
+                UPDATE reels
+                SET transcript = NULL,
+                    transcriptNote = ?
+                WHERE lower(transcript) = 'not available'
+                """, arguments: ["Spoken audio was not transcribed on a previous import. Retry transcription."])
         }
 
         return migrator
