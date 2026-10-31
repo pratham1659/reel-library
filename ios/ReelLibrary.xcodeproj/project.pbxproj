@@ -49,6 +49,7 @@
 		B4B299217C0D7F3A15C4D62A /* ReelRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122714AE210B32391FFB9F5B /* ReelRepository.swift */; };
 		B5A1887D9979AAD77E072E9D /* GroqWhisperEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 730800637A4110D46B340F08 /* GroqWhisperEngine.swift */; };
 		B8E1F858553AB1CFF31767DF /* GroqSummarizerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97D4E46D1A84D5035AADF2B /* GroqSummarizerEngine.swift */; };
+		B94645AE7324540CE95F798E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F7FDF2E2ADCCC2CF3DD7F9D5 /* Assets.xcassets */; };
 		B95FC57FF1F98AA96779F9DF /* ReelDao.swift in Sources */ = {isa = PBXBuildFile; fileRef = 163BCBDB3CC34F0D3A53682A /* ReelDao.swift */; };
 		B9B74ECFDBC79D7B32817161 /* PreferencesRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F02DAF157CEC1DBCC70E5536 /* PreferencesRepository.swift */; };
 		BFEB51A808CBAE8F7CADE63B /* SummarizationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F62051E3BE50E8F0FD33EF /* SummarizationEngine.swift */; };
@@ -117,6 +118,7 @@
 		F26D13C321F58A623D675374 /* TokenUsageDao.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenUsageDao.swift; sourceTree = "<group>"; };
 		F47F916F7873491A2E139F76 /* DatabaseAndSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseAndSecurityTests.swift; sourceTree = "<group>"; };
 		F5417ACB878161E8B3681DFB /* FloatingBottomDock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingBottomDock.swift; sourceTree = "<group>"; };
+		F7FDF2E2ADCCC2CF3DD7F9D5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FB4D43446E609CEF96EBD15F /* AudioExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioExtractor.swift; sourceTree = "<group>"; };
 		FC49ABE3C9180912242AB099 /* ReelDetailModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReelDetailModal.swift; sourceTree = "<group>"; };
 		FD1800C05C810A192E8EEDF6 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
@@ -371,6 +373,7 @@
 		FCF4A3C02303BC28288F700C /* App */ = {
 			isa = PBXGroup;
 			children = (
+				F7FDF2E2ADCCC2CF3DD7F9D5 /* Assets.xcassets */,
 				A6E5A4D7D943BFC36DB8087D /* ReelLibraryApp.swift */,
 			);
 			path = App;
@@ -403,6 +406,7 @@
 			buildConfigurationList = C3582A3A95043996E662965A /* Build configuration list for PBXNativeTarget "ReelLibrary" */;
 			buildPhases = (
 				5EE9444BE5E603B8CAAA4A10 /* Sources */,
+				9B2D7913096BC44C51684F30 /* Resources */,
 				6A11D1E850CBFEDF37525BB9 /* Frameworks */,
 			);
 			buildRules = (
@@ -471,6 +475,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9B2D7913096BC44C51684F30 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B94645AE7324540CE95F798E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		5EE9444BE5E603B8CAAA4A10 /* Sources */ = {
