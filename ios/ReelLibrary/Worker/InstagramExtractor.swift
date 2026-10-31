@@ -37,7 +37,10 @@ public actor InstagramExtractor: Sendable {
     ///   - canonicalUrl: Normalized URL in the form `https://www.instagram.com/reel/<shortcode>/`
     ///   - downloadVideo: Whether to also download the extracted video file to a temporary location for audio processing.
     public func extract(canonicalUrl: String, downloadVideo: Bool = true) async throws -> ExtractedMetadata {
-        guard let url = URL(string: canonicalUrl) else {
+        guard let url = URL(string: canonicalUrl),
+              url.scheme?.lowercased() == "https",
+              let host = url.host?.lowercased(),
+              host == "instagram.com" || host.hasSuffix(".instagram.com") else {
             throw URLError(.badURL)
         }
 
@@ -144,6 +147,12 @@ public actor InstagramExtractor: Sendable {
     // MARK: - Video Downloader
 
     private func downloadMediaFile(from url: URL) async throws -> URL {
+        guard url.scheme?.lowercased() == "https",
+              let host = url.host?.lowercased(),
+              host.contains("instagram.com") || host.contains("cdninstagram.com") || host.contains("fbcdn.net") else {
+            throw URLError(.unsupportedURL)
+        }
+
         var request = URLRequest(url: url)
         request.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 30.0
@@ -153,7 +162,16 @@ public actor InstagramExtractor: Sendable {
             throw URLError(.badServerResponse)
         }
 
+        // Maximum video download guard: 100 MB
+        let maxDownloadBytes: Int64 = 100 * 1024 * 1024
         let fileManager = FileManager.default
+        let attributes = try? fileManager.attributesOfItem(atPath: tempLocalUrl.path)
+        let downloadedBytes = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+        if downloadedBytes > maxDownloadBytes {
+            try? fileManager.removeItem(at: tempLocalUrl)
+            throw URLError(.dataLengthExceedsMaximum)
+        }
+
         let destination = fileManager.temporaryDirectory
             .appendingPathComponent("reel_video_\(UUID().uuidString)")
             .appendingPathExtension("mp4")
