@@ -18,6 +18,9 @@ public final class KeychainVault: @unchecked Sendable {
     public static let shared = KeychainVault()
 
     public static let groqApiKeyName = "vault_groq_api_key"
+    public static let openAIApiKeyName = "vault_openai_api_key"
+    public static let claudeApiKeyName = "vault_anthropic_api_key"
+    public static let customApiKeyName = "vault_custom_api_key"
 
     private let service: String
     private let accessGroup: String?
@@ -152,6 +155,89 @@ public final class KeychainVault: @unchecked Sendable {
     @discardableResult
     public func deleteGroqApiKey() -> Bool {
         delete(key: Self.groqApiKeyName)
+    }
+
+    /// Retrieves the OpenAI API key or returns an empty string.
+    public func getOpenAIApiKey() -> String {
+        read(key: Self.openAIApiKeyName) ?? ""
+    }
+
+    /// Saves the OpenAI API key securely.
+    @discardableResult
+    public func setOpenAIApiKey(_ key: String) -> Bool {
+        save(key: Self.openAIApiKeyName, value: key)
+    }
+
+    /// Deletes the OpenAI API key securely.
+    @discardableResult
+    public func deleteOpenAIApiKey() -> Bool {
+        delete(key: Self.openAIApiKeyName)
+    }
+
+    /// Retrieves the Anthropic Claude API key or returns an empty string.
+    public func getClaudeApiKey() -> String {
+        read(key: Self.claudeApiKeyName) ?? ""
+    }
+
+    /// Saves the Anthropic Claude API key securely.
+    @discardableResult
+    public func setClaudeApiKey(_ key: String) -> Bool {
+        save(key: Self.claudeApiKeyName, value: key)
+    }
+
+    /// Deletes the Anthropic Claude API key securely.
+    @discardableResult
+    public func deleteClaudeApiKey() -> Bool {
+        delete(key: Self.claudeApiKeyName)
+    }
+
+    /// Retrieves the Custom provider API key or returns an empty string.
+    public func getCustomApiKey() -> String {
+        read(key: Self.customApiKeyName) ?? ""
+    }
+
+    /// Saves the Custom provider API key securely.
+    @discardableResult
+    public func setCustomApiKey(_ key: String) -> Bool {
+        save(key: Self.customApiKeyName, value: key)
+    }
+
+    /// Deletes the Custom provider API key securely.
+    @discardableResult
+    public func deleteCustomApiKey() -> Bool {
+        delete(key: Self.customApiKeyName)
+    }
+
+    /// Resolves the API key for a specific AIProvider enum.
+    public func apiKey(for provider: AIProvider) -> String {
+        switch provider {
+        case .groq: return getGroqApiKey()
+        case .openAI: return getOpenAIApiKey()
+        case .claude: return getClaudeApiKey()
+        case .custom: return getCustomApiKey()
+        }
+    }
+
+    /// Saves the API key for a specific AIProvider enum.
+    @discardableResult
+    public func setApiKey(_ key: String, for provider: AIProvider) -> Bool {
+        switch provider {
+        case .groq: return setGroqApiKey(key)
+        case .openAI: return setOpenAIApiKey(key)
+        case .claude: return setClaudeApiKey(key)
+        case .custom: return setCustomApiKey(key)
+        }
+    }
+
+    /// Deletes the API key for a specific AIProvider enum.
+    @discardableResult
+    public func deleteApiKey(for provider: AIProvider) -> Bool {
+        switch provider {
+        case .groq: return deleteGroqApiKey()
+        case .openAI: return deleteOpenAIApiKey()
+        case .claude: return deleteClaudeApiKey()
+        case .custom: return deleteCustomApiKey()
+        }
     }
 
     // MARK: - Private Query Builder

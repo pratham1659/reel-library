@@ -135,6 +135,18 @@ public struct VaultView: View {
         .sheet(isPresented: $viewModel.isSettingsOpen) {
             SettingsView()
         }
+        .onAppear {
+            viewModel.loadReels()
+            viewModel.checkPendingSharedUrls()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            viewModel.loadReels()
+            viewModel.checkPendingSharedUrls()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIScene.didActivateNotification)) { _ in
+            viewModel.loadReels()
+            viewModel.checkPendingSharedUrls()
+        }
         .alert("Add Instagram Reel", isPresented: $isShowingUrlPrompt) {
             TextField("Paste Instagram Reel URL...", text: $pastedUrlString)
                 .textInputAutocapitalization(.never)
@@ -196,6 +208,23 @@ public struct VaultView: View {
                 .padding(.vertical, 5)
                 .background(Capsule().fill(Color.obsidianPill))
                 .overlay(Capsule().stroke(Color.cyanAccent.opacity(0.3), lineWidth: 1))
+
+            // Direct Clipboard Ingestion Paste Button (system-permission-free)
+            PasteButton(payloadType: String.self) { strings in
+                for s in strings {
+                    if let parsed = InstagramUrlParser.parse(s) {
+                        viewModel.ingestUrl(parsed.canonicalUrl)
+                    } else if s.contains("instagram.com") {
+                        viewModel.ingestUrl(s)
+                    }
+                }
+            }
+            .labelStyle(.iconOnly)
+            .tint(Color.cyanAccent)
+            .frame(width: 38, height: 38)
+            .background(Circle().fill(Color.obsidianCard))
+            .overlay(Circle().stroke(Color.obsidianCardBorder, lineWidth: 1))
+            .help("Ingest copied Instagram Reel")
 
             // Settings Gear Button
             Button {

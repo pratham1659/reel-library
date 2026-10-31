@@ -21,6 +21,20 @@
                ReferencedContainer = "container:ReelLibrary.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "1E1E6E9437F6EB1D364D4F19"
+               BuildableName = "ReelLibraryShare.appex"
+               BlueprintName = "ReelLibraryShare"
+               ReferencedContainer = "container:ReelLibrary.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

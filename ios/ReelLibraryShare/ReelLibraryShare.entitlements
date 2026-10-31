@@ -2,13 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>com.apple.security.application-groups</key>
-    <array>
-        <string>group.com.reellibrary.vault</string>
-    </array>
     <key>keychain-access-groups</key>
     <array>
-        <string>$(AppIdentifierPrefix)com.reellibrary.app</string>
+        <string>$(AppIdentifierPrefix)io.github.alokkr016.reellibrary</string>
     </array>
 </dict>
 </plist>

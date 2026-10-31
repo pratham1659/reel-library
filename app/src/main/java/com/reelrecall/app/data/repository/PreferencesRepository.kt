@@ -26,9 +26,80 @@ enum class EngineMode(val displayName: String, val description: String) {
     )
 }
 
+enum class AIProvider(
+    val id: String,
+    val displayName: String,
+    val shortName: String,
+    val badgeText: String,
+    val subtitle: String,
+    val defaultBaseUrl: String,
+    val defaultSummarizerModel: String,
+    val defaultTranscriptionModel: String,
+    val consoleUrl: String
+) {
+    GROQ(
+        id = "GROQ",
+        displayName = "Groq Cloud (LPU)",
+        shortName = "Groq",
+        badgeText = "Free-Tier",
+        subtitle = "Ultra-fast inference (Llama 3.3, Qwen 2.5, Whisper Large v3)",
+        defaultBaseUrl = "https://api.groq.com/openai/v1",
+        defaultSummarizerModel = "llama-3.3-70b-versatile",
+        defaultTranscriptionModel = "whisper-large-v3-turbo",
+        consoleUrl = "https://console.groq.com/keys"
+    ),
+    OPENAI(
+        id = "OPENAI",
+        displayName = "OpenAI (GPT-4o & Whisper)",
+        shortName = "OpenAI",
+        badgeText = "GPT-4o / Whisper",
+        subtitle = "State-of-the-art multimodal AI (GPT-4o, GPT-4o-mini, Whisper-1)",
+        defaultBaseUrl = "https://api.openai.com/v1",
+        defaultSummarizerModel = "gpt-4o-mini",
+        defaultTranscriptionModel = "whisper-1",
+        consoleUrl = "https://platform.openai.com/api-keys"
+    ),
+    CLAUDE(
+        id = "CLAUDE",
+        displayName = "Anthropic Claude (3.5)",
+        shortName = "Claude",
+        badgeText = "Claude 3.5",
+        subtitle = "Nuanced reasoning & executive briefs (Claude 3.5 Sonnet / Haiku)",
+        defaultBaseUrl = "https://api.anthropic.com/v1",
+        defaultSummarizerModel = "claude-3-5-haiku-20241022",
+        defaultTranscriptionModel = "",
+        consoleUrl = "https://console.anthropic.com/settings/keys"
+    ),
+    CUSTOM(
+        id = "CUSTOM",
+        displayName = "Custom / OpenAI-Compatible",
+        shortName = "Custom",
+        badgeText = "OpenRouter / DeepSeek",
+        subtitle = "Connect OpenRouter, DeepSeek, Ollama, Together AI, or local vLLM",
+        defaultBaseUrl = "https://openrouter.ai/api/v1",
+        defaultSummarizerModel = "deepseek/deepseek-chat",
+        defaultTranscriptionModel = "whisper-1",
+        consoleUrl = "https://openrouter.ai/keys"
+    );
+
+    companion object {
+        fun fromString(value: String?): AIProvider {
+            if (value.isNullOrBlank()) return GROQ
+            return entries.find { it.id.equals(value, ignoreCase = true) } ?: GROQ
+        }
+    }
+}
+
 data class AppPreferences(
     val engineMode: EngineMode = EngineMode.CLOUD_ONLY,
+    val selectedProvider: AIProvider = AIProvider.GROQ,
     val groqApiKey: String = "",
+    val openAIApiKey: String = "",
+    val claudeApiKey: String = "",
+    val customApiKey: String = "",
+    val customBaseUrl: String = "https://openrouter.ai/api/v1",
+    val customSummarizerModel: String = "deepseek/deepseek-chat",
+    val customTranscriptionModel: String = "whisper-1",
     val isWhisperModelDownloaded: Boolean = false,
     val isLlmModelDownloaded: Boolean = false,
     val whisperModelPath: String? = null,
@@ -113,6 +184,10 @@ class PreferencesRepository(private val context: Context) {
 
     private object PreferencesKeys {
         val ENGINE_MODE = stringPreferencesKey("engine_mode")
+        val SELECTED_PROVIDER = stringPreferencesKey("selected_provider")
+        val CUSTOM_BASE_URL = stringPreferencesKey("custom_base_url")
+        val CUSTOM_SUMMARIZER_MODEL = stringPreferencesKey("custom_summarizer_model")
+        val CUSTOM_TRANSCRIPTION_MODEL = stringPreferencesKey("custom_transcription_model")
         val GROQ_API_KEY = stringPreferencesKey("groq_api_key")
         val IS_WHISPER_DOWNLOADED = booleanPreferencesKey("is_whisper_downloaded")
         val IS_LLM_DOWNLOADED = booleanPreferencesKey("is_llm_downloaded")
@@ -226,8 +301,18 @@ class PreferencesRepository(private val context: Context) {
             EngineMode.CLOUD_ONLY
         }
 
+        val providerString = preferences[PreferencesKeys.SELECTED_PROVIDER]
+        val selectedProvider = AIProvider.fromString(providerString)
+
         // Retrieve securely from hardware-backed Keystore vault
         val groqKey = secureKeyVault.getGroqApiKey()
+        val openAIKey = secureKeyVault.getOpenAIApiKey()
+        val claudeKey = secureKeyVault.getClaudeApiKey()
+        val customKey = secureKeyVault.getCustomApiKey()
+
+        val customBaseUrl = preferences[PreferencesKeys.CUSTOM_BASE_URL] ?: "https://openrouter.ai/api/v1"
+        val customSummarizerModel = preferences[PreferencesKeys.CUSTOM_SUMMARIZER_MODEL] ?: "deepseek/deepseek-chat"
+        val customTranscriptionModel = preferences[PreferencesKeys.CUSTOM_TRANSCRIPTION_MODEL] ?: "whisper-1"
 
         val lastProvider = preferences[PreferencesKeys.LAST_CALL_PROVIDER] ?: ""
         val lastLatency = preferences[PreferencesKeys.LAST_CALL_LATENCY_MS] ?: 0L
@@ -268,7 +353,14 @@ class PreferencesRepository(private val context: Context) {
 
         AppPreferences(
             engineMode = mode,
+            selectedProvider = selectedProvider,
             groqApiKey = groqKey,
+            openAIApiKey = openAIKey,
+            claudeApiKey = claudeKey,
+            customApiKey = customKey,
+            customBaseUrl = customBaseUrl,
+            customSummarizerModel = customSummarizerModel,
+            customTranscriptionModel = customTranscriptionModel,
             isWhisperModelDownloaded = isWhisperReal,
             isLlmModelDownloaded = isLlmReal,
             whisperModelPath = preferences[PreferencesKeys.WHISPER_PATH],
@@ -353,6 +445,12 @@ class PreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun setSelectedProvider(provider: AIProvider) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SELECTED_PROVIDER] = provider.id
+        }
+    }
+
     suspend fun setGroqApiKey(key: String) {
         if (key.isBlank()) {
             deleteGroqApiKey()
@@ -368,6 +466,50 @@ class PreferencesRepository(private val context: Context) {
         secureKeyVault.deleteGroqApiKey()
         context.dataStore.edit { preferences ->
             preferences.remove(PreferencesKeys.GROQ_API_KEY)
+        }
+    }
+
+    suspend fun setOpenAIApiKey(key: String) {
+        if (key.isBlank()) {
+            deleteOpenAIApiKey()
+        } else {
+            secureKeyVault.setOpenAIApiKey(key)
+        }
+    }
+
+    suspend fun deleteOpenAIApiKey() {
+        secureKeyVault.deleteOpenAIApiKey()
+    }
+
+    suspend fun setClaudeApiKey(key: String) {
+        if (key.isBlank()) {
+            deleteClaudeApiKey()
+        } else {
+            secureKeyVault.setClaudeApiKey(key)
+        }
+    }
+
+    suspend fun deleteClaudeApiKey() {
+        secureKeyVault.deleteClaudeApiKey()
+    }
+
+    suspend fun setCustomApiKey(key: String) {
+        if (key.isBlank()) {
+            deleteCustomApiKey()
+        } else {
+            secureKeyVault.setCustomApiKey(key)
+        }
+    }
+
+    suspend fun deleteCustomApiKey() {
+        secureKeyVault.deleteCustomApiKey()
+    }
+
+    suspend fun setCustomSettings(baseUrl: String, summarizerModel: String, transcriptionModel: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CUSTOM_BASE_URL] = baseUrl
+            preferences[PreferencesKeys.CUSTOM_SUMMARIZER_MODEL] = summarizerModel
+            preferences[PreferencesKeys.CUSTOM_TRANSCRIPTION_MODEL] = transcriptionModel
         }
     }
 

@@ -373,10 +373,23 @@ public final class VaultViewModel: @unchecked Sendable {
     }
 
     public func checkPendingSharedUrls() {
-        let defaults = UserDefaults(suiteName: "group.com.reellibrary.vault")
+        // 1. Check Shared Keychain Queue (primary cross-sandbox bridge)
+        let sharedItems = SharedReelQueue.shared.dequeueAll()
+        for item in sharedItems {
+            let targetUrl = InstagramUrlParser.parse(item.url)?.canonicalUrl ?? item.url
+            if !reels.contains(where: { $0.canonicalUrl == targetUrl }) {
+                ingestUrl(targetUrl)
+            }
+        }
+
+        // 2. Check App Group UserDefaults if provisioned
+        let defaults = UserDefaults(suiteName: AppDatabase.appGroupIdentifier)
         if let pending = defaults?.stringArray(forKey: "pending_shared_urls"), !pending.isEmpty {
             for url in pending {
-                ingestUrl(url)
+                let targetUrl = InstagramUrlParser.parse(url)?.canonicalUrl ?? url
+                if !reels.contains(where: { $0.canonicalUrl == targetUrl }) {
+                    ingestUrl(targetUrl)
+                }
             }
             defaults?.removeObject(forKey: "pending_shared_urls")
         }

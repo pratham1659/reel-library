@@ -178,6 +178,95 @@ class GroqWhisperEngine(
 }
 
 /**
+ * Cloud Whisper implementation for OpenAI (Whisper-1) or OpenAI-compatible custom endpoints.
+ */
+class OpenAIWhisperEngine(
+    private val apiKey: String,
+    private val baseUrl: String = "https://api.openai.com/v1",
+    private val model: String = "whisper-1",
+    override val name: String = "OpenAI Whisper",
+    private val client: OkHttpClient = OkHttpClient(),
+    private val onAudioTranscribed: ((audioSeconds: Long, wordsTranscribed: Long, latencyMs: Long) -> Unit)? = null
+) : TranscriptionEngine {
+
+    companion object {
+        const val MAX_OPENAI_AUDIO_BYTES: Long = 25L * 1024L * 1024L // 25 MB
+    }
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    override suspend fun transcribe(audioFile: File): Result<String> = withContext(Dispatchers.IO) {
+        val startTime = System.currentTimeMillis()
+        try {
+            if (apiKey.isBlank()) {
+                return@withContext Result.failure(IllegalStateException("$name API key is not configured in Settings."))
+            }
+
+            if (!audioFile.exists() || audioFile.length() <= 0L) {
+                return@withContext Result.failure(IllegalStateException("No valid audio stream available for transcription."))
+            }
+
+            if (audioFile.length() > MAX_OPENAI_AUDIO_BYTES) {
+                return@withContext Result.failure(
+                    IllegalStateException("Audio file exceeds maximum upload limit (25 MB). Size: ${audioFile.length() / (1024 * 1024)} MB")
+                )
+            }
+
+            val mediaType = if (audioFile.name.endsWith(".mp4", ignoreCase = true)) {
+                "video/mp4".toMediaTypeOrNull()
+            } else {
+                "audio/*".toMediaTypeOrNull()
+            }
+
+            val whisperPrompt = "Transcribe spoken Hindi in Hinglish using Roman Latin script. Transcribe English in English. For any other foreign language, translate and transcribe in English."
+
+            val requestBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("model", model.ifBlank { "whisper-1" })
+                .addFormDataPart("response_format", "json")
+                .addFormDataPart("prompt", whisperPrompt)
+                .addFormDataPart(
+                    "file",
+                    audioFile.name,
+                    audioFile.asRequestBody(mediaType)
+                )
+                .build()
+
+            val cleanBase = baseUrl.trim().removeSuffix("/")
+            val endpoint = if (cleanBase.endsWith("/audio/transcriptions")) cleanBase else "$cleanBase/audio/transcriptions"
+
+            val request = Request.Builder()
+                .url(endpoint)
+                .addHeader("Authorization", "Bearer ${apiKey.trim()}")
+                .post(requestBody)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val latency = System.currentTimeMillis() - startTime
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string() ?: "Unknown error"
+                    return@withContext Result.failure(
+                        Exception("$name failed (${response.code}): $errorBody")
+                    )
+                }
+
+                val responseString = response.body?.string() ?: ""
+                val rootObj = json.decodeFromString<JsonObject>(responseString)
+                val text = rootObj["text"]?.jsonPrimitive?.contentOrNull?.trim() ?: ""
+
+                val words = text.split("\\s+".toRegex()).filter { it.isNotBlank() }.size.toLong()
+                val estimatedAudioSeconds = (audioFile.length() / (16_000 * 2)).coerceAtLeast(1L)
+                onAudioTranscribed?.invoke(estimatedAudioSeconds, words, latency)
+
+                Result.success(text)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+
+/**
  * On-Device transcription engine leveraging whisper.cpp or native ONNX Whisper.
  * Executes offline on device CPU/NPU.
  */

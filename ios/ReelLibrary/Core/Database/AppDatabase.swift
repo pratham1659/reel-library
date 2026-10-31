@@ -14,7 +14,7 @@ private let logger = Logger(subsystem: "com.reellibrary.app", category: "AppData
 public final class AppDatabase: Sendable {
     public let dbQueue: DatabaseQueue
 
-    public static let appGroupIdentifier = "group.com.reellibrary.vault"
+    public static let appGroupIdentifier = "group.io.github.alokkr016.reellibrary"
     public static let databaseFilename = "reel_library.sqlite"
 
     /// Shared singleton instance pointing to the App Group container or local Application Support.
