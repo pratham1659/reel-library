@@ -1,7 +1,9 @@
 # Reel Library 📱⚡
 
+[![Release](https://img.shields.io/badge/Release-v1.1.0-orange.svg)](https://github.com/pratham1659/reel-library/releases/tag/v1.1.0)
 [![Android](https://img.shields.io/badge/Platform-Android_8.0+_(API_26--36)-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
 [![iOS](https://img.shields.io/badge/Platform-iOS_17.0+-000000?logo=apple&logoColor=white)](https://developer.apple.com/ios/)
+[![iPadOS](https://img.shields.io/badge/Platform-iPadOS_17.0+-000000?logo=apple&logoColor=white)](https://developer.apple.com/ipados/)
 [![Swift](https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/UI-Jetpack_Compose_Material_3-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
@@ -10,7 +12,7 @@
 [![Security](https://img.shields.io/badge/Security-Keychain_%2B_Keystore-10B981)](https://developer.apple.com/documentation/security/keychain_services)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-**Reel Library** is a multi-platform native mobile intelligence vault (Android & iOS) that transforms fleeting Instagram Reels into structured, searchable knowledge assets. Captured seamlessly via the system share sheet, each reel is ingested in the background, its audio transcribed into clean Hinglish/English text, and synthesized into actionable executive briefings using hybrid on-device and ultra-low-latency cloud intelligence.
+**Reel Library** is a multi-platform native mobile intelligence vault (**Android & iOS/iPadOS**) that transforms fleeting Instagram Reels into structured, searchable knowledge assets. Captured seamlessly via the system share sheet, each reel is ingested in the background, its audio transcribed into clean Hinglish/English text, and synthesized into actionable executive briefings using hybrid on-device and ultra-low-latency cloud intelligence.
 
 ---
 
@@ -21,178 +23,125 @@
   - Sub-second speech-to-text via **Whisper Large v3 Turbo** (`whisper-large-v3-turbo`) with Roman Latin Hinglish formatting.
   - Multi-tiered executive summarization with automatic fallback (`qwen/qwen3.8-27b` ➔ `llama-3.3-70b-versatile` ➔ `llama-3.1-8b-instant`).
 - **Local On-Device Mode**:
-  - 100% offline, privacy-preserving LLM inference using **MediaPipe Tasks GenAI** (quantized Gemma 2B) and local whisper weights.
+  - **iOS/iPadOS**: 100% offline, privacy-preserving speech transcription powered by **WhisperKit** running on the Apple Neural Engine (ANE) and local quantized models.
+  - **Android**: 100% offline LLM inference using **MediaPipe Tasks GenAI** (quantized Gemma 2B) and local whisper weights.
 - **Auto-Hybrid Dispatcher**:
-  - Automatically assesses network availability, model weight availability, and user preferences to select the optimal processing pipeline.
+  - Automatically assesses network availability (via `NWPathMonitor` on iOS / `ConnectivityManager` on Android), model weight availability, and user preferences to route processing.
+
+### 📱 Universal iPhone & iPad Native Experience
+- **Adaptive Multi-Column Grid**: Smoothly scales from 2 columns on iPhone up to 4–6 columns on iPad Pro / iPad Air.
+- **iPadOS Multitasking**: Full native support for Split View, Slide Over, and Stage Manager window resizing.
+- **1-Tap Share Sheet Extension**: Native Share Sheet integration (`ReelLibraryShare`) that ingests reel metadata into local SQLite in `< 200ms` without exceeding iOS sandbox limits.
 
 ### 📊 Real-Time Cloud Telemetry & Zero Mock Data
-- **Live Latency & Network Ping**: Precision round-trip latency measured and displayed down to the millisecond (e.g. `⚡ 165ms`).
+- **Live Latency & Network Ping**: Precision round-trip latency measured and displayed down to the millisecond (e.g. `⚡ 165ms • Cloud`).
 - **Granular Token Telemetry**: Real-time tracking of `prompt_tokens`, `completion_tokens`, and audio duration parsed directly from provider responses.
 - **Color-Coded Status Diagnostics**: Live verification badges for HTTP `200 OK`, `401 Unauthorized`, and `429 Rate Limited`.
 
 ### 🛡️ Pre-Release Security & Privacy Hardening
-- **SecureKeyVault**: Hardware-backed Android Keystore (`MasterKeys`) with zero plaintext fallback. In-memory session cache safeguards user API keys with atomic migration and safe deletion.
-- **Prompt Injection Fencing**: User captions and audio transcripts are isolated inside `<spoken_transcript>` and `<post_caption>` XML blocks with strict boundary truncation (12,000 char transcript / 4,000 char caption) to prevent jailbreaking or instruction hijacking.
-- **Network Audio Size Guard**: Strict 25 MB boundary guard (`MAX_GROQ_AUDIO_BYTES = 25L * 1024L * 1024L`) validated before network payload serialization.
-- **Backup & Extraction Guard**: Configured with `android:allowBackup="false"` and Android 12+ `data-extraction-rules` excluding hardware-bound encryption keys and local databases from cloud backups and D2D transfers.
-- **ProGuard / R8 Optimization**: Targeted constructor preservation for `@Serializable`, `@Entity`, and `Worker` classes while stripping diagnostic logging (`Log.d`, `Log.v`, `Log.i`, `Log.w`) from release binaries.
+- **Hardware-Secured Key Vaults**:
+  - **iOS**: Apple **Keychain Services** (`kSecClassGenericPassword`) backed by the **Secure Enclave**.
+  - **Android**: Hardware-backed Android Keystore (`MasterKeys`) with zero plaintext fallback.
+- **Prompt Injection Fencing**: User captions and audio transcripts are isolated inside `<spoken_transcript>` and `<post_caption>` XML blocks with strict boundary truncation (12,000 char transcript / 4,000 char caption) and anti-tag breakout neutralization.
+- **Network Audio Size Guard**: Strict 25 MB boundary guard (`MAX_GROQ_AUDIO_BYTES = 25 * 1024 * 1024`) validated before network payload serialization.
+- **Strict HTTPS & Domain Whitelisting**: Network extraction is restricted strictly to verified `https://*.instagram.com` domains, preventing SSRF or malicious redirects.
 
 ### 🎨 Obsidian Neumorphic UI
-- **Design System**: Hand-crafted Obsidian Dark and Obsidian Light themes with smooth depth elevation and high-contrast typography.
-- **Infinite Drawer & Grid Virtualization**: Smooth Jetpack Compose `LazyColumn` and `LazyVerticalGrid` virtualization eliminating pagination lag and item limits.
-- **Instant Search & Topic Tagging**: Room SQLite FTS4 full-text search across transcripts, captions, titles, and generated tags.
+- **Design System**: Hand-crafted Obsidian Dark and Obsidian Light themes with tactile depth elevation and high-contrast typography.
+- **Infinite Virtualization**: Smooth Jetpack Compose `LazyVerticalGrid` on Android and SwiftUI `LazyVGrid` on iOS eliminating pagination lag.
+- **Instant Search & Topic Tagging**: SQLite FTS4 (Android Room) and SQLite FTS5 (iOS GRDB) full-text search across transcripts, captions, titles, and generated tags.
 
 ---
 
-## 🏗️ Ingestion Workflow
+## 🏗️ Multi-Platform Ingestion Workflow
 
 ```mermaid
 flowchart TD
-    A[Instagram Reel] -->|Tap Share| B[ShareReceiverActivity]
-    B -->|Parse URL & Shortcode| C[AppDatabase & Room Queue]
-    C -->|OneTimeWorkRequest| D[ReelIngestWorker]
-    
-    subgraph Engine Dispatcher
-        D -->|Fetch Audio Stream| E[Instagram CDN Extractor]
-        E --> F{Engine Mode}
-        F -->|Cloud-Only / Hybrid| G[Groq Whisper Cloud]
-        F -->|Local-Only| H[MediaPipe Gemma On-Device]
-        G --> I[Hinglish Roman Script Transcript]
-        H --> J[Offline Raw Transcript]
-        I --> K[Groq LLM Summarizer]
-        J --> K
+    subgraph Capture Layer
+        A1[Instagram Reel on Android] -->|Tap Share Sheet| B1[ShareReceiverActivity]
+        A2[Instagram Reel on iOS / iPadOS] -->|Tap Share Sheet| B2[ReelLibraryShare Extension]
     end
     
-    K -->|Extract Title, Briefing, Takeaways, Tags| L[Room DB + SQLite FTS4]
-    L --> M[System Notification & Vault UI]
+    B1 -->|Queue in Room DB| C1[Android ReelIngestWorker]
+    B2 -->|Queue in SQLite DB| C2[iOS Ingestion Pipeline]
+    
+    subgraph Engine Dispatcher
+        C1 & C2 -->|Extract Audio Stream| D[Audio Extractor]
+        D --> E{Engine Mode}
+        E -->|Cloud-Only / Auto-Hybrid| F[Groq Whisper Cloud LPU]
+        E -->|Local-Only / Offline| G[On-Device WhisperKit / MediaPipe]
+        F --> H[Hinglish Roman Script Transcript]
+        G --> I[Offline Raw Transcript]
+        H & I --> J[Groq LLM Summarizer Chain]
+    end
+    
+    J -->|Extract Title, Briefing, Takeaways, Tags| K[(SQLite Local Vault + FTS)]
+    K --> L[Local System Notification & Obsidian UI]
 ```
 
 ---
 
 ## 📦 Production Release Artifacts
 
-Every production build generates a signed, minified, and verified APK package:
-
-| Artifact | Location |
-| :--- | :--- |
-| **Production Release Package** | `release/ReelLibrary-release-v1.0.apk` |
-| **Gradle Output Direct Path** | `app/build/outputs/apk/release/ReelLibrary-release-v1.0.apk` |
-| **Target Signature Scheme** | **APK Signature Scheme v2 (Strict)** |
-| **Signer Identity** | `CN=Reel Library, OU=Engineering, O=Reel Library, L=San Francisco, ST=CA, C=US` |
-
-### One-Step Release Build Command:
-```bash
-./gradlew validateSigningRelease assembleRelease
-```
-*Note: The Gradle release task enforces strict verification and automatically copies and standardizes the output name to `ReelLibrary-release-v1.0.apk` in the root `release/` directory.*
+| Platform | Target Artifact | Location | Packaging Scheme |
+| :--- | :--- | :--- | :--- |
+| **Android** | `ReelLibrary-release-v1.0.apk` | `release/ReelLibrary-release-v1.0.apk` | APK Signature Scheme v2 (Strict) |
+| **iOS / iPadOS** | `ReelLibrary.xcarchive` / `.ipa` | `release/ReelLibrary.xcarchive` | Apple Distribution (arm64) |
 
 ---
 
-## 📲 Quick Install
+## 🛠️ Multi-Platform Tech Stack
 
-### Install via ADB to Connected Device:
-```bash
-adb install -r release/ReelLibrary-release-v1.0.apk
-```
-
----
-
-## 🛠️ Tech Stack & Architecture
-
-- **Architecture**: MVI / MVVM with Clean Architecture & Unidirectional Data Flow (UDF)
-- **Language**: Kotlin 2.0.21
-- **UI Framework**: Jetpack Compose (BOM 2024.10.01) + Material 3
-- **Local Persistence**: AndroidX Room 2.6.1 + SQLite FTS4
-- **Security**: AndroidX Security Crypto (`EncryptedSharedPreferences`, `MasterKeys`)
-- **Background Tasks**: AndroidX WorkManager 2.10.0
-- **Networking**: Square OkHttp 4.12.0
-- **Serialization**: Kotlinx Serialization JSON 1.7.3
-- **Image Pipeline**: Coil Compose 2.7.0
-- **On-Device AI**: Google MediaPipe Tasks GenAI 0.10.14
+| Component | Android Architecture | iOS / iPadOS Architecture |
+| :--- | :--- | :--- |
+| **Language** | Kotlin 2.0.21 | Swift 6.0 (Strict Concurrency) |
+| **UI Framework** | Jetpack Compose + Material 3 | SwiftUI (Obsidian Neumorphic) |
+| **Local Persistence** | AndroidX Room 2.6.1 + SQLite FTS4 | GRDB.swift 6.x + SQLite FTS5 (BM25) |
+| **Security** | AndroidX Security Crypto (`MasterKeys`) | Apple Keychain Services (Secure Enclave) |
+| **Background Processing** | AndroidX WorkManager 2.10.0 | `BGProcessingTask` + `URLSession` |
+| **Networking** | Square OkHttp 4.12.0 | Native Swift `URLSession` |
+| **On-Device AI** | Google MediaPipe Tasks GenAI | Apple Neural Engine via WhisperKit CoreML |
+| **Cloud Intelligence** | Groq LPU (Whisper + Qwen / LLaMA) | Groq LPU (Whisper + Qwen / LLaMA) |
 
 ---
 
 ## 🚀 Getting Started for Developers
 
-### Prerequisites
-- **Android Studio**: Ladybug (2024.2.1+) or newer
-- **JDK**: Version 21 (configured in `compileOptions`)
-- **Android SDK**: API 36 Platform Tools
-
-### Build Instructions
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/pratham1659/reel-library.git
-   cd reel-library
-   ```
-
+### Android Build Instructions
+1. **Prerequisites**: Android Studio Ladybug (2024.2.1+), JDK 21, Android SDK API 36.
 2. **Run Unit Tests**:
    ```bash
    ./gradlew testDebugUnitTest
    ```
-
 3. **Assemble Debug Build**:
    ```bash
    ./gradlew assembleDebug
    adb install -r app/build/outputs/apk/debug/app-debug.apk
    ```
 
-4. **Assemble Signed Production Release**:
-   Configure your `keystore.properties` in the project root:
-   ```properties
-   storeFile=/path/to/release.keystore
-   storePassword=your_store_password
-   keyAlias=your_key_alias
-   keyPassword=your_key_password
-   ```
-   Then run:
-   ```bash
-   ./gradlew validateSigningRelease assembleRelease
-   ```
-   The finalized package will be output to `release/ReelLibrary-release-v1.0.apk`.
-
-### iOS Build Instructions (Swift 6 & Xcode)
-
-1. **Prerequisites**:
-   - macOS 14.0+ (Sonoma or Sequoia)
-   - Xcode 15.0+ or 16.0+ (Swift 6.0)
-   - XcodeGen (`brew install xcodegen`)
-
+### iOS & iPadOS Build Instructions
+1. **Prerequisites**: macOS 14.0+ (Sonoma or Sequoia), Xcode 15.0+ or 16.0+ (Swift 6.0), XcodeGen (`brew install xcodegen`).
 2. **Generate Xcode Project & Run Tests**:
    ```bash
    cd ios
    xcodegen generate
    xcodebuild test -scheme ReelLibraryTests -destination 'platform=iOS Simulator,name=iPhone 17'
    ```
-
-3. **Open & Run in Xcode**:
+3. **Install to Connected iPad / iPhone**:
    ```bash
    open ios/ReelLibrary.xcodeproj
+   # Or via command line:
+   xcodebuild build -project ios/ReelLibrary.xcodeproj -scheme ReelLibrary -destination 'id=<DEVICE_UDID>'
    ```
 
 ---
 
-## 🔒 Security Policy
+## 🔒 Security & Privacy Policy
 
-If you discover a security vulnerability or potential credential exposure, please avoid public disclosures. Open a private GitHub Advisory or report directly to the repository maintainer.
+Reel Library does not collect, sell, or transmit your personal data to any third-party analytics or tracking servers. All indexing, notes, and full-text searches happen **100% locally on your device**. Cloud AI requests only occur in Cloud Mode using your personal Groq API key directly with Groq's official API.
 
 ---
 
 ## 📄 License
 
-```text
-Copyright 2026 Reel Library Contributors
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-```
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
