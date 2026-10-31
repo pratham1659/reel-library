@@ -268,6 +268,78 @@ class SecureKeyVaultTest {
         assertEquals("gsk_active_vault_key", targetEncrypted.getString(SecureKeyVault.KEY_GROQ_API, ""))
         assertEquals("DARK_MODE", unrelatedStore.getString("user_theme", ""))
     }
+
+    // =========================================================================
+    // 8. Multi-Provider Credential Storage & Isolation (OpenAI, Claude, Custom)
+    // =========================================================================
+
+    @Test
+    fun testMultiProviderKeysStorageRetrievalAndDeletion() {
+        val targetEncrypted = getFakeStore(SecureKeyVault.PREFS_FILENAME)
+        val vault = SecureKeyVault.createForTesting(
+            context = mockContext,
+            encryptedPrefsSupplier = { targetEncrypted },
+            legacyPrefsResolver = { name -> getFakeStore(name) }
+        )
+
+        // 1. Initially all keys empty
+        assertEquals("", vault.getGroqApiKey())
+        assertEquals("", vault.getOpenAIApiKey())
+        assertEquals("", vault.getClaudeApiKey())
+        assertEquals("", vault.getCustomApiKey())
+
+        // 2. Set individual provider keys
+        vault.setGroqApiKey("gsk_test_groq_123")
+        vault.setOpenAIApiKey("sk-test-openai-456")
+        vault.setClaudeApiKey("sk-ant-test-claude-789")
+        vault.setCustomApiKey("custom-sk-endpoint-999")
+
+        // 3. Verify each key is independently stored and retrieved
+        assertEquals("gsk_test_groq_123", vault.getGroqApiKey())
+        assertEquals("sk-test-openai-456", vault.getOpenAIApiKey())
+        assertEquals("sk-ant-test-claude-789", vault.getClaudeApiKey())
+        assertEquals("custom-sk-endpoint-999", vault.getCustomApiKey())
+
+        // 4. Verify deletion of one provider does not affect other providers
+        vault.deleteOpenAIApiKey()
+        assertEquals("", vault.getOpenAIApiKey())
+        assertEquals("gsk_test_groq_123", vault.getGroqApiKey())
+        assertEquals("sk-ant-test-claude-789", vault.getClaudeApiKey())
+        assertEquals("custom-sk-endpoint-999", vault.getCustomApiKey())
+
+        vault.deleteClaudeApiKey()
+        assertEquals("", vault.getClaudeApiKey())
+        assertEquals("gsk_test_groq_123", vault.getGroqApiKey())
+        assertEquals("custom-sk-endpoint-999", vault.getCustomApiKey())
+
+        vault.deleteCustomApiKey()
+        assertEquals("", vault.getCustomApiKey())
+        assertEquals("gsk_test_groq_123", vault.getGroqApiKey())
+
+        vault.deleteGroqApiKey()
+        assertEquals("", vault.getGroqApiKey())
+    }
+
+    @Test
+    fun testMultiProviderFallbackInMemoryWhenKeystoreUnavailable() {
+        val vault = SecureKeyVault.createForTesting(
+            context = mockContext,
+            encryptedPrefsSupplier = { null }, // Simulates Keystore unavailable
+            legacyPrefsResolver = { name -> getFakeStore(name) }
+        )
+
+        vault.setOpenAIApiKey("sk-ram-openai")
+        vault.setClaudeApiKey("sk-ant-ram-claude")
+        vault.setCustomApiKey("custom-ram-key")
+
+        assertEquals("sk-ram-openai", vault.getOpenAIApiKey())
+        assertEquals("sk-ant-ram-claude", vault.getClaudeApiKey())
+        assertEquals("custom-ram-key", vault.getCustomApiKey())
+
+        vault.deleteOpenAIApiKey()
+        assertEquals("", vault.getOpenAIApiKey())
+        assertEquals("sk-ant-ram-claude", vault.getClaudeApiKey())
+    }
 }
 
 // =============================================================================

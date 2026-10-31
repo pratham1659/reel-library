@@ -147,30 +147,49 @@ class SecureKeyVault internal constructor(
         }
     }
 
-    fun getGroqApiKey(): String {
-        return sharedPreferences?.getString(KEY_GROQ_API, "")?.ifBlank { null }
-            ?: inMemoryFallback[KEY_GROQ_API]
+    fun getKey(keyName: String): String {
+        return sharedPreferences?.getString(keyName, "")?.ifBlank { null }
+            ?: inMemoryFallback[keyName]
             ?: ""
     }
 
-    fun setGroqApiKey(key: String) {
-        val trimmed = key.trim()
+    fun setKey(keyName: String, value: String) {
+        val trimmed = value.trim()
         if (trimmed.isBlank()) {
-            deleteGroqApiKey()
+            deleteKey(keyName)
         } else {
-            sharedPreferences?.edit()?.putString(KEY_GROQ_API, trimmed)?.commit()
-            inMemoryFallback[KEY_GROQ_API] = trimmed
+            sharedPreferences?.edit()?.putString(keyName, trimmed)?.commit()
+            inMemoryFallback[keyName] = trimmed
         }
     }
 
-    fun deleteGroqApiKey() {
-        sharedPreferences?.edit()?.remove(KEY_GROQ_API)?.commit()
-        inMemoryFallback.remove(KEY_GROQ_API)
-        wipeKeyFromAllLocations(KEY_GROQ_API)
+    fun deleteKey(keyName: String) {
+        sharedPreferences?.edit()?.remove(keyName)?.commit()
+        inMemoryFallback.remove(keyName)
+        wipeKeyFromAllLocations(keyName)
     }
+
+    fun getGroqApiKey(): String = getKey(KEY_GROQ_API)
+    fun setGroqApiKey(key: String) = setKey(KEY_GROQ_API, key)
+    fun deleteGroqApiKey() = deleteKey(KEY_GROQ_API)
+
+    fun getOpenAIApiKey(): String = getKey(KEY_OPENAI_API)
+    fun setOpenAIApiKey(key: String) = setKey(KEY_OPENAI_API, key)
+    fun deleteOpenAIApiKey() = deleteKey(KEY_OPENAI_API)
+
+    fun getClaudeApiKey(): String = getKey(KEY_CLAUDE_API)
+    fun setClaudeApiKey(key: String) = setKey(KEY_CLAUDE_API, key)
+    fun deleteClaudeApiKey() = deleteKey(KEY_CLAUDE_API)
+
+    fun getCustomApiKey(): String = getKey(KEY_CUSTOM_API)
+    fun setCustomApiKey(key: String) = setKey(KEY_CUSTOM_API, key)
+    fun deleteCustomApiKey() = deleteKey(KEY_CUSTOM_API)
 
     fun clearAllKeys() {
         deleteGroqApiKey()
+        deleteOpenAIApiKey()
+        deleteClaudeApiKey()
+        deleteCustomApiKey()
     }
 
     /**
@@ -192,6 +211,9 @@ class SecureKeyVault internal constructor(
     companion object {
         internal const val PREFS_FILENAME = "reel_library_vault_encrypted"
         internal const val KEY_GROQ_API = "vault_groq_api_key"
+        internal const val KEY_OPENAI_API = "vault_openai_api_key"
+        internal const val KEY_CLAUDE_API = "vault_anthropic_api_key"
+        internal const val KEY_CUSTOM_API = "vault_custom_api_key"
         internal const val KEY_MIGRATION_DONE = "vault_migration_completed"
 
         @Volatile

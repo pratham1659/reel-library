@@ -263,6 +263,54 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun setSelectedProvider(provider: com.reelrecall.app.data.repository.AIProvider) {
+        viewModelScope.launch {
+            repository.setSelectedProvider(provider)
+        }
+    }
+
+    fun setOpenAIApiKey(key: String) {
+        viewModelScope.launch {
+            repository.setOpenAIApiKey(key)
+        }
+    }
+
+    fun deleteOpenAIApiKey() {
+        viewModelScope.launch {
+            repository.deleteOpenAIApiKey()
+        }
+    }
+
+    fun setClaudeApiKey(key: String) {
+        viewModelScope.launch {
+            repository.setClaudeApiKey(key)
+        }
+    }
+
+    fun deleteClaudeApiKey() {
+        viewModelScope.launch {
+            repository.deleteClaudeApiKey()
+        }
+    }
+
+    fun setCustomApiKey(key: String) {
+        viewModelScope.launch {
+            repository.setCustomApiKey(key)
+        }
+    }
+
+    fun deleteCustomApiKey() {
+        viewModelScope.launch {
+            repository.deleteCustomApiKey()
+        }
+    }
+
+    fun setCustomSettings(baseUrl: String, summarizerModel: String, transcriptionModel: String) {
+        viewModelScope.launch {
+            repository.setCustomSettings(baseUrl, summarizerModel, transcriptionModel)
+        }
+    }
+
     // ==========================================
     // PREFERENCE SETTERS
     // ==========================================
@@ -561,7 +609,126 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // ==========================================
     // HEALTH CHECK & MODEL TESTING
     // ==========================================
-    fun testCloudConnection(groqKey: String = "") {
+    fun testCloudConnection(overrideKey: String = "") {
+        val currentProvider = preferences.value.selectedProvider
+        if (currentProvider == com.reelrecall.app.data.repository.AIProvider.GROQ) {
+            testGroqConnection(overrideKey)
+        } else {
+            testGenericCloudConnection(currentProvider, overrideKey)
+        }
+    }
+
+    private fun testGenericCloudConnection(provider: com.reelrecall.app.data.repository.AIProvider, overrideKey: String) {
+        viewModelScope.launch {
+            _cloudTestResult.value = ModelTestResult(isTesting = true, message = "Testing ${provider.displayName} endpoint...")
+
+            val startTime = SystemClock.elapsedRealtime()
+            val result = withContext(Dispatchers.IO) {
+                val cleanKey = overrideKey.trim()
+                    .removePrefix("Bearer ")
+                    .removePrefix("bearer ")
+                    .removeSurrounding("\"")
+                    .removeSurrounding("'")
+                    .trim()
+                    .ifBlank {
+                        when (provider) {
+                            com.reelrecall.app.data.repository.AIProvider.OPENAI -> preferences.value.openAIApiKey.trim()
+                            com.reelrecall.app.data.repository.AIProvider.CLAUDE -> preferences.value.claudeApiKey.trim()
+                            com.reelrecall.app.data.repository.AIProvider.CUSTOM -> preferences.value.customApiKey.trim()
+                            else -> ""
+                        }
+                    }
+
+                if (cleanKey.isBlank()) {
+                    return@withContext ModelTestResult(
+                        isTesting = false,
+                        isSuccess = false,
+                        message = "Missing ${provider.displayName} API key.",
+                        statusCode = "401 No Key",
+                        endpointResults = listOf(
+                            CloudEndpointTestResult(
+                                provider = provider.displayName,
+                                isSuccess = false,
+                                statusCode = 401,
+                                statusMessage = "401 No API Key",
+                                latencyMs = 0L,
+                                modelName = provider.defaultSummarizerModel,
+                                errorDetails = "No API key configured for ${provider.displayName}."
+                            )
+                        )
+                    )
+                }
+
+                val reqBuilder = Request.Builder()
+                when (provider) {
+                    com.reelrecall.app.data.repository.AIProvider.OPENAI -> {
+                        reqBuilder.url("https://api.openai.com/v1/models")
+                        reqBuilder.addHeader("Authorization", "Bearer $cleanKey")
+                    }
+                    com.reelrecall.app.data.repository.AIProvider.CLAUDE -> {
+                        reqBuilder.url("https://api.anthropic.com/v1/models")
+                        reqBuilder.addHeader("x-api-key", cleanKey)
+                        reqBuilder.addHeader("anthropic-version", "2023-06-01")
+                    }
+                    com.reelrecall.app.data.repository.AIProvider.CUSTOM -> {
+                        val base = preferences.value.customBaseUrl.trim().removeSuffix("/")
+                        val endpoint = if (base.endsWith("/models")) base else "$base/models"
+                        reqBuilder.url(endpoint)
+                        reqBuilder.addHeader("Authorization", "Bearer $cleanKey")
+                    }
+                    else -> {}
+                }
+
+                var latency: Long = 0L
+                var isSuccess = false
+                var statusCodeStr = ""
+                var message = ""
+                var errorDetails: String? = null
+                var code = 0
+
+                try {
+                    val res = httpClient.newCall(reqBuilder.build()).execute()
+                    latency = SystemClock.elapsedRealtime() - startTime
+                    code = res.code
+                    val bodyStr = res.body?.string() ?: ""
+                    isSuccess = res.isSuccessful || code == 404
+                    statusCodeStr = "$code ${res.message}"
+                    message = if (isSuccess) "Connected (${latency}ms) • $statusCodeStr" else "Failed (${latency}ms) • $statusCodeStr"
+                    errorDetails = if (isSuccess) null else bodyStr
+                } catch (e: Exception) {
+                    latency = SystemClock.elapsedRealtime() - startTime
+                    code = 0
+                    isSuccess = false
+                    statusCodeStr = "Connection Error"
+                    message = "Connection failed: ${e.message}"
+                    errorDetails = e.localizedMessage
+                }
+
+                ModelTestResult(
+                    isTesting = false,
+                    isSuccess = isSuccess,
+                    message = message,
+                    latencyMs = latency,
+                    statusCode = statusCodeStr,
+                    endpointResults = listOf(
+                        CloudEndpointTestResult(
+                            provider = provider.displayName,
+                            isSuccess = isSuccess,
+                            statusCode = code,
+                            statusMessage = statusCodeStr,
+                            latencyMs = latency,
+                            modelName = provider.defaultSummarizerModel,
+                            errorDetails = errorDetails
+                        )
+                    )
+                )
+            }
+
+            _cloudTestResult.value = result
+        }
+    }
+
+    private fun testGroqConnection(groqKey: String = "") {
         viewModelScope.launch {
             _cloudTestResult.value = ModelTestResult(isTesting = true, message = "Testing Groq cloud endpoint with live payload...")
 

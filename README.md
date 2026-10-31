@@ -103,7 +103,7 @@ flowchart TD
 | **Background Processing** | AndroidX WorkManager 2.10.0 | `BGProcessingTask` + `URLSession` |
 | **Networking** | Square OkHttp 4.12.0 | Native Swift `URLSession` |
 | **On-Device AI** | Google MediaPipe Tasks GenAI | Apple Neural Engine via WhisperKit CoreML |
-| **Cloud Intelligence** | Groq LPU (Whisper + Qwen / LLaMA) | Groq LPU, OpenAI (GPT-4o), Claude 3.5, Custom APIs |
+| **Cloud Intelligence** | Groq LPU, OpenAI (GPT-4o / Whisper), Claude 3.5, Custom APIs | Groq LPU, OpenAI (GPT-4o / Whisper), Claude 3.5, Custom APIs |
 
 ---
 
