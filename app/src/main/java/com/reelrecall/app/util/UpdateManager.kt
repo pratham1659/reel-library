@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 object UpdateManager {
 
     // Default Cloudflare Worker endpoint for update metadata
-    const val DEFAULT_UPDATE_ENDPOINT = "https://reel-library-update.pratham1659.workers.dev/check"
+    const val DEFAULT_UPDATE_ENDPOINT = "https://reel-library-update.prathamkumar1985.workers.dev/check"
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)

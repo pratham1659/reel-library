@@ -40,7 +40,7 @@ This Cloudflare Worker powers the **in-app "Check for updates"** feature on Andr
 5. Click **Edit Code** (Quick Edit) in the top-right corner.
 6. Copy and paste the entire code from [`index.js`](./index.js) into `worker.js`.
 7. Click **Deploy**.
-8. Your worker is live at `https://reel-library-update.<your-subdomain>.workers.dev`!
+8. Your worker is live at `https://reel-library-update.prathamkumar1985.workers.dev`!
 
 ### Method 2: Wrangler CLI
 
