@@ -17,8 +17,8 @@ android {
         applicationId = "com.reelrecall.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -132,7 +132,7 @@ android {
         if (variant.buildType.name == "release") {
             variant.outputs.all {
                 val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
-                output?.outputFileName = "ReelLibrary-release-v1.0.apk"
+                output?.outputFileName = "ReelLibrary-release-v${variant.versionName}.apk"
             }
         }
     }
@@ -142,7 +142,7 @@ val copyReleaseApk by tasks.registering(Copy::class) {
     from(layout.buildDirectory.dir("outputs/apk/release"))
     include("*.apk")
     into(rootProject.layout.projectDirectory.dir("release"))
-    rename { "ReelLibrary-release-v1.0.apk" }
+    rename { "ReelLibrary-release-v1.2.0.apk" }
 }
 
 tasks.matching { it.name == "assembleRelease" }.configureEach {
