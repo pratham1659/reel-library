@@ -189,6 +189,9 @@ dependencies {
     // MediaPipe GenAI for On-Device LLM Inference
     implementation("com.google.mediapipe:tasks-genai:0.10.14")
 
+    // Google Sign-In & Google Play Services Auth for Google Drive Personal Cloud
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
+
     // Unit Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -1,9 +1,11 @@
 package com.reelrecall.app.ui.screens.settings
 
 import com.reelrecall.app.BuildConfig
+import com.reelrecall.app.data.cloud.GoogleDriveFile
 import com.reelrecall.app.data.model.AppUpdateInfo
 import com.reelrecall.app.util.UpdateManager
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -6211,11 +6213,57 @@ private fun DataStorageScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val preferences by viewModel.preferences.collectAsState()
-    val isBackingUp by viewModel.isCloudBackingUp.collectAsState()
-    val backupProgress by viewModel.cloudBackupProgress.collectAsState()
+    val isDriveBackingUp by viewModel.isGoogleDriveBackingUp.collectAsState()
+    val isDriveRestoring by viewModel.isGoogleDriveRestoring.collectAsState()
+    val driveSyncStatus by viewModel.googleDriveSyncStatus.collectAsState()
+    val driveBackups by viewModel.googleDriveBackupsList.collectAsState()
+    val isLoadingBackups by viewModel.isLoadingDriveBackups.collectAsState()
+    val recoverableIntent by viewModel.recoverableAuthIntent.collectAsState()
 
+    var showRestoreDialog by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
     var isImporting by remember { mutableStateOf(false) }
+
+    // Google Sign-In Activity Result Launcher
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        viewModel.handleGoogleSignInResult(
+            data = result.data,
+            onSuccess = {
+                Toast.makeText(context, "Connected to Google Drive!", Toast.LENGTH_SHORT).show()
+            },
+            onError = { errorMsg ->
+                Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+            }
+        )
+    }
+
+    // Google Auth User-Recoverable Intent Launcher
+    val recoverableAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            viewModel.performGoogleDriveBackup(
+                context,
+                onSuccess = { Toast.makeText(context, "Google Drive backup complete!", Toast.LENGTH_SHORT).show() },
+                onError = { err -> Toast.makeText(context, err, Toast.LENGTH_LONG).show() }
+            )
+        }
+    }
+
+    LaunchedEffect(recoverableIntent) {
+        recoverableIntent?.let { intent ->
+            recoverableAuthLauncher.launch(intent)
+            viewModel.recoverableAuthIntent.value = null
+        }
+    }
+
+    LaunchedEffect(preferences.isGoogleDriveConnected) {
+        if (preferences.isGoogleDriveConnected) {
+            viewModel.fetchGoogleDriveBackups(context)
+        }
+    }
 
     // Activity launcher for importing universal backup (.zip / .json)
     val importLauncher = rememberLauncherForActivityResult(
@@ -6297,14 +6345,13 @@ private fun DataStorageScreen(
                 .padding(horizontal = 18.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // CARD 1: GOOGLE CLOUD BACKUP (COMING SOON & DISABLED)
+            // CARD 1: GOOGLE DRIVE (PERSONAL CLOUD BACKUP)
             NeumorphicCard(
                 colors = colors,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .alpha(0.45f)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
+                    // Header Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -6316,28 +6363,33 @@ private fun DataStorageScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
+                                    .size(42.dp)
                                     .clip(CircleShape)
-                                    .background(colors.textMuted.copy(alpha = 0.15f)),
+                                    .background(
+                                        if (preferences.isGoogleDriveConnected)
+                                            StatusReady.copy(alpha = 0.15f)
+                                        else
+                                            CyanAccent.copy(alpha = 0.15f)
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.CloudUpload,
+                                    imageVector = if (preferences.isGoogleDriveConnected) Icons.Default.CloudDone else Icons.Default.CloudUpload,
                                     contentDescription = null,
-                                    tint = colors.textMuted,
+                                    tint = if (preferences.isGoogleDriveConnected) StatusReady else CyanAccent,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "Google Cloud Backup",
+                                    text = "Google Drive (Personal Cloud)",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = colors.textPrimary
                                 )
                                 Text(
-                                    text = "Auto-sync reels, transcripts & metadata to Google Cloud",
+                                    text = "Private backup in /ReelLibrary_Vault",
                                     fontSize = 11.sp,
                                     color = colors.textSecondary
                                 )
@@ -6346,16 +6398,32 @@ private fun DataStorageScreen(
 
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = colors.pillBg,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
-                        ) {
-                            Text(
-                                text = "Coming Soon",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textMuted,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            color = if (preferences.isGoogleDriveConnected) StatusReady.copy(alpha = 0.15f) else colors.pillBg,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (preferences.isGoogleDriveConnected) StatusReady.copy(alpha = 0.35f) else colors.border
                             )
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                if (preferences.isGoogleDriveConnected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(StatusReady)
+                                    )
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                }
+                                Text(
+                                    text = if (preferences.isGoogleDriveConnected) "Connected" else "Not Connected",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (preferences.isGoogleDriveConnected) StatusReady else colors.textMuted
+                                )
+                            }
                         }
                     }
 
@@ -6363,67 +6431,357 @@ private fun DataStorageScreen(
                     NeumorphicDivider(colors = colors)
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Switch: Enable Cloud Backup (Disabled)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Back up to Google Cloud",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = colors.textMuted
+                    if (!preferences.isGoogleDriveConnected) {
+                        // Unconnected State
+                        Text(
+                            text = "Connect your private Google Drive to securely back up and restore your reels, AI summaries, and full transcripts. Backups are stored in your own Google Drive in the folder /ReelLibrary_Vault.",
+                            fontSize = 12.sp,
+                            color = colors.textSecondary,
+                            lineHeight = 17.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        NeumorphicButton(
+                            onClick = {
+                                val signInIntent = viewModel.getGoogleSignInIntent(context)
+                                googleSignInLauncher.launch(signInIntent)
+                            },
+                            colors = colors,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudUpload,
+                                    contentDescription = null,
+                                    tint = CyanAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Connect Google Drive",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                tint = colors.textMuted,
+                                modifier = Modifier.size(14.dp)
                             )
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Feature coming in future release • Currently disabled",
-                                fontSize = 11.sp,
+                                text = "Uses drive.file scope: only accesses files created by Reel Library.",
+                                fontSize = 10.sp,
                                 color = colors.textMuted
                             )
                         }
-
-                        Switch(
-                            checked = false,
-                            enabled = false,
-                            onCheckedChange = {
-                                Toast.makeText(context, "Google Cloud Backup coming soon", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = SwitchDefaults.colors(
-                                disabledUncheckedThumbColor = colors.textMuted,
-                                disabledUncheckedTrackColor = colors.pillBg
-                            )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Backup Now Button (Disabled)
-                    NeumorphicButton(
-                        onClick = {
-                            Toast.makeText(context, "Google Cloud Backup coming soon", Toast.LENGTH_SHORT).show()
-                        },
-                        enabled = false,
-                        colors = colors,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                    } else {
+                        // Connected State: Profile strip, switches, metadata & action buttons
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.pillBg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.CloudDone,
-                                contentDescription = null,
-                                tint = colors.textMuted,
-                                modifier = Modifier.size(18.dp)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(34.dp)
+                                            .clip(CircleShape)
+                                            .background(CyanAccent.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = preferences.googleDriveName.take(1).uppercase().ifBlank { "G" },
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CyanAccent
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = preferences.googleDriveName.ifBlank { "Google Drive Account" },
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary
+                                        )
+                                        Text(
+                                            text = preferences.googleDriveEmail,
+                                            fontSize = 11.sp,
+                                            color = colors.textSecondary
+                                        )
+                                    }
+                                }
+
+                                TextButton(
+                                    onClick = {
+                                        viewModel.disconnectGoogleDrive(context)
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "Disconnect",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = StatusError
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Switch: Auto-sync to Google Drive
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Auto-sync to Google Drive",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = "Sync reels, transcripts & AI metadata automatically",
+                                    fontSize = 11.sp,
+                                    color = colors.textSecondary
+                                )
+                            }
+
+                            Switch(
+                                checked = preferences.isCloudBackupEnabled,
+                                onCheckedChange = { viewModel.setCloudBackupEnabled(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = colors.accent,
+                                    checkedTrackColor = colors.accent.copy(alpha = 0.35f),
+                                    uncheckedThumbColor = colors.textMuted,
+                                    uncheckedTrackColor = colors.pillBg
+                                )
                             )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Back Up Now (Coming Soon)",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textMuted
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Switch: Back up only on Wi-Fi
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Back up only on Wi-Fi",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = "Avoid mobile cellular data consumption",
+                                    fontSize = 11.sp,
+                                    color = colors.textSecondary
+                                )
+                            }
+
+                            Switch(
+                                checked = preferences.backupOnlyOnWifi,
+                                onCheckedChange = { viewModel.setBackupOnlyOnWifi(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = colors.accent,
+                                    checkedTrackColor = colors.accent.copy(alpha = 0.35f),
+                                    uncheckedThumbColor = colors.textMuted,
+                                    uncheckedTrackColor = colors.pillBg
+                                )
                             )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Backup metadata strip
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colors.surface.copy(alpha = 0.5f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Folder,
+                                        contentDescription = null,
+                                        tint = CyanAccent,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Folder: Google Drive / ReelLibrary_Vault",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = colors.textPrimary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.CloudDone,
+                                        contentDescription = null,
+                                        tint = if (preferences.lastBackupTimeFormatted.startsWith("Never")) colors.textMuted else StatusReady,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Last backup: ${preferences.lastBackupTimeFormatted}",
+                                        fontSize = 11.sp,
+                                        color = colors.textSecondary
+                                    )
+                                }
+                            }
+                        }
+
+                        if (!driveSyncStatus.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = CyanAccent.copy(alpha = 0.1f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.25f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (isDriveBackingUp || isDriveRestoring) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(14.dp),
+                                            strokeWidth = 2.dp,
+                                            color = CyanAccent
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                    }
+                                    Text(
+                                        text = driveSyncStatus ?: "",
+                                        fontSize = 11.sp,
+                                        color = CyanAccent,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Action Buttons: Back Up Now & Restore from Drive
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // Back Up Now Button
+                            NeumorphicButton(
+                                onClick = {
+                                    viewModel.performGoogleDriveBackup(
+                                        context = context,
+                                        onSuccess = {
+                                            Toast.makeText(context, "Google Drive backup complete!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onError = { err ->
+                                            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                                        }
+                                    )
+                                },
+                                enabled = !isDriveBackingUp && !isDriveRestoring,
+                                colors = colors,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    if (isDriveBackingUp) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                            color = colors.accent
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Backing up...",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.accent
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.CloudUpload,
+                                            contentDescription = null,
+                                            tint = colors.accent,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Back Up Now",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.accent
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Restore from Drive Button
+                            NeumorphicButton(
+                                onClick = {
+                                    viewModel.fetchGoogleDriveBackups(context)
+                                    showRestoreDialog = true
+                                },
+                                enabled = !isDriveBackingUp && !isDriveRestoring,
+                                colors = colors,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CloudDone,
+                                        contentDescription = null,
+                                        tint = CyanAccent,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Restore...",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textPrimary
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -6663,6 +7021,257 @@ private fun DataStorageScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // RESTORE FROM GOOGLE DRIVE DIALOG
+        if (showRestoreDialog) {
+            Dialog(
+                onDismissRequest = {
+                    if (!isDriveRestoring) showRestoreDialog = false
+                },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.65f))
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    NeumorphicCard(
+                        colors = colors,
+                        modifier = Modifier
+                            .fillMaxWidth(0.95f)
+                            .heightIn(max = 520.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp)
+                        ) {
+                            // Title
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.CloudDone,
+                                        contentDescription = null,
+                                        tint = CyanAccent,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Restore from Google Drive",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary
+                                        )
+                                        Text(
+                                            text = "Backups in /ReelLibrary_Vault",
+                                            fontSize = 11.sp,
+                                            color = colors.textSecondary
+                                        )
+                                    }
+                                }
+
+                                IconButton(
+                                    onClick = { if (!isDriveRestoring) showRestoreDialog = false },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Close",
+                                        tint = colors.textSecondary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+                            NeumorphicDivider(colors = colors)
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            if (isLoadingBackups) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(160.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator(
+                                            color = CyanAccent,
+                                            modifier = Modifier.size(28.dp),
+                                            strokeWidth = 2.5.dp
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = "Scanning Google Drive folder...",
+                                            fontSize = 12.sp,
+                                            color = colors.textSecondary
+                                        )
+                                    }
+                                }
+                            } else if (driveBackups.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(160.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            imageVector = Icons.Default.Folder,
+                                            contentDescription = null,
+                                            tint = colors.textMuted,
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        Text(
+                                            text = "No backups found in /ReelLibrary_Vault",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colors.textPrimary
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Create a backup first using 'Back Up Now'",
+                                            fontSize = 11.sp,
+                                            color = colors.textSecondary
+                                        )
+                                    }
+                                }
+                            } else {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f, fill = false)
+                                        .verticalScroll(rememberScrollState()),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    driveBackups.forEach { backup ->
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = colors.pillBg,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(12.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = backup.name,
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = colors.textPrimary,
+                                                        maxLines = 1
+                                                    )
+                                                    Spacer(modifier = Modifier.height(2.dp))
+                                                    Text(
+                                                        text = "${backup.formattedTime} • ${backup.formattedSize}",
+                                                        fontSize = 10.sp,
+                                                        color = colors.textSecondary
+                                                    )
+                                                }
+
+                                                Spacer(modifier = Modifier.width(8.dp))
+
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Button(
+                                                        onClick = {
+                                                            viewModel.restoreGoogleDriveBackup(
+                                                                context = context,
+                                                                backup = backup,
+                                                                onSuccess = { count ->
+                                                                    showRestoreDialog = false
+                                                                    Toast.makeText(
+                                                                        context,
+                                                                        "Restored $count reels into your vault!",
+                                                                        Toast.LENGTH_LONG
+                                                                    ).show()
+                                                                },
+                                                                onError = { err ->
+                                                                    Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                                                                }
+                                                            )
+                                                        },
+                                                        enabled = !isDriveRestoring,
+                                                        colors = ButtonDefaults.buttonColors(
+                                                            containerColor = CyanAccent,
+                                                            contentColor = Color.Black
+                                                        ),
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                                        modifier = Modifier.height(32.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = "Restore",
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
+
+                                                    Spacer(modifier = Modifier.width(6.dp))
+
+                                                    IconButton(
+                                                        onClick = {
+                                                            viewModel.deleteGoogleDriveBackup(
+                                                                context = context,
+                                                                backup = backup,
+                                                                onSuccess = {
+                                                                    Toast.makeText(context, "Backup deleted", Toast.LENGTH_SHORT).show()
+                                                                },
+                                                                onError = { err ->
+                                                                    Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                                                }
+                                                            )
+                                                        },
+                                                        enabled = !isDriveRestoring,
+                                                        modifier = Modifier.size(28.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Delete,
+                                                            contentDescription = "Delete",
+                                                            tint = StatusError.copy(alpha = 0.7f),
+                                                            modifier = Modifier.size(16.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(
+                                    onClick = { if (!isDriveRestoring) showRestoreDialog = false }
+                                ) {
+                                    Text(
+                                        text = "Close",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = colors.textSecondary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
