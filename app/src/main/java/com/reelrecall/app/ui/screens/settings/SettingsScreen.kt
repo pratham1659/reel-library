@@ -78,6 +78,8 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -532,6 +534,7 @@ private fun SoftwareUpdateDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var updateState by remember { mutableStateOf<UpdateDialogState>(UpdateDialogState.Idle) }
+    var userConfirmedUpdate by remember { mutableStateOf(false) }
     var lastCheckedText by remember { mutableStateOf("Just now") }
 
     fun formatSize(bytes: Long): String {
@@ -548,6 +551,7 @@ private fun SoftwareUpdateDialog(
             result.fold(
                 onSuccess = { info ->
                     if (info != null) {
+                        userConfirmedUpdate = false
                         updateState = UpdateDialogState.Available(info)
                     } else {
                         updateState = UpdateDialogState.UpToDate("Just now")
@@ -573,19 +577,13 @@ private fun SoftwareUpdateDialog(
             )
             result.fold(
                 onSuccess = { file ->
+                    // Download complete. Wait for user to explicitly review and click 'Install Now'.
                     updateState = UpdateDialogState.Downloaded(file)
-                    UpdateManager.installApk(context, file)
                 },
                 onFailure = { err ->
                     updateState = UpdateDialogState.Error(err.localizedMessage ?: "Failed to download update")
                 }
             )
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        if (updateState is UpdateDialogState.Idle) {
-            runUpdateCheck()
         }
     }
 
@@ -673,10 +671,9 @@ private fun SoftwareUpdateDialog(
                         ) {
                             // Status Icon Badge
                             val badgeColor = when (updateState) {
-                                is UpdateDialogState.Checking -> CyanAccent
+                                is UpdateDialogState.Idle, is UpdateDialogState.Checking -> CyanAccent
                                 is UpdateDialogState.Available, is UpdateDialogState.Downloading -> CyanAccent
-                                is UpdateDialogState.Downloaded -> StatusReady
-                                is UpdateDialogState.UpToDate, is UpdateDialogState.Idle -> StatusReady
+                                is UpdateDialogState.Downloaded, is UpdateDialogState.UpToDate -> StatusReady
                                 is UpdateDialogState.Error -> Color(0xFFEF4444)
                             }
 
@@ -689,6 +686,14 @@ private fun SoftwareUpdateDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 when (updateState) {
+                                    is UpdateDialogState.Idle -> {
+                                        Icon(
+                                            imageVector = Icons.Default.SystemUpdate,
+                                            contentDescription = null,
+                                            tint = CyanAccent,
+                                            modifier = Modifier.size(34.dp)
+                                        )
+                                    }
                                     is UpdateDialogState.Checking -> {
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(32.dp),
@@ -727,7 +732,7 @@ private fun SoftwareUpdateDialog(
                                             modifier = Modifier.size(34.dp)
                                         )
                                     }
-                                    else -> {
+                                    is UpdateDialogState.UpToDate -> {
                                         Icon(
                                             imageVector = Icons.Default.CheckCircle,
                                             contentDescription = null,
@@ -742,12 +747,13 @@ private fun SoftwareUpdateDialog(
 
                             // Title
                             val titleText = when (val state = updateState) {
+                                is UpdateDialogState.Idle -> "Check for Software Update"
                                 is UpdateDialogState.Checking -> "Checking for updates..."
                                 is UpdateDialogState.Available -> "Update Available: v${state.updateInfo.versionName}"
                                 is UpdateDialogState.Downloading -> "Downloading update..."
                                 is UpdateDialogState.Downloaded -> "Ready to Install"
                                 is UpdateDialogState.Error -> "Unable to check for updates"
-                                else -> "Reel Library is up to date"
+                                is UpdateDialogState.UpToDate -> "Reel Library is up to date"
                             }
 
                             Text(
@@ -814,12 +820,41 @@ private fun SoftwareUpdateDialog(
                                             Box(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .heightIn(min = 60.dp, max = 200.dp)
+                                                    .heightIn(min = 60.dp, max = 180.dp)
                                                     .verticalScroll(rememberScrollState())
                                             ) {
                                                 FormattedReleaseNotes(
                                                     notes = state.updateInfo.releaseNotes,
                                                     colors = colors
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            HorizontalDivider(color = colors.border.copy(alpha = 0.5f), thickness = 0.8.dp)
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable { userConfirmedUpdate = !userConfirmedUpdate }
+                                                    .padding(vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Checkbox(
+                                                    checked = userConfirmedUpdate,
+                                                    onCheckedChange = { userConfirmedUpdate = it },
+                                                    colors = CheckboxDefaults.colors(
+                                                        checkedColor = CyanAccent,
+                                                        uncheckedColor = colors.textSecondary,
+                                                        checkmarkColor = Color.Black
+                                                    )
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = "I have read the release notes and confirm updating to v${state.updateInfo.versionName}",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = colors.textPrimary,
+                                                    lineHeight = 16.sp
                                                 )
                                             }
                                         }
@@ -866,9 +901,10 @@ private fun SoftwareUpdateDialog(
                                             }
                                             Spacer(modifier = Modifier.height(8.dp))
                                             Text(
-                                                text = "Tap below to install the update on your device.",
+                                                text = "Update downloaded successfully. Tap 'Install Now' below to proceed with the update.",
                                                 fontSize = 12.sp,
-                                                color = colors.textPrimary
+                                                color = colors.textPrimary,
+                                                lineHeight = 16.sp
                                             )
                                         }
                                         is UpdateDialogState.Error -> {
@@ -885,7 +921,31 @@ private fun SoftwareUpdateDialog(
                                                 color = colors.textPrimary
                                             )
                                         }
-                                        else -> {
+                                        is UpdateDialogState.Idle -> {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(text = "Status", fontSize = 12.sp, color = colors.textSecondary)
+                                                Text(text = "Ready to Check", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = CyanAccent)
+                                            }
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(text = "Engine Runtime", fontSize = 12.sp, color = colors.textSecondary)
+                                                Text(text = "Reel Library Engine v${BuildConfig.VERSION_NAME}", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = colors.textPrimary)
+                                            }
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = "Tap 'Check for updates' below to scan GitHub releases for official new builds.",
+                                                fontSize = 12.sp,
+                                                color = colors.textSecondary,
+                                                lineHeight = 16.sp
+                                            )
+                                        }
+                                        is UpdateDialogState.UpToDate -> {
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween
@@ -910,6 +970,7 @@ private fun SoftwareUpdateDialog(
                                                 Text(text = "Reel Library Engine v${BuildConfig.VERSION_NAME}", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = colors.textPrimary)
                                             }
                                         }
+                                        else -> {}
                                     }
                                 }
                             }
@@ -921,7 +982,12 @@ private fun SoftwareUpdateDialog(
                         when (val state = updateState) {
                             is UpdateDialogState.Available -> {
                                 NeumorphicButton(
-                                    onClick = { startDownload(state.updateInfo) },
+                                    onClick = {
+                                        if (userConfirmedUpdate) {
+                                            startDownload(state.updateInfo)
+                                        }
+                                    },
+                                    enabled = userConfirmedUpdate,
                                     colors = colors,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
@@ -932,15 +998,15 @@ private fun SoftwareUpdateDialog(
                                         Icon(
                                             imageVector = Icons.Default.Download,
                                             contentDescription = null,
-                                            tint = colors.accent,
+                                            tint = if (userConfirmedUpdate) colors.accent else colors.textSecondary.copy(alpha = 0.5f),
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = "Download & Install Update",
+                                            text = if (userConfirmedUpdate) "Download & Install Update" else "Confirm Release Notes to Continue",
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = colors.textPrimary
+                                            color = if (userConfirmedUpdate) colors.textPrimary else colors.textSecondary.copy(alpha = 0.5f)
                                         )
                                     }
                                 }
@@ -1031,7 +1097,11 @@ private fun SoftwareUpdateDialog(
                                             )
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Text(
-                                                text = if (updateState is UpdateDialogState.Error) "Retry check for updates" else "Check for updates",
+                                                text = when (updateState) {
+                                                    is UpdateDialogState.Error -> "Retry check for updates"
+                                                    is UpdateDialogState.UpToDate -> "Check again"
+                                                    else -> "Check for updates"
+                                                },
                                                 fontSize = 13.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = colors.textPrimary
@@ -6219,10 +6289,15 @@ private fun DataStorageScreen(
     val driveBackups by viewModel.googleDriveBackupsList.collectAsState()
     val isLoadingBackups by viewModel.isLoadingDriveBackups.collectAsState()
     val recoverableIntent by viewModel.recoverableAuthIntent.collectAsState()
+    val storageBreakdown by viewModel.storageBreakdown.collectAsState()
 
     var showRestoreDialog by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
     var isImporting by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshStorageBreakdown(context)
+    }
 
     // Google Sign-In Activity Result Launcher
     val googleSignInLauncher = rememberLauncherForActivityResult(
@@ -6952,35 +7027,68 @@ private fun DataStorageScreen(
                 }
             }
 
-            // CARD 3: DEVICE STORAGE BREAKDOWN
+            // CARD 3: DEVICE STORAGE BREAKDOWN (REAL-TIME METRICS)
             NeumorphicCard(colors = colors) {
                 Column(modifier = Modifier.padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Storage,
-                            contentDescription = null,
-                            tint = colors.accent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "Storage Breakdown",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textPrimary
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Storage,
+                                contentDescription = null,
+                                tint = colors.accent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Storage Breakdown",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary
+                            )
+                        }
+
+                        if (storageBreakdown.isCalculating) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = colors.accent
+                            )
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = colors.pillBg,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
+                            ) {
+                                Text(
+                                    text = "Total: ${storageBreakdown.totalAppFormatted}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.accent,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
                     AccountDetailItem(
                         label = "Room SQLite Database",
-                        value = "12.8 MB • Indexed",
+                        value = storageBreakdown.databaseFormatted,
                         colors = colors
                     )
                     AccountDetailItem(
-                        label = "Reel Cache & Thumbnails",
-                        value = "38.4 MB",
+                        label = "Reel Cache & Media",
+                        value = storageBreakdown.cacheFormatted,
+                        colors = colors
+                    )
+                    AccountDetailItem(
+                        label = "Internal App Data",
+                        value = storageBreakdown.internalFilesFormatted,
                         colors = colors
                     )
 
@@ -6988,8 +7096,7 @@ private fun DataStorageScreen(
 
                     Surface(
                         onClick = {
-                            context.cacheDir.deleteRecursively()
-                            context.cacheDir.mkdirs()
+                            viewModel.clearMediaCache(context)
                             Toast.makeText(context, "Media cache cleared!", Toast.LENGTH_SHORT).show()
                         },
                         shape = RoundedCornerShape(12.dp),
@@ -7010,7 +7117,7 @@ private fun DataStorageScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Clear Media Cache",
+                                text = "Clear Media Cache (${storageBreakdown.cacheFormatted})",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFFF43F5E)

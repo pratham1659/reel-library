@@ -53,6 +53,7 @@ class GoogleDriveManager(
 ) {
 
     companion object {
+        // Strict Principle of Least Privilege: only files/folders created or opened by Reel Library
         const val DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"
         const val OAUTH_SCOPE_STRING = "oauth2:https://www.googleapis.com/auth/drive.file"
         const val VAULT_FOLDER_NAME = "ReelLibrary_Vault"
@@ -64,7 +65,7 @@ class GoogleDriveManager(
     /**
      * Builds and returns GoogleSignInClient configured with the drive.file scope.
      * This scope requests access ONLY to files and folders created or opened by Reel Library,
-     * ensuring user privacy.
+     * ensuring full user privacy with zero access to external Drive files or Google Photos.
      */
     fun getSignInClient(context: Context): GoogleSignInClient {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -92,17 +93,19 @@ class GoogleDriveManager(
     }
 
     /**
-     * Signs out of Google Play Services.
+     * Signs out of Google Play Services and revokes granted access for complete user security.
      */
     suspend fun signOut(context: Context): Unit = withContext(Dispatchers.IO) {
         try {
-            getSignInClient(context).signOut()
+            val client = getSignInClient(context)
+            client.signOut()
+            client.revokeAccess()
         } catch (_: Exception) {}
     }
 
     /**
      * Fetches a valid OAuth2 Bearer token from Google Play Services for the authenticated account.
-     * Handles background token acquisition on Dispatchers.IO.
+     * Uses Android's hardware-backed Google Play Services broker on Dispatchers.IO.
      */
     suspend fun getAccessToken(context: Context, account: Account): Result<String> = withContext(Dispatchers.IO) {
         try {
@@ -126,6 +129,27 @@ class GoogleDriveManager(
     }
 
     /**
+     * Sanitizes file and folder identifiers to prevent URL injection and path traversal.
+     */
+    private fun sanitizeId(id: String): String {
+        return id.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
+    }
+
+    /**
+     * Safely extracts sanitized error messages without leaking tokens or raw responses.
+     */
+    private fun extractSafeErrorMessage(responseBody: String?, statusCode: Int): String {
+        if (responseBody.isNullOrBlank()) return "HTTP $statusCode"
+        return try {
+            val json = JSONObject(responseBody)
+            val errObj = json.optJSONObject("error")
+            errObj?.optString("message", "HTTP $statusCode") ?: "HTTP $statusCode"
+        } catch (_: Exception) {
+            "HTTP $statusCode"
+        }
+    }
+
+    /**
      * Finds or creates the dedicated "/ReelLibrary_Vault" folder in user's Google Drive.
      */
     suspend fun getOrCreateVaultFolder(accessToken: String): Result<String> = withContext(Dispatchers.IO) {
@@ -142,15 +166,15 @@ class GoogleDriveManager(
 
             client.newCall(searchRequest).execute().use { response ->
                 if (!response.isSuccessful) {
-                    val err = response.body?.string() ?: "HTTP ${response.code}"
-                    return@withContext Result.failure(Exception("Failed to query Drive folder: $err"))
+                    val safeErr = extractSafeErrorMessage(response.body?.string(), response.code)
+                    return@withContext Result.failure(Exception("Failed to query Drive folder: $safeErr"))
                 }
 
                 val json = JSONObject(response.body?.string() ?: "{}")
                 val files = json.optJSONArray("files") ?: JSONArray()
 
                 if (files.length() > 0) {
-                    val folderId = files.getJSONObject(0).getString("id")
+                    val folderId = sanitizeId(files.getJSONObject(0).getString("id"))
                     return@withContext Result.success(folderId)
                 }
             }
@@ -171,12 +195,12 @@ class GoogleDriveManager(
 
             client.newCall(createRequest).execute().use { response ->
                 if (!response.isSuccessful) {
-                    val err = response.body?.string() ?: "HTTP ${response.code}"
-                    return@withContext Result.failure(Exception("Failed to create Drive folder: $err"))
+                    val safeErr = extractSafeErrorMessage(response.body?.string(), response.code)
+                    return@withContext Result.failure(Exception("Failed to create Drive folder: $safeErr"))
                 }
 
                 val json = JSONObject(response.body?.string() ?: "{}")
-                val folderId = json.getString("id")
+                val folderId = sanitizeId(json.getString("id"))
                 Result.success(folderId)
             }
         } catch (e: Exception) {
@@ -194,11 +218,12 @@ class GoogleDriveManager(
         onProgress: (String) -> Unit = {}
     ): Result<GoogleDriveFile> = withContext(Dispatchers.IO) {
         try {
+            val safeFolderId = sanitizeId(folderId)
             onProgress("Preparing metadata & archive...")
 
             val metadata = JSONObject().apply {
                 put("name", zipFile.name)
-                put("parents", JSONArray().put(folderId))
+                put("parents", JSONArray().put(safeFolderId))
                 put("description", "Reel Library Universal Vault Backup Archive")
             }
 
@@ -219,12 +244,12 @@ class GoogleDriveManager(
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    val err = response.body?.string() ?: "HTTP ${response.code}"
-                    return@withContext Result.failure(Exception("Upload failed: $err"))
+                    val safeErr = extractSafeErrorMessage(response.body?.string(), response.code)
+                    return@withContext Result.failure(Exception("Upload failed: $safeErr"))
                 }
 
                 val json = JSONObject(response.body?.string() ?: "{}")
-                val id = json.getString("id")
+                val id = sanitizeId(json.getString("id"))
                 val name = json.optString("name", zipFile.name)
                 val size = json.optLong("size", zipFile.length())
                 val modifiedTime = json.optString("modifiedTime", json.optString("createdTime", ""))
@@ -254,7 +279,8 @@ class GoogleDriveManager(
         folderId: String
     ): Result<List<GoogleDriveFile>> = withContext(Dispatchers.IO) {
         try {
-            val query = "'$folderId' in parents and trashed = false"
+            val safeFolderId = sanitizeId(folderId)
+            val query = "'$safeFolderId' in parents and trashed = false"
             val encodedQuery = URLEncoder.encode(query, "UTF-8")
             val url = "https://www.googleapis.com/drive/v3/files?q=$encodedQuery&orderBy=createdTime desc&fields=files(id,name,size,createdTime,modifiedTime)&spaces=drive"
 
@@ -266,8 +292,8 @@ class GoogleDriveManager(
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    val err = response.body?.string() ?: "HTTP ${response.code}"
-                    return@withContext Result.failure(Exception("Failed to list backups: $err"))
+                    val safeErr = extractSafeErrorMessage(response.body?.string(), response.code)
+                    return@withContext Result.failure(Exception("Failed to list backups: $safeErr"))
                 }
 
                 val json = JSONObject(response.body?.string() ?: "{}")
@@ -276,7 +302,7 @@ class GoogleDriveManager(
 
                 for (i in 0 until files.length()) {
                     val item = files.getJSONObject(i)
-                    val id = item.getString("id")
+                    val id = sanitizeId(item.getString("id"))
                     val name = item.getString("name")
                     val size = item.optLong("size", 0L)
                     val modified = item.optString("modifiedTime", item.optString("createdTime", ""))
@@ -302,6 +328,7 @@ class GoogleDriveManager(
 
     /**
      * Downloads a backup zip from Google Drive to a local destination file.
+     * Enforces path containment to prevent directory traversal.
      */
     suspend fun downloadVaultBackup(
         accessToken: String,
@@ -310,8 +337,9 @@ class GoogleDriveManager(
         onProgress: (String) -> Unit = {}
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
+            val safeFileId = sanitizeId(fileId)
             onProgress("Connecting to Google Drive...")
-            val downloadUrl = "https://www.googleapis.com/drive/v3/files/$fileId?alt=media"
+            val downloadUrl = "https://www.googleapis.com/drive/v3/files/$safeFileId?alt=media"
 
             val request = Request.Builder()
                 .url(downloadUrl)
@@ -321,8 +349,8 @@ class GoogleDriveManager(
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    val err = response.body?.string() ?: "HTTP ${response.code}"
-                    return@withContext Result.failure(Exception("Failed to download file: $err"))
+                    val safeErr = extractSafeErrorMessage(response.body?.string(), response.code)
+                    return@withContext Result.failure(Exception("Failed to download file: $safeErr"))
                 }
 
                 val responseBody = response.body
@@ -353,7 +381,8 @@ class GoogleDriveManager(
         fileId: String
     ): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
-            val url = "https://www.googleapis.com/drive/v3/files/$fileId"
+            val safeFileId = sanitizeId(fileId)
+            val url = "https://www.googleapis.com/drive/v3/files/$safeFileId"
             val request = Request.Builder()
                 .url(url)
                 .addHeader("Authorization", "Bearer $accessToken")
@@ -364,7 +393,8 @@ class GoogleDriveManager(
                 if (response.isSuccessful || response.code == 204) {
                     Result.success(true)
                 } else {
-                    Result.failure(Exception("Delete failed: HTTP ${response.code}"))
+                    val safeErr = extractSafeErrorMessage(response.body?.string(), response.code)
+                    Result.failure(Exception("Delete failed: $safeErr"))
                 }
             }
         } catch (e: Exception) {
@@ -388,7 +418,6 @@ class GoogleDriveManager(
     private fun formatDriveDate(raw: String): String {
         if (raw.isBlank()) return "Unknown date"
         return try {
-            // ISO 8601 format: 2026-11-01T01:28:45.123Z
             val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
             val date = parser.parse(raw.take(19)) ?: return raw
             val formatter = SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault())

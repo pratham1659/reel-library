@@ -17,8 +17,8 @@ android {
         applicationId = "com.reelrecall.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.2.1"
+        versionCode = 4
+        versionName = "1.2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -147,7 +147,7 @@ val copyReleaseApk by tasks.registering(Copy::class) {
     from(layout.buildDirectory.dir("outputs/apk/release"))
     include("*.apk")
     into(rootProject.layout.projectDirectory.dir("release"))
-    rename { "ReelLibrary-release-v1.2.1.apk" }
+    rename { "ReelLibrary-release-v1.2.2.apk" }
 }
 
 tasks.matching { it.name == "assembleRelease" }.configureEach {

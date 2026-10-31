@@ -10,6 +10,8 @@ import com.reelrecall.app.BuildConfig
 import com.reelrecall.app.data.model.AppUpdateInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -18,10 +20,25 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
+@Serializable
+private data class GitHubReleaseAsset(
+    val name: String,
+    @SerialName("browser_download_url") val browserDownloadUrl: String
+)
+
+@Serializable
+private data class GitHubReleaseResponse(
+    @SerialName("tag_name") val tagName: String,
+    val name: String? = null,
+    val body: String? = null,
+    val assets: List<GitHubReleaseAsset> = emptyList()
+)
+
 object UpdateManager {
 
-    // Default Cloudflare Worker endpoint for update metadata
-    const val DEFAULT_UPDATE_ENDPOINT = "https://reel-library-update.prathamkumar1985.workers.dev/check"
+    private const val GITHUB_OWNER = "pratham1659"
+    private const val GITHUB_REPO = "reel-library"
+    const val DEFAULT_UPDATE_ENDPOINT = "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -35,7 +52,7 @@ object UpdateManager {
     }
 
     /**
-     * Checks the update endpoint for a newer version than current BuildConfig.VERSION_CODE.
+     * Checks GitHub's public releases API directly for a newer version than current BuildConfig.VERSION_NAME/CODE.
      * Returns AppUpdateInfo if an update is available, or null if already up to date.
      */
     suspend fun checkForUpdate(
@@ -45,29 +62,73 @@ object UpdateManager {
             val request = Request.Builder()
                 .url(endpointUrl)
                 .header("User-Agent", "ReelLibrary/${BuildConfig.VERSION_NAME} (Android ${Build.VERSION.RELEASE})")
-                .header("Accept", "application/json")
+                .header("Accept", "application/vnd.github.v3+json, application/json")
                 .build()
 
             val response = httpClient.newCall(request).execute()
             if (!response.isSuccessful) {
+                // If 404, no release exists yet on GitHub
+                if (response.code == 404) {
+                    return@withContext Result.success(null)
+                }
                 return@withContext Result.failure(
-                    IOException("Update server returned HTTP ${response.code}")
+                    IOException("Release server returned HTTP ${response.code}")
                 )
             }
 
             val body = response.body?.string()
-                ?: return@withContext Result.failure(IOException("Empty response from update server"))
+                ?: return@withContext Result.failure(IOException("Empty response from release server"))
 
-            val updateInfo = jsonParser.decodeFromString<AppUpdateInfo>(body)
+            val githubRelease = jsonParser.decodeFromString<GitHubReleaseResponse>(body)
+            val releaseVersionName = githubRelease.tagName.trimStart('v', 'V')
 
-            if (updateInfo.versionCode > BuildConfig.VERSION_CODE) {
+            // Locate the .apk asset attached to this GitHub release
+            val apkAsset = githubRelease.assets.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) }
+            val apkDownloadUrl = apkAsset?.browserDownloadUrl
+                ?: "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/download/${githubRelease.tagName}/ReelLibrary-release-v$releaseVersionName.apk"
+
+            // Check if release notes contain an explicit versionCode (e.g. "versionCode: 4")
+            val parsedVersionCode = extractVersionCode(githubRelease.body)
+            val isNewer = if (parsedVersionCode != null) {
+                parsedVersionCode > BuildConfig.VERSION_CODE
+            } else {
+                isVersionNewer(releaseVersionName, BuildConfig.VERSION_NAME)
+            }
+
+            if (isNewer) {
+                val updateInfo = AppUpdateInfo(
+                    versionCode = parsedVersionCode ?: (BuildConfig.VERSION_CODE + 1),
+                    versionName = releaseVersionName,
+                    apkUrl = apkDownloadUrl,
+                    releaseNotes = githubRelease.body ?: "New release available on GitHub.",
+                    forceUpdate = false
+                )
                 Result.success(updateInfo)
             } else {
-                Result.success(null) // Up to date
+                Result.success(null) // Already on the latest version
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun extractVersionCode(notes: String?): Int? {
+        if (notes.isNullOrBlank()) return null
+        val match = Regex("""versionCode[:=\s]+(\d+)""", RegexOption.IGNORE_CASE).find(notes)
+        return match?.groupValues?.get(1)?.toIntOrNull()
+    }
+
+    private fun isVersionNewer(remoteVersion: String, localVersion: String): Boolean {
+        val remoteParts = remoteVersion.split(".").mapNotNull { it.toIntOrNull() }
+        val localParts = localVersion.split(".").mapNotNull { it.toIntOrNull() }
+        val maxLen = maxOf(remoteParts.size, localParts.size)
+        for (i in 0 until maxLen) {
+            val r = remoteParts.getOrElse(i) { 0 }
+            val l = localParts.getOrElse(i) { 0 }
+            if (r > l) return true
+            if (r < l) return false
+        }
+        return false
     }
 
     /**
@@ -172,4 +233,3 @@ object UpdateManager {
         return true
     }
 }
-

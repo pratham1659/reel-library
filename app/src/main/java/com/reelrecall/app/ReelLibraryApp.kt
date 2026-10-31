@@ -3,6 +3,7 @@ package com.reelrecall.app
 import android.app.Application
 import com.reelrecall.app.data.local.AppDatabase
 import com.reelrecall.app.data.repository.PreferencesRepository
+import com.reelrecall.app.worker.DailyCloudBackupWorker
 
 class ReelLibraryApp : Application() {
 
@@ -16,5 +17,6 @@ class ReelLibraryApp : Application() {
         super.onCreate()
         database = AppDatabase.getInstance(this)
         preferencesRepository = PreferencesRepository(this)
+        DailyCloudBackupWorker.scheduleDailyBackup(this)
     }
 }
