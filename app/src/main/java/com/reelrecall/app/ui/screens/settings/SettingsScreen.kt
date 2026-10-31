@@ -433,6 +433,96 @@ private sealed interface UpdateDialogState {
 }
 
 @Composable
+private fun FormattedReleaseNotes(
+    notes: String,
+    colors: NeumorphicColors
+) {
+    val cleanNotes = notes.trim()
+    if (cleanNotes.isBlank()) {
+        Text(
+            text = "Performance improvements and bug fixes.",
+            fontSize = 12.sp,
+            color = colors.textPrimary
+        )
+        return
+    }
+
+    val lines = remember(notes) {
+        cleanNotes.lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        lines.forEach { rawLine ->
+            val cleanLine = rawLine.replace("`", "").trim()
+            when {
+                rawLine.startsWith("## ") && rawLine.contains("Reel Library", ignoreCase = true) -> {
+                    // Skip redundant app title line
+                }
+                rawLine.startsWith("###") || rawLine.startsWith("##") || rawLine.startsWith("#") -> {
+                    val title = rawLine.trimStart('#', ' ').replace("`", "").trim()
+                    if (title.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = CyanAccent.copy(alpha = 0.12f),
+                            border = androidx.compose.foundation.BorderStroke(0.6.dp, CyanAccent.copy(alpha = 0.35f))
+                        ) {
+                            Text(
+                                text = title,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CyanAccent,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+                rawLine.startsWith("-") || rawLine.startsWith("*") || rawLine.startsWith("•") -> {
+                    val bulletText = rawLine.trimStart('-', '*', '•', ' ').replace("`", "").trim()
+                    if (bulletText.isNotBlank()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 1.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text(
+                                text = "•",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = CyanAccent,
+                                modifier = Modifier.padding(end = 6.dp)
+                            )
+                            Text(
+                                text = bulletText,
+                                fontSize = 12.sp,
+                                color = colors.textPrimary,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    if (cleanLine.isNotBlank()) {
+                        Text(
+                            text = cleanLine,
+                            fontSize = 12.sp,
+                            color = colors.textSecondary,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SoftwareUpdateDialog(
     onDismiss: () -> Unit,
     colors: NeumorphicColors
@@ -491,6 +581,12 @@ private fun SoftwareUpdateDialog(
         }
     }
 
+    LaunchedEffect(Unit) {
+        if (updateState is UpdateDialogState.Idle) {
+            runUpdateCheck()
+        }
+    }
+
     Dialog(
         onDismissRequest = {
             if (updateState !is UpdateDialogState.Downloading) {
@@ -518,15 +614,17 @@ private fun SoftwareUpdateDialog(
                 NeumorphicCard(
                     colors = colors,
                     elevation = 16.dp,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 640.dp)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(22.dp),
+                            .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Top close header
+                        // Top close header (fixed at top)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -561,231 +659,263 @@ private fun SoftwareUpdateDialog(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                        // Status Icon Badge
-                        val badgeColor = when (updateState) {
-                            is UpdateDialogState.Checking -> CyanAccent
-                            is UpdateDialogState.Available, is UpdateDialogState.Downloading -> CyanAccent
-                            is UpdateDialogState.Downloaded -> StatusReady
-                            is UpdateDialogState.UpToDate, is UpdateDialogState.Idle -> StatusReady
-                            is UpdateDialogState.Error -> Color(0xFFEF4444)
-                        }
-
-                        Box(
+                        // Scrollable middle content
+                        Column(
                             modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(badgeColor.copy(alpha = 0.12f))
-                                .border(1.5.dp, badgeColor.copy(alpha = 0.6f), CircleShape),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            when (updateState) {
-                                is UpdateDialogState.Checking -> {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(34.dp),
-                                        color = CyanAccent,
-                                        strokeWidth = 3.dp
-                                    )
+                            // Status Icon Badge
+                            val badgeColor = when (updateState) {
+                                is UpdateDialogState.Checking -> CyanAccent
+                                is UpdateDialogState.Available, is UpdateDialogState.Downloading -> CyanAccent
+                                is UpdateDialogState.Downloaded -> StatusReady
+                                is UpdateDialogState.UpToDate, is UpdateDialogState.Idle -> StatusReady
+                                is UpdateDialogState.Error -> Color(0xFFEF4444)
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(68.dp)
+                                    .clip(CircleShape)
+                                    .background(badgeColor.copy(alpha = 0.12f))
+                                    .border(1.5.dp, badgeColor.copy(alpha = 0.6f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                when (updateState) {
+                                    is UpdateDialogState.Checking -> {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(32.dp),
+                                            color = CyanAccent,
+                                            strokeWidth = 3.dp
+                                        )
+                                    }
+                                    is UpdateDialogState.Available -> {
+                                        Icon(
+                                            imageVector = Icons.Default.Download,
+                                            contentDescription = null,
+                                            tint = CyanAccent,
+                                            modifier = Modifier.size(34.dp)
+                                        )
+                                    }
+                                    is UpdateDialogState.Downloading -> {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(32.dp),
+                                            color = CyanAccent,
+                                            strokeWidth = 3.dp
+                                        )
+                                    }
+                                    is UpdateDialogState.Downloaded -> {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = StatusReady,
+                                            modifier = Modifier.size(34.dp)
+                                        )
+                                    }
+                                    is UpdateDialogState.Error -> {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = null,
+                                            tint = Color(0xFFEF4444),
+                                            modifier = Modifier.size(34.dp)
+                                        )
+                                    }
+                                    else -> {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = StatusReady,
+                                            modifier = Modifier.size(34.dp)
+                                        )
+                                    }
                                 }
-                                is UpdateDialogState.Available -> {
-                                    Icon(
-                                        imageVector = Icons.Default.Download,
-                                        contentDescription = null,
-                                        tint = CyanAccent,
-                                        modifier = Modifier.size(36.dp)
-                                    )
-                                }
-                                is UpdateDialogState.Downloading -> {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(34.dp),
-                                        color = CyanAccent,
-                                        strokeWidth = 3.dp
-                                    )
-                                }
-                                is UpdateDialogState.Downloaded -> {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = StatusReady,
-                                        modifier = Modifier.size(36.dp)
-                                    )
-                                }
-                                is UpdateDialogState.Error -> {
-                                    Icon(
-                                        imageVector = Icons.Default.Warning,
-                                        contentDescription = null,
-                                        tint = Color(0xFFEF4444),
-                                        modifier = Modifier.size(36.dp)
-                                    )
-                                }
-                                else -> {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = StatusReady,
-                                        modifier = Modifier.size(36.dp)
-                                    )
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Title
+                            val titleText = when (val state = updateState) {
+                                is UpdateDialogState.Checking -> "Checking for updates..."
+                                is UpdateDialogState.Available -> "Update Available: v${state.updateInfo.versionName}"
+                                is UpdateDialogState.Downloading -> "Downloading update..."
+                                is UpdateDialogState.Downloaded -> "Ready to Install"
+                                is UpdateDialogState.Error -> "Unable to check for updates"
+                                else -> "Reel Library is up to date"
+                            }
+
+                            Text(
+                                text = titleText,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Current Version Pill
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = colors.pillBg,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
+                            ) {
+                                Text(
+                                    text = "Current Version: v${BuildConfig.VERSION_NAME}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = CyanAccent,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Center Content Area: Details breakdown, Changelog or Progress
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = colors.pillBg.copy(alpha = 0.5f),
+                                border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    when (val state = updateState) {
+                                        is UpdateDialogState.Available -> {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = "Release Notes",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = CyanAccent
+                                                )
+                                                Surface(
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    color = CyanAccent.copy(alpha = 0.15f)
+                                                ) {
+                                                    Text(
+                                                        text = "v${state.updateInfo.versionName}",
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = CyanAccent,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .heightIn(min = 60.dp, max = 200.dp)
+                                                    .verticalScroll(rememberScrollState())
+                                            ) {
+                                                FormattedReleaseNotes(
+                                                    notes = state.updateInfo.releaseNotes,
+                                                    colors = colors
+                                                )
+                                            }
+                                        }
+                                        is UpdateDialogState.Downloading -> {
+                                            Text(
+                                                text = "Downloading APK...",
+                                                fontSize = 12.sp,
+                                                color = colors.textSecondary
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            LinearProgressIndicator(
+                                                progress = { state.progress },
+                                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                                                color = CyanAccent,
+                                                trackColor = colors.border
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(
+                                                    text = "${(state.progress * 100).toInt()}%",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = CyanAccent
+                                                )
+                                                if (state.totalBytes > 0) {
+                                                    Text(
+                                                        text = "${formatSize(state.downloadedBytes)} / ${formatSize(state.totalBytes)}",
+                                                        fontSize = 11.sp,
+                                                        color = colors.textSecondary
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        is UpdateDialogState.Downloaded -> {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(text = "Status", fontSize = 12.sp, color = colors.textSecondary)
+                                                Text(text = "Download complete", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = StatusReady)
+                                            }
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = "Tap below to install the update on your device.",
+                                                fontSize = 12.sp,
+                                                color = colors.textPrimary
+                                            )
+                                        }
+                                        is UpdateDialogState.Error -> {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(text = "Error Details", fontSize = 12.sp, color = Color(0xFFEF4444))
+                                            }
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Text(
+                                                text = state.message,
+                                                fontSize = 12.sp,
+                                                color = colors.textPrimary
+                                            )
+                                        }
+                                        else -> {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(text = "Status", fontSize = 12.sp, color = colors.textSecondary)
+                                                Text(text = "Latest updated", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = StatusReady)
+                                            }
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(text = "Last checked", fontSize = 12.sp, color = colors.textSecondary)
+                                                Text(text = lastCheckedText, fontSize = 12.sp, color = colors.textPrimary)
+                                            }
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(text = "Engine Runtime", fontSize = 12.sp, color = colors.textSecondary)
+                                                Text(text = "Reel Library Engine v${BuildConfig.VERSION_NAME}", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = colors.textPrimary)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Title
-                        val titleText = when (val state = updateState) {
-                            is UpdateDialogState.Checking -> "Checking for updates..."
-                            is UpdateDialogState.Available -> "Update Available: v${state.updateInfo.versionName}"
-                            is UpdateDialogState.Downloading -> "Downloading update..."
-                            is UpdateDialogState.Downloaded -> "Ready to Install"
-                            is UpdateDialogState.Error -> "Unable to check for updates"
-                            else -> "Reel Library is up to date"
-                        }
-
-                        Text(
-                            text = titleText,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textPrimary
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        // Current Version Pill
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = colors.pillBg,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
-                        ) {
-                            Text(
-                                text = "Current Version: v${BuildConfig.VERSION_NAME}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = CyanAccent,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(18.dp))
-
-                        // Center Content Area: Details breakdown or Changelog or Progress
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = colors.pillBg.copy(alpha = 0.5f),
-                            border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                when (val state = updateState) {
-                                    is UpdateDialogState.Available -> {
-                                        Text(
-                                            text = "Release Notes",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = CyanAccent
-                                        )
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Text(
-                                            text = state.updateInfo.releaseNotes.ifBlank { "Performance improvements and bug fixes." },
-                                            fontSize = 12.sp,
-                                            color = colors.textPrimary,
-                                            lineHeight = 16.sp
-                                        )
-                                    }
-                                    is UpdateDialogState.Downloading -> {
-                                        Text(
-                                            text = "Downloading APK...",
-                                            fontSize = 12.sp,
-                                            color = colors.textSecondary
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        LinearProgressIndicator(
-                                            progress = { state.progress },
-                                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                                            color = CyanAccent,
-                                            trackColor = colors.border
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(
-                                                text = "${(state.progress * 100).toInt()}%",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = CyanAccent
-                                            )
-                                            if (state.totalBytes > 0) {
-                                                Text(
-                                                    text = "${formatSize(state.downloadedBytes)} / ${formatSize(state.totalBytes)}",
-                                                    fontSize = 11.sp,
-                                                    color = colors.textSecondary
-                                                )
-                                            }
-                                        }
-                                    }
-                                    is UpdateDialogState.Downloaded -> {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(text = "Status", fontSize = 12.sp, color = colors.textSecondary)
-                                            Text(text = "Download complete", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = StatusReady)
-                                        }
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = "Tap below to install the update on your device.",
-                                            fontSize = 12.sp,
-                                            color = colors.textPrimary
-                                        )
-                                    }
-                                    is UpdateDialogState.Error -> {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(text = "Error Details", fontSize = 12.sp, color = Color(0xFFEF4444))
-                                        }
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Text(
-                                            text = state.message,
-                                            fontSize = 12.sp,
-                                            color = colors.textPrimary
-                                        )
-                                    }
-                                    else -> {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(text = "Status", fontSize = 12.sp, color = colors.textSecondary)
-                                            Text(text = "Latest updated", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = StatusReady)
-                                        }
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(text = "Last checked", fontSize = 12.sp, color = colors.textSecondary)
-                                            Text(text = lastCheckedText, fontSize = 12.sp, color = colors.textPrimary)
-                                        }
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(text = "Engine Runtime", fontSize = 12.sp, color = colors.textSecondary)
-                                            Text(text = "Reel Library Engine v${BuildConfig.VERSION_NAME}", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = colors.textPrimary)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // Action Button
+                        // Action Button (ALWAYS VISIBLE & PINNED AT BOTTOM)
                         when (val state = updateState) {
                             is UpdateDialogState.Available -> {
                                 NeumorphicButton(
