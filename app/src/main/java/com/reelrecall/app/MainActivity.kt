@@ -92,6 +92,8 @@ import com.reelrecall.app.ui.theme.TextPrimary
 import com.reelrecall.app.ui.theme.TextSecondary
 import com.reelrecall.app.worker.InstagramUrlParser
 import com.reelrecall.app.worker.ReelIngestWorker
+import com.reelrecall.app.worker.DailyCloudBackupWorker
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -102,6 +104,13 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        lifecycleScope.launch {
+            val app = application as? ReelLibraryApp
+            if (app != null && app.preferencesRepository.shouldRunDailyCloudBackup()) {
+                DailyCloudBackupWorker.triggerDailyBackupIfNeeded(applicationContext)
+            }
+        }
 
         setContent {
             val preferences by settingsViewModel.preferences.collectAsState()

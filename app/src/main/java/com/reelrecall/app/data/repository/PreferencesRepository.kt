@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 val Context.dataStore by preferencesDataStore(name = "reel_library_preferences")
@@ -122,6 +123,7 @@ data class AppPreferences(
     val googleDriveEmail: String = "",
     val googleDriveName: String = "",
     val googleDrivePhotoUrl: String = "",
+    val lastDailyCloudBackupDate: String = "",
     // Real-Time Cloud Telemetry & Token Tracking (Zero demo data)
     val totalTokensUsed: Long = 0L,
     val totalPromptTokens: Long = 0L,
@@ -215,6 +217,7 @@ class PreferencesRepository(private val context: Context) {
         val GOOGLE_DRIVE_EMAIL = stringPreferencesKey("google_drive_email")
         val GOOGLE_DRIVE_NAME = stringPreferencesKey("google_drive_name")
         val GOOGLE_DRIVE_PHOTO_URL = stringPreferencesKey("google_drive_photo_url")
+        val LAST_DAILY_CLOUD_BACKUP_DATE = stringPreferencesKey("last_daily_cloud_backup_date")
         // Real-Time Cloud Telemetry Keys
         val TOTAL_TOKENS_USED = longPreferencesKey("total_tokens_used")
         val TOTAL_PROMPT_TOKENS = longPreferencesKey("total_prompt_tokens")
@@ -391,6 +394,7 @@ class PreferencesRepository(private val context: Context) {
             googleDriveEmail = preferences[PreferencesKeys.GOOGLE_DRIVE_EMAIL] ?: "",
             googleDriveName = preferences[PreferencesKeys.GOOGLE_DRIVE_NAME] ?: "",
             googleDrivePhotoUrl = preferences[PreferencesKeys.GOOGLE_DRIVE_PHOTO_URL] ?: "",
+            lastDailyCloudBackupDate = preferences[PreferencesKeys.LAST_DAILY_CLOUD_BACKUP_DATE] ?: "",
             totalTokensUsed = preferences[PreferencesKeys.TOTAL_TOKENS_USED] ?: 0L,
             totalPromptTokens = preferences[PreferencesKeys.TOTAL_PROMPT_TOKENS] ?: 0L,
             totalCompletionTokens = preferences[PreferencesKeys.TOTAL_COMPLETION_TOKENS] ?: 0L,
@@ -621,6 +625,28 @@ class PreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.GOOGLE_DRIVE_NAME] = ""
             preferences[PreferencesKeys.GOOGLE_DRIVE_PHOTO_URL] = ""
             preferences[PreferencesKeys.IS_CLOUD_BACKUP_ENABLED] = false
+            preferences[PreferencesKeys.LAST_DAILY_CLOUD_BACKUP_DATE] = ""
+        }
+    }
+
+    fun getTodayDateString(): String {
+        val dateFmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        return dateFmt.format(java.util.Date())
+    }
+
+    suspend fun shouldRunDailyCloudBackup(): Boolean {
+        val prefs = preferencesFlow.first()
+        if (!prefs.isGoogleDriveConnected || !prefs.isCloudBackupEnabled) return false
+        val today = getTodayDateString()
+        return prefs.lastDailyCloudBackupDate != today
+    }
+
+    suspend fun markDailyCloudBackupCompleted() {
+        val today = getTodayDateString()
+        val nowFormatted = java.text.SimpleDateFormat("MMM d, yyyy 'at' h:mm a", java.util.Locale.getDefault()).format(java.util.Date())
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_DAILY_CLOUD_BACKUP_DATE] = today
+            preferences[PreferencesKeys.LAST_BACKUP_TIME] = nowFormatted
         }
     }
 
@@ -637,6 +663,7 @@ class PreferencesRepository(private val context: Context) {
     suspend fun checkAndPerformDailyResetIfNeeded() {
         val now = System.currentTimeMillis()
         val cutoff = getMidnightCutoff(now)
+        var shouldTriggerDailyBackup = false
         context.dataStore.edit { preferences ->
             val lastReset = preferences[PreferencesKeys.LAST_DAILY_RESET_TIME] ?: 0L
             if (lastReset < cutoff) {
@@ -659,7 +686,11 @@ class PreferencesRepository(private val context: Context) {
                 preferences[PreferencesKeys.LOCAL_GEMMA_CALLS_COUNT] = 0L
                 preferences[PreferencesKeys.LOCAL_WHISPER_CALLS_COUNT] = 0L
                 preferences[PreferencesKeys.LAST_DAILY_RESET_TIME] = now
+                shouldTriggerDailyBackup = true
             }
+        }
+        if (shouldTriggerDailyBackup) {
+            com.reelrecall.app.worker.DailyCloudBackupWorker.triggerDailyBackupIfNeeded(context)
         }
     }
 
