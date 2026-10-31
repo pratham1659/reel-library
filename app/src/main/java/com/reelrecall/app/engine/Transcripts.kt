@@ -65,12 +65,12 @@ object Transcripts {
         return TranscriptOutcome.ready(trimmed)
     }
 
-    fun display(transcript: String?, note: String?): String? {
+    fun display(transcript: String?, note: String? = null): String {
         val spoken = transcript?.trim().orEmpty()
         if (spoken.isNotEmpty() && !spoken.equals("Not available", ignoreCase = true)) {
             return spoken
         }
-        return note?.trim()?.ifBlank { null }
+        return "Not available"
     }
 
     fun hasSpokenTranscript(transcript: String?): Boolean {

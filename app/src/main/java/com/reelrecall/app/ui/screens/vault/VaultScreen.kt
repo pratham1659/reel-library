@@ -2037,8 +2037,7 @@ fun FullTranscriptDialog(
                     val transcriptBody = if (isAvailable) {
                         reel.transcript!!
                     } else {
-                        reel.transcriptNote?.takeIf { it.isNotBlank() }
-                            ?: com.reelrecall.app.engine.TranscriptOutcome.CAPTION_ONLY
+                        "Not available"
                     }
                     Column {
                         Text(
@@ -3233,8 +3232,7 @@ fun ReelDetailScreen(
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = currentReel.transcriptNote?.takeIf { it.isNotBlank() }
-                                        ?: com.reelrecall.app.engine.TranscriptOutcome.CAPTION_ONLY,
+                                    text = "Not available",
                                     fontSize = 12.5.sp,
                                     color = colors.textMuted,
                                     lineHeight = 18.sp
