@@ -118,6 +118,10 @@ data class AppPreferences(
     val backupOnlyOnWifi: Boolean = true,
     val cloudBackupFolder: String = "ReelLibrary_Vault",
     val lastBackupTimeFormatted: String = "Never backed up",
+    val isGoogleDriveConnected: Boolean = false,
+    val googleDriveEmail: String = "",
+    val googleDriveName: String = "",
+    val googleDrivePhotoUrl: String = "",
     // Real-Time Cloud Telemetry & Token Tracking (Zero demo data)
     val totalTokensUsed: Long = 0L,
     val totalPromptTokens: Long = 0L,
@@ -207,6 +211,10 @@ class PreferencesRepository(private val context: Context) {
         val BACKUP_ONLY_ON_WIFI = booleanPreferencesKey("backup_only_on_wifi")
         val CLOUD_BACKUP_FOLDER = stringPreferencesKey("cloud_backup_folder")
         val LAST_BACKUP_TIME = stringPreferencesKey("last_backup_time")
+        val IS_GOOGLE_DRIVE_CONNECTED = booleanPreferencesKey("is_google_drive_connected")
+        val GOOGLE_DRIVE_EMAIL = stringPreferencesKey("google_drive_email")
+        val GOOGLE_DRIVE_NAME = stringPreferencesKey("google_drive_name")
+        val GOOGLE_DRIVE_PHOTO_URL = stringPreferencesKey("google_drive_photo_url")
         // Real-Time Cloud Telemetry Keys
         val TOTAL_TOKENS_USED = longPreferencesKey("total_tokens_used")
         val TOTAL_PROMPT_TOKENS = longPreferencesKey("total_prompt_tokens")
@@ -379,6 +387,10 @@ class PreferencesRepository(private val context: Context) {
             backupOnlyOnWifi = preferences[PreferencesKeys.BACKUP_ONLY_ON_WIFI] ?: true,
             cloudBackupFolder = preferences[PreferencesKeys.CLOUD_BACKUP_FOLDER] ?: "ReelLibrary_Vault",
             lastBackupTimeFormatted = preferences[PreferencesKeys.LAST_BACKUP_TIME] ?: "Never backed up",
+            isGoogleDriveConnected = preferences[PreferencesKeys.IS_GOOGLE_DRIVE_CONNECTED] ?: false,
+            googleDriveEmail = preferences[PreferencesKeys.GOOGLE_DRIVE_EMAIL] ?: "",
+            googleDriveName = preferences[PreferencesKeys.GOOGLE_DRIVE_NAME] ?: "",
+            googleDrivePhotoUrl = preferences[PreferencesKeys.GOOGLE_DRIVE_PHOTO_URL] ?: "",
             totalTokensUsed = preferences[PreferencesKeys.TOTAL_TOKENS_USED] ?: 0L,
             totalPromptTokens = preferences[PreferencesKeys.TOTAL_PROMPT_TOKENS] ?: 0L,
             totalCompletionTokens = preferences[PreferencesKeys.TOTAL_COMPLETION_TOKENS] ?: 0L,
@@ -589,6 +601,26 @@ class PreferencesRepository(private val context: Context) {
     suspend fun updateLastBackupTime(timeStr: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.LAST_BACKUP_TIME] = timeStr
+        }
+    }
+
+    suspend fun setGoogleDriveAccount(email: String, name: String, photoUrl: String?) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_GOOGLE_DRIVE_CONNECTED] = true
+            preferences[PreferencesKeys.GOOGLE_DRIVE_EMAIL] = email
+            preferences[PreferencesKeys.GOOGLE_DRIVE_NAME] = name
+            preferences[PreferencesKeys.GOOGLE_DRIVE_PHOTO_URL] = photoUrl ?: ""
+            preferences[PreferencesKeys.IS_CLOUD_BACKUP_ENABLED] = true
+        }
+    }
+
+    suspend fun clearGoogleDriveAccount() {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_GOOGLE_DRIVE_CONNECTED] = false
+            preferences[PreferencesKeys.GOOGLE_DRIVE_EMAIL] = ""
+            preferences[PreferencesKeys.GOOGLE_DRIVE_NAME] = ""
+            preferences[PreferencesKeys.GOOGLE_DRIVE_PHOTO_URL] = ""
+            preferences[PreferencesKeys.IS_CLOUD_BACKUP_ENABLED] = false
         }
     }
 

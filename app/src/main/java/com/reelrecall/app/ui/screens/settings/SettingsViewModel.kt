@@ -1,11 +1,21 @@
 package com.reelrecall.app.ui.screens.settings
 
 import android.app.Application
+import android.accounts.Account
 import android.content.Context
+import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.auth.UserRecoverableAuthException
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.CommonStatusCodes
+import com.reelrecall.app.data.cloud.GoogleDriveFile
+import com.reelrecall.app.data.cloud.GoogleDriveManager
 import com.reelrecall.app.data.local.AppDatabase
 import com.reelrecall.app.data.model.ReelEntity
 import com.reelrecall.app.data.model.ReelLibraryExport
@@ -1198,8 +1208,20 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     // ==========================================
     // DATA & CLOUD BACKUP (WHATSAPP-STYLE)
     // ==========================================
-    val isCloudBackingUp = MutableStateFlow(false)
-    val cloudBackupProgress = MutableStateFlow<String?>(null)
+    // DATA & GOOGLE DRIVE PERSONAL CLOUD BACKUP
+    // ==========================================
+    val googleDriveManager = GoogleDriveManager()
+
+    val isGoogleDriveBackingUp = MutableStateFlow(false)
+    val isGoogleDriveRestoring = MutableStateFlow(false)
+    val googleDriveSyncStatus = MutableStateFlow<String?>(null)
+    val googleDriveBackupsList = MutableStateFlow<List<GoogleDriveFile>>(emptyList())
+    val isLoadingDriveBackups = MutableStateFlow(false)
+    val recoverableAuthIntent = MutableStateFlow<Intent?>(null)
+
+    // Legacy aliases for backwards compatibility
+    val isCloudBackingUp = isGoogleDriveBackingUp
+    val cloudBackupProgress = googleDriveSyncStatus
 
     fun setCloudBackupEnabled(enabled: Boolean) {
         viewModelScope.launch {
@@ -1213,21 +1235,250 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun performCloudBackup() {
+    fun getGoogleSignInIntent(context: Context): Intent {
+        return googleDriveManager.getSignInIntent(context)
+    }
+
+    fun handleGoogleSignInResult(
+        data: Intent?,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
         viewModelScope.launch {
-            isCloudBackingUp.value = true
-            cloudBackupProgress.value = "Authenticating Google Cloud Storage session..."
-            delay(500)
-            cloudBackupProgress.value = "Creating cloud folder /ReelLibrary_Vault/metadata/..."
-            delay(600)
-            val dao = AppDatabase.getInstance(getApplication()).reelDao()
-            val reels = withContext(Dispatchers.IO) { dao.getAllReelsSync() }
-            cloudBackupProgress.value = "Uploading ${reels.size} reels and AI metadata..."
-            delay(700)
-            val nowFormatted = SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault()).format(Date())
-            repository.updateLastBackupTime(nowFormatted)
-            isCloudBackingUp.value = false
-            cloudBackupProgress.value = "Cloud backup complete! Saved ${reels.size} reels to /ReelLibrary_Vault/"
+            try {
+                val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+                val account = task.getResult(ApiException::class.java)
+                if (account != null) {
+                    val email = account.email ?: ""
+                    val name = account.displayName ?: account.givenName ?: "Google User"
+                    val photoUrl = account.photoUrl?.toString()
+                    repository.setGoogleDriveAccount(email, name, photoUrl)
+                    googleDriveSyncStatus.value = "Connected to Google Drive as $email"
+                    fetchGoogleDriveBackups(getApplication())
+                    onSuccess()
+                } else {
+                    onError("Google Sign-In returned no account")
+                }
+            } catch (e: ApiException) {
+                val msg = when (e.statusCode) {
+                    CommonStatusCodes.DEVELOPER_ERROR -> "Google Sign-In configuration error (Code 10). Make sure SHA-1 & package name are configured."
+                    CommonStatusCodes.SIGN_IN_REQUIRED -> "Google Sign-In required."
+                    CommonStatusCodes.NETWORK_ERROR -> "Network error during Google Sign-In."
+                    CommonStatusCodes.CANCELED -> "Google Sign-In was cancelled."
+                    else -> "Google Sign-In error (${e.statusCode}): ${e.message}"
+                }
+                onError(msg)
+            } catch (e: Exception) {
+                onError(e.message ?: "Google Sign-In failed")
+            }
+        }
+    }
+
+    fun disconnectGoogleDrive(context: Context) {
+        viewModelScope.launch {
+            googleDriveManager.signOut(context)
+            repository.clearGoogleDriveAccount()
+            googleDriveBackupsList.value = emptyList()
+            googleDriveSyncStatus.value = "Disconnected from Google Drive"
+        }
+    }
+
+    private fun isWifiConnected(context: Context): Boolean {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return true
+            val network = cm.activeNetwork ?: return true
+            val capabilities = cm.getNetworkCapabilities(network) ?: return true
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    fun performGoogleDriveBackup(
+        context: Context,
+        onSuccess: (GoogleDriveFile) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val prefs = preferences.value
+            if (prefs.backupOnlyOnWifi && !isWifiConnected(context)) {
+                val err = "Backup paused: 'Back up only on Wi-Fi' is active, but Wi-Fi is currently not connected."
+                googleDriveSyncStatus.value = err
+                onError(err)
+                return@launch
+            }
+
+            val lastAccount = googleDriveManager.getLastSignedInAccount(context)
+            if (lastAccount == null) {
+                val err = "Please connect your Google Account first"
+                googleDriveSyncStatus.value = err
+                onError(err)
+                return@launch
+            }
+
+            isGoogleDriveBackingUp.value = true
+            googleDriveSyncStatus.value = "Authenticating with Google Drive..."
+
+            try {
+                val accountObj = lastAccount.account ?: Account(lastAccount.email ?: "", "com.google")
+                val tokenResult = googleDriveManager.getAccessToken(context, accountObj)
+
+                if (tokenResult.isFailure) {
+                    val ex = tokenResult.exceptionOrNull()
+                    if (ex is UserRecoverableAuthException) {
+                        recoverableAuthIntent.value = ex.intent
+                        onError("Additional Google Drive permission required")
+                        return@launch
+                    } else {
+                        throw ex ?: Exception("Failed to acquire Google Drive auth token")
+                    }
+                }
+
+                val token = tokenResult.getOrThrow()
+
+                googleDriveSyncStatus.value = "Locating /ReelLibrary_Vault folder in Google Drive..."
+                val folderResult = googleDriveManager.getOrCreateVaultFolder(token)
+                if (folderResult.isFailure) {
+                    throw folderResult.exceptionOrNull() ?: Exception("Failed to locate or create Drive folder")
+                }
+                val folderId = folderResult.getOrThrow()
+
+                googleDriveSyncStatus.value = "Creating universal vault archive..."
+                val zipFile = exportMetadataZip(context)
+                    ?: throw Exception("Failed to create backup archive from local database")
+
+                val uploadResult = googleDriveManager.uploadVaultBackup(token, folderId, zipFile) { progress ->
+                    googleDriveSyncStatus.value = progress
+                }
+
+                if (uploadResult.isFailure) {
+                    throw uploadResult.exceptionOrNull() ?: Exception("Failed to upload archive to Google Drive")
+                }
+
+                val uploadedFile = uploadResult.getOrThrow()
+                val nowFormatted = SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault()).format(Date())
+                repository.updateLastBackupTime(nowFormatted)
+                googleDriveSyncStatus.value = "Backup complete! Saved to /ReelLibrary_Vault"
+                fetchGoogleDriveBackups(context)
+                onSuccess(uploadedFile)
+            } catch (e: Exception) {
+                googleDriveSyncStatus.value = "Backup failed: ${e.message}"
+                onError(e.message ?: "Google Drive backup failed")
+            } finally {
+                isGoogleDriveBackingUp.value = false
+            }
+        }
+    }
+
+    fun performCloudBackup() {
+        performGoogleDriveBackup(getApplication())
+    }
+
+    fun fetchGoogleDriveBackups(context: Context) {
+        viewModelScope.launch {
+            val lastAccount = googleDriveManager.getLastSignedInAccount(context) ?: return@launch
+            isLoadingDriveBackups.value = true
+            try {
+                val accountObj = lastAccount.account ?: Account(lastAccount.email ?: "", "com.google")
+                val tokenResult = googleDriveManager.getAccessToken(context, accountObj)
+                if (tokenResult.isFailure) {
+                    isLoadingDriveBackups.value = false
+                    return@launch
+                }
+                val token = tokenResult.getOrThrow()
+                val folderResult = googleDriveManager.getOrCreateVaultFolder(token)
+                if (folderResult.isSuccess) {
+                    val folderId = folderResult.getOrThrow()
+                    val backupsResult = googleDriveManager.listVaultBackups(token, folderId)
+                    if (backupsResult.isSuccess) {
+                        googleDriveBackupsList.value = backupsResult.getOrThrow()
+                    }
+                }
+            } catch (_: Exception) {
+            } finally {
+                isLoadingDriveBackups.value = false
+            }
+        }
+    }
+
+    fun restoreGoogleDriveBackup(
+        context: Context,
+        backup: GoogleDriveFile,
+        onSuccess: (Int) -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            isGoogleDriveRestoring.value = true
+            googleDriveSyncStatus.value = "Preparing to restore ${backup.name}..."
+
+            try {
+                val lastAccount = googleDriveManager.getLastSignedInAccount(context)
+                    ?: throw Exception("Please connect your Google Account first")
+                val accountObj = lastAccount.account ?: Account(lastAccount.email ?: "", "com.google")
+                val tokenResult = googleDriveManager.getAccessToken(context, accountObj)
+                if (tokenResult.isFailure) {
+                    val ex = tokenResult.exceptionOrNull()
+                    if (ex is UserRecoverableAuthException) {
+                        recoverableAuthIntent.value = ex.intent
+                        onError("Additional Google Drive permission required")
+                        return@launch
+                    }
+                    throw ex ?: Exception("Failed to get Google Drive auth token")
+                }
+                val token = tokenResult.getOrThrow()
+
+                val destFile = File(context.cacheDir, "drive_restore_${System.currentTimeMillis()}.zip")
+                val downloadResult = googleDriveManager.downloadVaultBackup(token, backup.id, destFile) { progress ->
+                    googleDriveSyncStatus.value = progress
+                }
+
+                if (downloadResult.isFailure) {
+                    throw downloadResult.exceptionOrNull() ?: Exception("Failed to download archive")
+                }
+
+                googleDriveSyncStatus.value = "Unpacking archive and importing reels..."
+                val restoredFile = downloadResult.getOrThrow()
+                val uri = Uri.fromFile(restoredFile)
+                val importResult = importMetadataZip(context, uri)
+
+                if (importResult.isSuccess) {
+                    val count = importResult.getOrThrow()
+                    googleDriveSyncStatus.value = "Restored $count reels from Google Drive!"
+                    onSuccess(count)
+                } else {
+                    throw importResult.exceptionOrNull() ?: Exception("Failed to parse vault archive")
+                }
+            } catch (e: Exception) {
+                googleDriveSyncStatus.value = "Restore failed: ${e.message}"
+                onError(e.message ?: "Failed to restore backup")
+            } finally {
+                isGoogleDriveRestoring.value = false
+            }
+        }
+    }
+
+    fun deleteGoogleDriveBackup(
+        context: Context,
+        backup: GoogleDriveFile,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                val lastAccount = googleDriveManager.getLastSignedInAccount(context)
+                    ?: throw Exception("Not signed in")
+                val accountObj = lastAccount.account ?: Account(lastAccount.email ?: "", "com.google")
+                val token = googleDriveManager.getAccessToken(context, accountObj).getOrThrow()
+                val del = googleDriveManager.deleteVaultBackup(token, backup.id)
+                if (del.isSuccess) {
+                    fetchGoogleDriveBackups(context)
+                    onSuccess()
+                } else {
+                    onError("Failed to delete backup from Drive")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Delete failed")
+            }
         }
     }
 
