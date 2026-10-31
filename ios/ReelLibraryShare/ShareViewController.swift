@@ -13,68 +13,78 @@ final class ShareViewController: UIViewController {
     }
 
     private func processSharedItem() {
-        guard let extensionItem = extensionContext?.inputItems.first as? NSExtensionItem,
-              let attachments = extensionItem.attachments,
-              !attachments.isEmpty else {
+        guard let inputItems = extensionContext?.inputItems as? [NSExtensionItem], !inputItems.isEmpty else {
+            logger.warning("No input items provided to share extension.")
             completeRequest()
             return
         }
 
-        // Search for URL or text attachment
-        for itemProvider in attachments {
-            if itemProvider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
-                itemProvider.loadItem(forTypeIdentifier: UTType.url.identifier, options: nil) { [weak self] (item, _) in
-                    let extracted: String?
-                    if let url = item as? URL {
-                        extracted = url.absoluteString
-                    } else if let urlStr = item as? String {
-                        extracted = urlStr
-                    } else {
-                        extracted = nil
-                    }
+        Task {
+            // Step 1: Check attributedContentText across all extension items
+            for item in inputItems {
+                if let text = item.attributedContentText?.string,
+                   let parsed = InstagramUrlParser.parse(text) {
+                    await handleExtractedReel(parsed)
+                    return
+                }
+            }
 
-                    Task { @MainActor [weak self] in
-                        if let extracted {
-                            self?.handleExtractedText(extracted)
-                        } else {
-                            self?.completeRequest()
+            // Step 2: Iterate through all attachments across all input items
+            let supportedTypeIdentifiers = [
+                UTType.url.identifier,
+                UTType.plainText.identifier,
+                UTType.text.identifier
+            ]
+
+            for item in inputItems {
+                guard let attachments = item.attachments else { continue }
+                for provider in attachments {
+                    for typeId in supportedTypeIdentifiers {
+                        if provider.hasItemConformingToTypeIdentifier(typeId) {
+                            if let text = await loadItemText(from: provider, forTypeIdentifier: typeId),
+                               let parsed = InstagramUrlParser.parse(text) {
+                                await handleExtractedReel(parsed)
+                                return
+                            }
                         }
                     }
                 }
-                return
-            } else if itemProvider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
-                itemProvider.loadItem(forTypeIdentifier: UTType.plainText.identifier, options: nil) { [weak self] (item, _) in
-                    let extracted = item as? String
-                    Task { @MainActor [weak self] in
-                        if let extracted {
-                            self?.handleExtractedText(extracted)
-                        } else {
-                            self?.completeRequest()
-                        }
-                    }
-                }
-                return
+            }
+
+            logger.warning("No valid Instagram Reel URL found in any attachments.")
+            await MainActor.run {
+                completeRequest()
             }
         }
-
-        completeRequest()
     }
 
-    private func handleExtractedText(_ text: String) {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            completeRequest()
-            return
-        }
+    private func loadItemText(from provider: NSItemProvider, forTypeIdentifier typeIdentifier: String) async -> String? {
+        await withCheckedContinuation { continuation in
+            provider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { item, error in
+                if let error = error {
+                    logger.debug("Failed loading \(typeIdentifier): \(error.localizedDescription)")
+                    continuation.resume(returning: nil)
+                    return
+                }
 
-        // Step 1: Parse canonical Instagram Reel URL & shortcode
-        guard let parsed = InstagramUrlParser.parse(trimmed) else {
-            logger.warning("Shared text did not contain a valid Instagram Reel URL: \(trimmed)")
-            completeRequest()
-            return
+                if let url = item as? URL {
+                    continuation.resume(returning: url.absoluteString)
+                } else if let string = item as? String {
+                    continuation.resume(returning: string)
+                } else if let attrStr = item as? NSAttributedString {
+                    continuation.resume(returning: attrStr.string)
+                } else if let data = item as? Data, let string = String(data: data, encoding: .utf8) {
+                    continuation.resume(returning: string)
+                } else {
+                    continuation.resume(returning: nil)
+                }
+            }
         }
+    }
 
-        // Step 2: Persist into App Group Shared SQLite database
+    @MainActor
+    private func handleExtractedReel(_ parsed: ParsedReel) {
+        // Step 1: Persist into App Group Shared SQLite database
         do {
             let database = AppDatabase.shared
             let dao = database.reelDao
@@ -100,7 +110,7 @@ final class ShareViewController: UIViewController {
                 }
             }
 
-            // Step 3: Trigger haptic feedback
+            // Step 2: Trigger haptic feedback
             let generator = UINotificationFeedbackGenerator()
             generator.prepare()
             generator.notificationOccurred(.success)
@@ -108,7 +118,7 @@ final class ShareViewController: UIViewController {
             logger.error("Failed to write queued reel to App Group database: \(error.localizedDescription)")
         }
 
-        // Step 4: Dismiss immediately (< 200ms)
+        // Step 3: Dismiss immediately (< 200ms)
         completeRequest()
     }
 

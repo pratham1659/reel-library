@@ -17,6 +17,7 @@
 		2B17E5E105474F59948CFC04 /* VaultViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40A0242D24A698F0B875DFC5 /* VaultViewModelTests.swift */; };
 		2D840AC5A0BCFA31A04BE3DD /* TokenUsageRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303E3AF3283B616A4BF29E06 /* TokenUsageRecord.swift */; };
 		32050FC744BF7DEF284776EA /* ReelLibraryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6E5A4D7D943BFC36DB8087D /* ReelLibraryApp.swift */; };
+		37BF75AEEB411C1A25658BD0 /* ReelLibraryShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 77B9CE147886E85F68368BF7 /* ReelLibraryShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3984A176E9100FDA7551B688 /* SummarizationLimits.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD8AA02E736331D9B4EA9A56 /* SummarizationLimits.swift */; };
 		4203DB51D6EB71EA41904247 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 04BB12234EB31CDBB0DB90D4 /* GRDB */; };
 		4485330CFCC26BFB53DC7886 /* IngestionStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F556934620E5EF105C25B10 /* IngestionStatus.swift */; };
@@ -70,6 +71,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		910A911EF5B98DCD004A153E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CD1B0B1D9ED42876E3D6E9A6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1E1E6E9437F6EB1D364D4F19;
+			remoteInfo = ReelLibraryShare;
+		};
 		E6D7558CC1879F932D14EA03 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CD1B0B1D9ED42876E3D6E9A6 /* Project object */;
@@ -78,6 +86,20 @@
 			remoteInfo = ReelLibrary;
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		44736BBCF59C575D777A8154 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				37BF75AEEB411C1A25658BD0 /* ReelLibraryShare.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		062B3832DF9A710F1A84AE0F /* IngestionAndEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IngestionAndEngineTests.swift; sourceTree = "<group>"; };
@@ -417,10 +439,12 @@
 				5EE9444BE5E603B8CAAA4A10 /* Sources */,
 				9B2D7913096BC44C51684F30 /* Resources */,
 				6A11D1E850CBFEDF37525BB9 /* Frameworks */,
+				44736BBCF59C575D777A8154 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				47C98E9264017DABFF5B9B25 /* PBXTargetDependency */,
 			);
 			name = ReelLibrary;
 			packageProductDependencies = (
@@ -577,6 +601,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		47C98E9264017DABFF5B9B25 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1E1E6E9437F6EB1D364D4F19 /* ReelLibraryShare */;
+			targetProxy = 910A911EF5B98DCD004A153E /* PBXContainerItemProxy */;
+		};
 		C205F5A372B89F6071439FCF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 6FE44D40AA6BB8687273D38E /* ReelLibrary */;
