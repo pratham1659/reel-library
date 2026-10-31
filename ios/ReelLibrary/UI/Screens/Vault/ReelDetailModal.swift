@@ -331,7 +331,7 @@ public struct ReelDetailModal: View {
                             .stroke(Color.obsidianCardBorder, lineWidth: 1)
                     )
             } else {
-                Text(reel.transcriptNote?.isEmpty == false ? reel.transcriptNote! : TranscriptOutcome.captionOnly)
+                Text("Not available")
                     .font(.appBodyRegular)
                     .foregroundStyle(Color.textMuted)
                 Button("Retry transcription") {

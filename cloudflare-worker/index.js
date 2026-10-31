@@ -13,10 +13,10 @@ const GITHUB_REPO = "reel-library";
 
 // Fallback configuration if GitHub API is unreachable or manual mode is preferred
 const FALLBACK_CONFIG = {
-  versionCode: 2,
-  versionName: "1.2.0",
-  apkUrl: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download/ReelLibrary-release-v1.2.0.apk`,
-  releaseNotes: "• Multi-provider AI support (Gemini, Claude, OpenAI, Groq)\n• Real error propagation on transcription failures\n• Background processing improvements\n• Bug fixes and UI optimizations",
+  versionCode: 3,
+  versionName: "1.2.1",
+  apkUrl: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download/ReelLibrary-release-v1.2.1.apk`,
+  releaseNotes: "• Multi-provider LLM API support: Configure multiple AI providers (OpenAI, Anthropic Claude, Gemini, Groq, custom OpenAI-compatible endpoints)\n• Dynamic in-app software update checker and one-tap APK installer\n• Formatted release notes with internal scrolling and persistent update actions\n• Improved transcription error propagation and audio extraction",
   forceUpdate: false,
   minSupportedVersionCode: 1
 };
