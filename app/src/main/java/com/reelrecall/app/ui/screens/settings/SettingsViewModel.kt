@@ -62,6 +62,19 @@ data class DownloadProgressState(
     val speedText: String = ""
 )
 
+data class StorageBreakdown(
+    val databaseBytes: Long = 0L,
+    val databaseFormatted: String = "Calculating...",
+    val reelCount: Int = 0,
+    val cacheBytes: Long = 0L,
+    val cacheFormatted: String = "Calculating...",
+    val internalFilesBytes: Long = 0L,
+    val internalFilesFormatted: String = "Calculating...",
+    val totalAppBytes: Long = 0L,
+    val totalAppFormatted: String = "Calculating...",
+    val isCalculating: Boolean = false
+)
+
 data class CloudEndpointTestResult(
     val provider: String,
     val isSuccess: Boolean,
@@ -1218,6 +1231,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val googleDriveBackupsList = MutableStateFlow<List<GoogleDriveFile>>(emptyList())
     val isLoadingDriveBackups = MutableStateFlow(false)
     val recoverableAuthIntent = MutableStateFlow<Intent?>(null)
+    val storageBreakdown = MutableStateFlow(StorageBreakdown())
 
     // Legacy aliases for backwards compatibility
     val isCloudBackingUp = isGoogleDriveBackingUp
@@ -1279,7 +1293,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             googleDriveManager.signOut(context)
             repository.clearGoogleDriveAccount()
             googleDriveBackupsList.value = emptyList()
-            googleDriveSyncStatus.value = "Disconnected from Google Drive"
+            googleDriveSyncStatus.value = "Disconnected and revoked Google Drive session"
+            refreshStorageBreakdown(context)
         }
     }
 
@@ -1360,6 +1375,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 repository.updateLastBackupTime(nowFormatted)
                 googleDriveSyncStatus.value = "Backup complete! Saved to /ReelLibrary_Vault"
                 fetchGoogleDriveBackups(context)
+                refreshStorageBreakdown(context)
                 onSuccess(uploadedFile)
             } catch (e: Exception) {
                 googleDriveSyncStatus.value = "Backup failed: ${e.message}"
@@ -1444,8 +1460,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 if (importResult.isSuccess) {
                     val count = importResult.getOrThrow()
                     googleDriveSyncStatus.value = "Restored $count reels from Google Drive!"
+                    // Security cleanup: delete downloaded temporary backup archive from local cache
+                    try { restoredFile.delete() } catch (_: Exception) {}
+                    refreshStorageBreakdown(context)
                     onSuccess(count)
                 } else {
+                    try { restoredFile.delete() } catch (_: Exception) {}
                     throw importResult.exceptionOrNull() ?: Exception("Failed to parse vault archive")
                 }
             } catch (e: Exception) {
@@ -1568,9 +1588,102 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             val export = Json { ignoreUnknownKeys = true }.decodeFromString<ReelLibraryExport>(jsonContent!!)
             val dao = AppDatabase.getInstance(context).reelDao()
             dao.insertAll(export.reels)
+            refreshStorageBreakdown(context)
             Result.success(export.reels.size)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    // ==========================================
+    // REAL-TIME STORAGE BREAKDOWN & MANAGEMENT
+    // ==========================================
+    fun refreshStorageBreakdown(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            storageBreakdown.value = storageBreakdown.value.copy(isCalculating = true)
+            try {
+                // 1. Room SQLite Database calculation
+                val dbFile = context.getDatabasePath("reel_library.db")
+                var dbSize = 0L
+                if (dbFile.exists()) dbSize += dbFile.length()
+                val walFile = File(dbFile.parentFile, "reel_library.db-wal")
+                if (walFile.exists()) dbSize += walFile.length()
+                val shmFile = File(dbFile.parentFile, "reel_library.db-shm")
+                if (shmFile.exists()) dbSize += shmFile.length()
+
+                val dao = AppDatabase.getInstance(context).reelDao()
+                val count = try { dao.getAllReelsSync().size } catch (_: Exception) { 0 }
+
+                // 2. Cache calculation (internal cacheDir + externalCacheDir)
+                val cacheDir = context.cacheDir
+                val cacheSize = getDirectorySize(cacheDir)
+                val extCacheDir = context.externalCacheDir
+                val extCacheSize = if (extCacheDir != null) getDirectorySize(extCacheDir) else 0L
+                val totalCache = cacheSize + extCacheSize
+
+                // 3. App Internal Files (DataStore preferences, models, exports)
+                val filesDir = context.filesDir
+                val filesSize = getDirectorySize(filesDir)
+
+                val totalSize = dbSize + totalCache + filesSize
+
+                val reelCountText = when (count) {
+                    1 -> "1 reel"
+                    else -> "$count reels"
+                }
+
+                storageBreakdown.value = StorageBreakdown(
+                    databaseBytes = dbSize,
+                    databaseFormatted = "${formatStorageBytes(dbSize)} • $reelCountText indexed",
+                    reelCount = count,
+                    cacheBytes = totalCache,
+                    cacheFormatted = formatStorageBytes(totalCache),
+                    internalFilesBytes = filesSize,
+                    internalFilesFormatted = formatStorageBytes(filesSize),
+                    totalAppBytes = totalSize,
+                    totalAppFormatted = formatStorageBytes(totalSize),
+                    isCalculating = false
+                )
+            } catch (e: Exception) {
+                storageBreakdown.value = storageBreakdown.value.copy(isCalculating = false)
+            }
+        }
+    }
+
+    fun clearMediaCache(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                context.cacheDir.deleteRecursively()
+                context.cacheDir.mkdirs()
+                context.externalCacheDir?.deleteRecursively()
+                context.externalCacheDir?.mkdirs()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            refreshStorageBreakdown(context)
+        }
+    }
+
+    private fun getDirectorySize(dir: File?): Long {
+        if (dir == null || !dir.exists()) return 0L
+        var total = 0L
+        val files = dir.listFiles() ?: return 0L
+        for (file in files) {
+            total += if (file.isDirectory) getDirectorySize(file) else file.length()
+        }
+        return total
+    }
+
+    fun formatStorageBytes(bytes: Long): String {
+        if (bytes <= 0) return "0 B"
+        val kb = bytes / 1024.0
+        val mb = kb / 1024.0
+        val gb = mb / 1024.0
+        return when {
+            gb >= 1.0 -> String.format(Locale.getDefault(), "%.1f GB", gb)
+            mb >= 1.0 -> String.format(Locale.getDefault(), "%.1f MB", mb)
+            kb >= 1.0 -> String.format(Locale.getDefault(), "%.1f KB", kb)
+            else -> "$bytes B"
         }
     }
 }

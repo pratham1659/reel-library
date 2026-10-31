@@ -6219,10 +6219,15 @@ private fun DataStorageScreen(
     val driveBackups by viewModel.googleDriveBackupsList.collectAsState()
     val isLoadingBackups by viewModel.isLoadingDriveBackups.collectAsState()
     val recoverableIntent by viewModel.recoverableAuthIntent.collectAsState()
+    val storageBreakdown by viewModel.storageBreakdown.collectAsState()
 
     var showRestoreDialog by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
     var isImporting by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshStorageBreakdown(context)
+    }
 
     // Google Sign-In Activity Result Launcher
     val googleSignInLauncher = rememberLauncherForActivityResult(
@@ -6952,35 +6957,68 @@ private fun DataStorageScreen(
                 }
             }
 
-            // CARD 3: DEVICE STORAGE BREAKDOWN
+            // CARD 3: DEVICE STORAGE BREAKDOWN (REAL-TIME METRICS)
             NeumorphicCard(colors = colors) {
                 Column(modifier = Modifier.padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Storage,
-                            contentDescription = null,
-                            tint = colors.accent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "Storage Breakdown",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textPrimary
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Storage,
+                                contentDescription = null,
+                                tint = colors.accent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Storage Breakdown",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary
+                            )
+                        }
+
+                        if (storageBreakdown.isCalculating) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = colors.accent
+                            )
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = colors.pillBg,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
+                            ) {
+                                Text(
+                                    text = "Total: ${storageBreakdown.totalAppFormatted}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.accent,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
                     AccountDetailItem(
                         label = "Room SQLite Database",
-                        value = "12.8 MB • Indexed",
+                        value = storageBreakdown.databaseFormatted,
                         colors = colors
                     )
                     AccountDetailItem(
-                        label = "Reel Cache & Thumbnails",
-                        value = "38.4 MB",
+                        label = "Reel Cache & Media",
+                        value = storageBreakdown.cacheFormatted,
+                        colors = colors
+                    )
+                    AccountDetailItem(
+                        label = "Internal App Data",
+                        value = storageBreakdown.internalFilesFormatted,
                         colors = colors
                     )
 
@@ -6988,8 +7026,7 @@ private fun DataStorageScreen(
 
                     Surface(
                         onClick = {
-                            context.cacheDir.deleteRecursively()
-                            context.cacheDir.mkdirs()
+                            viewModel.clearMediaCache(context)
                             Toast.makeText(context, "Media cache cleared!", Toast.LENGTH_SHORT).show()
                         },
                         shape = RoundedCornerShape(12.dp),
@@ -7010,7 +7047,7 @@ private fun DataStorageScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Clear Media Cache",
+                                text = "Clear Media Cache (${storageBreakdown.cacheFormatted})",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFFF43F5E)
