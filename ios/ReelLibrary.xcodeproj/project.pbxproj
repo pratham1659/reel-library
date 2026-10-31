@@ -21,6 +21,7 @@
 		3984A176E9100FDA7551B688 /* SummarizationLimits.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD8AA02E736331D9B4EA9A56 /* SummarizationLimits.swift */; };
 		4203DB51D6EB71EA41904247 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 04BB12234EB31CDBB0DB90D4 /* GRDB */; };
 		4485330CFCC26BFB53DC7886 /* IngestionStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F556934620E5EF105C25B10 /* IngestionStatus.swift */; };
+		456FCBB94EB6F9E27467FCC7 /* TranscriptOutcome.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73D4EBF0B22426C8D501022 /* TranscriptOutcome.swift */; };
 		47589B5165DD944A8E3A59EC /* TokenUsageDao.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26D13C321F58A623D675374 /* TokenUsageDao.swift */; };
 		47ABB9FC69713DD972B3E4FD /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A009A0A9BE66E39F340ECAC /* SettingsViewModel.swift */; };
 		4AF7D3B745A25E49B1E18CDC /* ReelRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE7E99B4480B924C472523 /* ReelRecord.swift */; };
@@ -149,6 +150,7 @@
 		F26D13C321F58A623D675374 /* TokenUsageDao.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenUsageDao.swift; sourceTree = "<group>"; };
 		F47F916F7873491A2E139F76 /* DatabaseAndSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseAndSecurityTests.swift; sourceTree = "<group>"; };
 		F5417ACB878161E8B3681DFB /* FloatingBottomDock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingBottomDock.swift; sourceTree = "<group>"; };
+		F73D4EBF0B22426C8D501022 /* TranscriptOutcome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptOutcome.swift; sourceTree = "<group>"; };
 		F7FDF2E2ADCCC2CF3DD7F9D5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FB4D43446E609CEF96EBD15F /* AudioExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioExtractor.swift; sourceTree = "<group>"; };
 		FC49ABE3C9180912242AB099 /* ReelDetailModal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReelDetailModal.swift; sourceTree = "<group>"; };
@@ -372,6 +374,7 @@
 				E1527CE3F56E8D5CFA2005CE /* Local */,
 				1E6C9AA90CA934379CE99E72 /* Protocols */,
 				9EE8D9FC2BC9047AC7635AF3 /* DualEngineDispatcher.swift */,
+				F73D4EBF0B22426C8D501022 /* TranscriptOutcome.swift */,
 			);
 			path = Engine;
 			sourceTree = "<group>";
@@ -565,6 +568,7 @@
 				3984A176E9100FDA7551B688 /* SummarizationLimits.swift in Sources */,
 				47589B5165DD944A8E3A59EC /* TokenUsageDao.swift in Sources */,
 				2D840AC5A0BCFA31A04BE3DD /* TokenUsageRecord.swift in Sources */,
+				456FCBB94EB6F9E27467FCC7 /* TranscriptOutcome.swift in Sources */,
 				05B0953FF2204A69270EA87C /* TranscriptionEngine.swift in Sources */,
 				6ECC94D24C40444FAEE70659 /* Typography.swift in Sources */,
 				88BFCDA533E1588CCAB6051C /* VaultView.swift in Sources */,

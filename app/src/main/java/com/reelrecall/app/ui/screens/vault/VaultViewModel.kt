@@ -10,6 +10,12 @@ import com.reelrecall.app.data.model.OrderBy
 import com.reelrecall.app.data.model.ReelEntity
 import com.reelrecall.app.data.model.SortDirection
 import com.reelrecall.app.data.model.ViewMode
+import com.reelrecall.app.engine.GroqWhisperEngine
+import com.reelrecall.app.engine.OpenAIWhisperEngine
+import com.reelrecall.app.engine.TranscriptOutcome
+import com.reelrecall.app.engine.Transcripts
+import com.reelrecall.app.engine.TranscriptionEngine
+import com.reelrecall.app.worker.InstagramExtractor
 import com.reelrecall.app.worker.ReelIngestWorker
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -488,21 +494,12 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     } else cleanHandle
 
                     // Step 2: Transcribe real audio if audioFile is present and has real content
-                    val audioFile = metadata?.audioFile
-                    val freshTranscribed = if (audioFile != null && audioFile.exists() && audioFile.length() > 0) {
-                        transcriber.transcribe(audioFile).getOrNull()?.trim()?.ifBlank { null }
-                    } else null
+                    val outcome = transcribeForReprocess(metadata, transcriber, reel.transcript, hasOldBogusTranscript)
 
-                    val realTranscript = when {
-                        !freshTranscribed.isNullOrBlank() -> freshTranscribed
-                        !reel.transcript.isNullOrBlank() && !hasOldBogusTranscript && !reel.transcript.equals("Not available", ignoreCase = true) -> reel.transcript
-                        else -> "Not available"
-                    }
-
-                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} extracted transcript length: ${realTranscript.length}")
+                    android.util.Log.d("ReelLibrary", "Reel ${reel.id} extracted transcript length: ${outcome.text?.length ?: 0}")
 
                     // Step 3: Summarize using rich caption + real audio transcript
-                    val summaryResult = summarizer.summarize(cleanCaption, if (realTranscript == "Not available") "" else realTranscript)
+                    val summaryResult = summarizer.summarize(cleanCaption, outcome.summaryInput)
                     val summary = summaryResult.getOrNull()
                     android.util.Log.d("ReelLibrary", "Reel ${reel.id} summary: success=${summaryResult.isSuccess}")
 
@@ -514,7 +511,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                             tagsJson = kotlinx.serialization.json.Json.encodeToString(summary.tags),
                             creatorHandle = parsedHandle ?: reel.creatorHandle,
                             caption = cleanCaption.ifBlank { reel.caption },
-                            transcript = realTranscript,
+                            transcript = outcome.text,
+                            transcriptNote = outcome.note,
                             thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
                             status = IngestionStatus.COMPLETED,
                             engineUsed = "${transcriber.name} + ${summarizer.name}",
@@ -529,7 +527,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                             takeawaysJson = "[]",
                             creatorHandle = parsedHandle ?: reel.creatorHandle,
                             caption = cleanCaption.ifBlank { reel.caption },
-                            transcript = realTranscript,
+                            transcript = outcome.text,
+                            transcriptNote = outcome.note,
                             thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
                             status = IngestionStatus.FAILED,
                             errorMessage = err
@@ -584,19 +583,9 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     val hasBogus = reel.transcript?.contains("Transcription generated on-device via Whisper", ignoreCase = true) == true ||
                                    reel.transcript?.contains("likes", ignoreCase = true) == true ||
                                    reel.transcript?.contains("comments - ", ignoreCase = true) == true
-                    val validExisting = if (hasBogus) null else reel.transcript
-                    val audioFile = metadata?.audioFile
-                    val freshTranscribed = if (audioFile != null && audioFile.exists() && audioFile.length() > 0) {
-                        transcriber.transcribe(audioFile).getOrNull()?.trim()?.ifBlank { null }
-                    } else null
+                    val outcome = transcribeForReprocess(metadata, transcriber, reel.transcript, hasBogus)
 
-                    val realTranscript = when {
-                        !freshTranscribed.isNullOrBlank() -> freshTranscribed
-                        !validExisting.isNullOrBlank() && !validExisting.equals("Not available", ignoreCase = true) -> validExisting
-                        else -> "Not available"
-                    }
-
-                    val summaryResult = summarizer.summarize(cleanCaption, if (realTranscript == "Not available") "" else realTranscript)
+                    val summaryResult = summarizer.summarize(cleanCaption, outcome.summaryInput)
                     val summary = summaryResult.getOrNull()
 
                     if (summary != null) {
@@ -607,7 +596,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                             tagsJson = kotlinx.serialization.json.Json.encodeToString(summary.tags),
                             creatorHandle = parsedHandle ?: reel.creatorHandle,
                             caption = cleanCaption.ifBlank { reel.caption },
-                            transcript = realTranscript,
+                            transcript = outcome.text,
+                            transcriptNote = outcome.note,
                             thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
                             status = IngestionStatus.COMPLETED,
                             engineUsed = "${transcriber.name} + ${summarizer.name}",
@@ -622,7 +612,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                             takeawaysJson = "[]",
                             creatorHandle = parsedHandle ?: reel.creatorHandle,
                             caption = cleanCaption.ifBlank { reel.caption },
-                            transcript = realTranscript,
+                            transcript = outcome.text,
+                            transcriptNote = outcome.note,
                             thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
                             status = IngestionStatus.FAILED,
                             errorMessage = err
@@ -650,6 +641,38 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+    }
+
+    private suspend fun transcribeForReprocess(
+        metadata: InstagramExtractor.ExtractedMetadata?,
+        engine: TranscriptionEngine,
+        previousTranscript: String?,
+        previousWasBogus: Boolean
+    ): TranscriptOutcome {
+        val audio = metadata?.audioFile
+        val bytes = if (audio != null && audio.exists()) audio.length() else null
+        val cloudUpload = engine is GroqWhisperEngine || engine is OpenAIWhisperEngine
+        val fresh = if (bytes != null && bytes > 0L && !(cloudUpload && bytes > TranscriptOutcome.MAX_UPLOAD_BYTES)) {
+            Transcripts.resolve(
+                mediaNote = metadata?.audioNote,
+                audioBytes = bytes,
+                transcription = engine.transcribe(audio!!),
+                cloudUpload = cloudUpload
+            )
+        } else {
+            Transcripts.resolve(
+                mediaNote = metadata?.audioNote,
+                audioBytes = bytes,
+                transcription = null,
+                cloudUpload = cloudUpload
+            )
+        }
+        if (fresh.text != null) return fresh
+        val kept = previousTranscript?.trim().orEmpty()
+        if (!previousWasBogus && Transcripts.hasSpokenTranscript(kept)) {
+            return TranscriptOutcome.ready(kept)
+        }
+        return fresh
     }
 
     fun updateReelNotes(id: Long, notes: String?) {

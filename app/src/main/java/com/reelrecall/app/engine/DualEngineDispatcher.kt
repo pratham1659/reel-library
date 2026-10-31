@@ -96,7 +96,7 @@ class DualEngineDispatcher(
 
             EngineMode.LOCAL_ONLY -> {
                 if (!whisperFile.exists() || whisperFile.length() < 10_000_000L) {
-                    FailingTranscriptionEngine("Engine Mode is set to LOCAL_ONLY: On-device Whisper model weights not installed (${whisperFile.name}). Cloud fallback is strictly disallowed.")
+                    FailingTranscriptionEngine("Engine Mode is set to LOCAL_ONLY: ${TranscriptOutcome.LOCAL_UNIMPLEMENTED}")
                 } else {
                     LocalWhisperEngine(whisperFile, onTokensUsed = onTokensUsed)
                 }
@@ -202,7 +202,7 @@ class DualEngineDispatcher(
     }
 }
 
-class FailingTranscriptionEngine(private val reason: String) : TranscriptionEngine {
+class FailingTranscriptionEngine(val reason: String) : TranscriptionEngine {
     override val name: String = "Transcription Engine Error"
     override suspend fun transcribe(audioFile: File): Result<String> {
         return Result.failure(IllegalStateException(reason))

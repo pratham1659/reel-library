@@ -85,6 +85,49 @@ final class IngestionAndEngineTests: XCTestCase {
         XCTAssertTrue(content.contains("</post_caption>"))
     }
 
+    func testTranscriptOutcomeDoesNotStoreSentinel() {
+        let ready = TranscriptOutcome.resolve(
+            mediaNote: nil,
+            audioBytes: 2048,
+            transcriptionText: "  Haan dosto  ",
+            transcriptionError: nil,
+            cloudUpload: true
+        )
+        XCTAssertEqual(ready.text, "Haan dosto")
+        XCTAssertNil(ready.note)
+
+        let blank = TranscriptOutcome.resolve(
+            mediaNote: nil,
+            audioBytes: 2048,
+            transcriptionText: "   ",
+            transcriptionError: nil,
+            cloudUpload: true
+        )
+        XCTAssertNil(blank.text)
+        XCTAssertEqual(blank.note, TranscriptOutcome.noSpeech)
+
+        let missing = TranscriptOutcome.resolve(
+            mediaNote: nil,
+            audioBytes: nil,
+            transcriptionText: nil,
+            transcriptionError: nil,
+            cloudUpload: true
+        )
+        XCTAssertNil(missing.text)
+        XCTAssertEqual(missing.note, TranscriptOutcome.noMedia)
+
+        let failed = TranscriptOutcome.resolve(
+            mediaNote: nil,
+            audioBytes: 4096,
+            transcriptionText: nil,
+            transcriptionError: "Groq API key is not configured in Settings.",
+            cloudUpload: true
+        )
+        XCTAssertNil(failed.text)
+        XCTAssertEqual(failed.note, "Groq API key is not configured in Settings.")
+        XCTAssertNotEqual(failed.text, "Not available")
+    }
+
     func testBuildUserContentHandlesEmptyValues() {
         let content = SummarizationLimits.buildUserContent(
             transcript: "",

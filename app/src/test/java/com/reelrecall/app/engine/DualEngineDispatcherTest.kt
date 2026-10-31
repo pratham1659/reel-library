@@ -139,6 +139,19 @@ class DualEngineDispatcherTest {
         assertTrue("Expected FailingTranscriptionEngine, got ${transcription::class.simpleName}", transcription is FailingTranscriptionEngine)
         assertTrue("Expected FailingSummarizerEngine, got ${summarizer::class.simpleName}", summarizer is FailingSummarizerEngine)
     }
+
+    @Test
+    fun testLocalOnlyWithoutWeights_namesLocalMode() {
+        val dispatcher = DualEngineDispatcher(mockContext)
+        val prefs = AppPreferences(engineMode = EngineMode.LOCAL_ONLY)
+
+        val transcription = dispatcher.resolveTranscriptionEngine(prefs)
+
+        assertTrue(transcription is FailingTranscriptionEngine)
+        val message = (transcription as FailingTranscriptionEngine).reason
+        assertTrue(message.contains("LOCAL_ONLY"))
+        assertTrue(message.contains("not implemented in this build"))
+    }
 }
 
 class InMemoryTestPreferences : SharedPreferences {

@@ -176,7 +176,7 @@ public final class DualEngineDispatcher: Sendable {
         case .localOnly:
             if !whisperFileExists && !prefs.isWhisperModelDownloaded {
                 return FailingTranscriptionEngine(
-                    reason: "Engine Mode is set to LOCAL_ONLY: On-device WhisperKit model weights not installed. Cloud fallback is strictly disallowed."
+                    reason: "Engine Mode is set to LOCAL_ONLY: \(TranscriptOutcome.localUnimplemented)"
                 )
             } else {
                 return WhisperKitEngine(modelFolderUrl: customWhisperUrl, onTokensUsed: onLocalWhisperTelemetry)

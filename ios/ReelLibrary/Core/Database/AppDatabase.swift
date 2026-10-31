@@ -178,6 +178,21 @@ public final class AppDatabase: Sendable {
                 """)
         }
 
+        migrator.registerMigration("v2_transcript_note") { db in
+            let columns = try db.columns(in: "reels")
+            if !columns.contains(where: { $0.name == "transcriptNote" }) {
+                try db.alter(table: "reels") { table in
+                    table.add(column: "transcriptNote", .text)
+                }
+            }
+            try db.execute(sql: """
+                UPDATE reels
+                SET transcript = NULL,
+                    transcriptNote = ?
+                WHERE lower(transcript) = 'not available'
+                """, arguments: ["Spoken audio was not transcribed on a previous import. Retry transcription."])
+        }
+
         return migrator
     }
 }

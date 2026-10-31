@@ -23,6 +23,7 @@ public struct ReelRecord: Identifiable, Codable, Sendable, Equatable {
     public var engineUsed: String?
     public var status: IngestionStatus
     public var errorMessage: String?
+    public var transcriptNote: String?
     public var userNotes: String?
     public var createdAt: Int64
 
@@ -42,6 +43,7 @@ public struct ReelRecord: Identifiable, Codable, Sendable, Equatable {
         engineUsed: String? = nil,
         status: IngestionStatus = .queued,
         errorMessage: String? = nil,
+        transcriptNote: String? = nil,
         userNotes: String? = nil,
         createdAt: Int64 = Int64(Date().timeIntervalSince1970 * 1000)
     ) {
@@ -60,6 +62,7 @@ public struct ReelRecord: Identifiable, Codable, Sendable, Equatable {
         self.engineUsed = engineUsed
         self.status = status
         self.errorMessage = errorMessage
+        self.transcriptNote = transcriptNote
         self.userNotes = userNotes
         self.createdAt = createdAt
     }
@@ -154,6 +157,7 @@ extension ReelRecord: FetchableRecord, MutablePersistableRecord {
         case engineUsed
         case status
         case errorMessage
+        case transcriptNote
         case userNotes
         case createdAt
     }

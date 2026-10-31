@@ -46,16 +46,22 @@ public actor ReelIngestService: Sendable {
             var audioFileUrl: URL?
             var audioDurationSeconds: Double = 0.0
 
+            var audioNote: String?
             if let videoFile = metadata.downloadedVideoFile, FileManager.default.fileExists(atPath: videoFile.path) {
                 defer {
                     // Clean up downloaded raw video file to conserve disk space
                     try? FileManager.default.removeItem(at: videoFile)
                 }
 
-                if let audioResult = try? await audioExtractor.extractAudio(from: videoFile) {
+                do {
+                    let audioResult = try await audioExtractor.extractAudio(from: videoFile)
                     audioFileUrl = audioResult.audioUrl
                     audioDurationSeconds = audioResult.durationSeconds
+                } catch {
+                    audioNote = error.localizedDescription
                 }
+            } else {
+                audioNote = TranscriptOutcome.noMedia
             }
 
             // Step 4: Update status to TRANSCRIBING
@@ -65,15 +71,12 @@ public actor ReelIngestService: Sendable {
             let prefs = preferencesRepo.currentPreferences
             let transcriptionEngine = dispatcher.resolveTranscriptionEngine(prefs: prefs)
 
-            var transcript: String = "Not available"
-            if let audioUrl = audioFileUrl, FileManager.default.fileExists(atPath: audioUrl.path) {
-                if let rawTranscript = try? await transcriptionEngine.transcribe(audioFile: audioUrl) {
-                    let trimmed = rawTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !trimmed.isEmpty {
-                        transcript = trimmed
-                    }
-                }
-            }
+            let transcriptOutcome = await resolveTranscript(
+                audioUrl: audioFileUrl,
+                audioNote: audioNote,
+                engine: transcriptionEngine
+            )
+            let transcript = transcriptOutcome.summaryInput
 
             // Step 5: Check Duration Guard
             // If reel audio duration > 60 seconds and mode is Cloud:
@@ -100,7 +103,8 @@ public actor ReelIngestService: Sendable {
                 existing.caption = cleanCaption
                 existing.audioPath = audioFileUrl?.path
                 existing.thumbnailUrl = metadata.thumbnailUrl ?? existing.thumbnailUrl
-                existing.transcript = transcript
+                existing.transcript = transcriptOutcome.text
+                existing.transcriptNote = transcriptOutcome.note
                 existing.title = fallbackTitle
                 existing.oneLineSummary = nil
                 existing.takeawaysJson = "[]"
@@ -125,7 +129,7 @@ public actor ReelIngestService: Sendable {
             logger.info("Reel #\(reelId) status -> SUMMARIZING")
 
             let summarizationEngine = dispatcher.resolveSummarizationEngine(prefs: prefs)
-            let summaryTranscript = (transcript == "Not available") ? "" : transcript
+            let summaryTranscript = transcript
             let summary = try await summarizationEngine.summarize(caption: metadata.caption, transcript: summaryTranscript)
 
             // Step 7: Persist finalized entity in SQLite DB
@@ -133,7 +137,8 @@ public actor ReelIngestService: Sendable {
             existing.caption = cleanCaption
             existing.audioPath = audioFileUrl?.path
             existing.thumbnailUrl = metadata.thumbnailUrl ?? existing.thumbnailUrl
-            existing.transcript = transcript
+            existing.transcript = transcriptOutcome.text
+            existing.transcriptNote = transcriptOutcome.note
             existing.title = summary.title
             existing.oneLineSummary = summary.oneLineSummary
             existing.takeaways = summary.actionableTakeaways
@@ -172,7 +177,8 @@ public actor ReelIngestService: Sendable {
         let prefs = preferencesRepo.currentPreferences
         let summarizationEngine = dispatcher.resolveSummarizationEngine(prefs: prefs)
 
-        let cleanTranscript = (reel.transcript == "Not available") ? "" : (reel.transcript ?? "")
+        let stored = reel.transcript?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let cleanTranscript = stored.caseInsensitiveCompare("Not available") == .orderedSame ? "" : stored
         let summary = try await summarizationEngine.summarize(caption: reel.caption, transcript: cleanTranscript)
 
         reel.title = summary.title
@@ -210,6 +216,51 @@ public actor ReelIngestService: Sendable {
     }
 
     // MARK: - Helpers
+
+    private func resolveTranscript(
+        audioUrl: URL?,
+        audioNote: String?,
+        engine: any TranscriptionEngine
+    ) async -> TranscriptOutcome {
+        guard let audioUrl, FileManager.default.fileExists(atPath: audioUrl.path) else {
+            return TranscriptOutcome.resolve(
+                mediaNote: audioNote,
+                audioBytes: nil,
+                transcriptionText: nil,
+                transcriptionError: nil,
+                cloudUpload: false
+            )
+        }
+        let bytes = (try? FileManager.default.attributesOfItem(atPath: audioUrl.path)[.size] as? NSNumber)?.int64Value ?? 0
+        let cloudUpload = !(engine is WhisperKitEngine)
+        if cloudUpload && bytes > TranscriptOutcome.maxUploadBytes {
+            return TranscriptOutcome.resolve(
+                mediaNote: audioNote,
+                audioBytes: bytes,
+                transcriptionText: nil,
+                transcriptionError: nil,
+                cloudUpload: true
+            )
+        }
+        do {
+            let raw = try await engine.transcribe(audioFile: audioUrl)
+            return TranscriptOutcome.resolve(
+                mediaNote: audioNote,
+                audioBytes: bytes,
+                transcriptionText: raw,
+                transcriptionError: nil,
+                cloudUpload: cloudUpload
+            )
+        } catch {
+            return TranscriptOutcome.resolve(
+                mediaNote: audioNote,
+                audioBytes: bytes,
+                transcriptionText: nil,
+                transcriptionError: error.localizedDescription,
+                cloudUpload: cloudUpload
+            )
+        }
+    }
 
     public static func generateFallbackTitle(from caption: String?, creatorHandle: String?) -> String {
         guard let caption = caption, !caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {

@@ -11,7 +11,11 @@ import com.reelrecall.app.data.local.AppDatabase
 import com.reelrecall.app.data.model.IngestionStatus
 import com.reelrecall.app.data.repository.PreferencesRepository
 import com.reelrecall.app.engine.DualEngineDispatcher
+import com.reelrecall.app.engine.GroqWhisperEngine
 import com.reelrecall.app.engine.MockSummarizationEngine
+import com.reelrecall.app.engine.OpenAIWhisperEngine
+import com.reelrecall.app.engine.TranscriptOutcome
+import com.reelrecall.app.engine.Transcripts
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -47,13 +51,8 @@ class ReelIngestWorker(
 
             val currentPrefs = preferencesRepository.preferencesFlow.first()
             val transcriptionEngine = dispatcher.resolveTranscriptionEngine(currentPrefs)
-
-            val rawTranscript = if (metadata.audioFile != null && metadata.audioFile.exists() && metadata.audioFile.length() > 0) {
-                transcriptionEngine.transcribe(metadata.audioFile).getOrNull()?.trim()?.ifBlank { null }
-            } else {
-                null
-            }
-            val transcript = rawTranscript ?: "Not available"
+            val transcriptOutcome = transcribeExtracted(metadata, transcriptionEngine)
+            val transcript = transcriptOutcome.summaryInput
 
             // Check reel duration: if > 1 minute (60,000ms), extract all details & transcript
             // but skip AI token summarization until user explicitly runs it from the Reel Detail page.
@@ -93,7 +92,8 @@ class ReelIngestWorker(
                         caption = cleanCaption ?: existing.caption,
                         audioPath = metadata.audioFile?.absolutePath,
                         thumbnailUrl = metadata.thumbnailUrl ?: existing.thumbnailUrl,
-                        transcript = transcript,
+                        transcript = transcriptOutcome.text,
+                        transcriptNote = transcriptOutcome.note,
                         title = fallbackTitle,
                         oneLineSummary = null,
                         takeawaysJson = "[]",
@@ -113,8 +113,19 @@ class ReelIngestWorker(
             // Step 3: Update status to SUMMARIZING for reels <= 1 minute
             dao.updateStatus(reelId, IngestionStatus.SUMMARIZING)
 
+            // Keep the transcript even if summarization later fails.
+            if (existing != null) {
+                dao.update(
+                    existing.copy(
+                        transcript = transcriptOutcome.text,
+                        transcriptNote = transcriptOutcome.note,
+                        audioPath = metadata.audioFile?.absolutePath ?: existing.audioPath
+                    )
+                )
+            }
+
             val summarizationEngine = dispatcher.resolveSummarizationEngine(currentPrefs)
-            val summaryResult = summarizationEngine.summarize(metadata.caption, if (transcript == "Not available") "" else transcript)
+            val summaryResult = summarizationEngine.summarize(metadata.caption, transcript)
 
             val summary = summaryResult.getOrElse { originalErr ->
                 return handleError(reelId, "Processing failed: ${originalErr.message}")
@@ -127,7 +138,8 @@ class ReelIngestWorker(
                     caption = cleanCaption ?: existing.caption,
                     audioPath = metadata.audioFile?.absolutePath,
                     thumbnailUrl = metadata.thumbnailUrl ?: existing.thumbnailUrl,
-                    transcript = transcript,
+                    transcript = transcriptOutcome.text,
+                    transcriptNote = transcriptOutcome.note,
                     title = summary.title,
                     oneLineSummary = summary.one_line_summary,
                     takeawaysJson = Json.encodeToString(summary.actionable_takeaways),
@@ -145,6 +157,29 @@ class ReelIngestWorker(
         } catch (e: Exception) {
             return handleError(reelId, e.message ?: "Unknown ingestion error")
         }
+    }
+
+    private suspend fun transcribeExtracted(
+        metadata: InstagramExtractor.ExtractedMetadata,
+        engine: com.reelrecall.app.engine.TranscriptionEngine
+    ): TranscriptOutcome {
+        val audio = metadata.audioFile
+        val bytes = if (audio != null && audio.exists()) audio.length() else null
+        val cloudUpload = engine is GroqWhisperEngine || engine is OpenAIWhisperEngine
+        if (bytes == null || bytes <= 0L || (cloudUpload && bytes > TranscriptOutcome.MAX_UPLOAD_BYTES)) {
+            return Transcripts.resolve(
+                mediaNote = metadata.audioNote,
+                audioBytes = bytes,
+                transcription = null,
+                cloudUpload = cloudUpload
+            )
+        }
+        return Transcripts.resolve(
+            mediaNote = metadata.audioNote,
+            audioBytes = bytes,
+            transcription = engine.transcribe(audio!!),
+            cloudUpload = cloudUpload
+        )
     }
 
     private suspend fun handleError(reelId: Long, error: String): Result {

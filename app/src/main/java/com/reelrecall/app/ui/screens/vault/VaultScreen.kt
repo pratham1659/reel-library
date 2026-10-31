@@ -935,7 +935,8 @@ fun VaultScreen(
             FullTranscriptDialog(
                 reel = reel,
                 onDismiss = { fullTranscriptReel = null },
-                onOpenInstagram = { openInInstagram(context, reel.canonicalUrl) }
+                onOpenInstagram = { openInInstagram(context, reel.canonicalUrl) },
+                onRetryTranscription = { viewModel.reprocessReel(reel.id) }
             )
         }
     }
@@ -1941,7 +1942,8 @@ fun ReaderModeDialog(
                     }
 
                     // SPOKEN TRANSCRIPT PREVIEW
-                    if (!reel.transcript.isNullOrBlank()) {
+                    val spokenPreview = com.reelrecall.app.engine.Transcripts.display(reel.transcript, reel.transcriptNote)
+                    if (!spokenPreview.isNullOrBlank() && com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(reel.transcript)) {
                         Text(
                             text = "Audio Transcript",
                             fontSize = 14.sp,
@@ -1955,7 +1957,7 @@ fun ReaderModeDialog(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = reel.transcript,
+                                text = spokenPreview,
                                 fontSize = 12.sp,
                                 color = TextMuted,
                                 lineHeight = 17.sp,
@@ -1989,7 +1991,8 @@ fun ReaderModeDialog(
 fun FullTranscriptDialog(
     reel: ReelEntity,
     onDismiss: () -> Unit,
-    onOpenInstagram: () -> Unit
+    onOpenInstagram: () -> Unit,
+    onRetryTranscription: (() -> Unit)? = null
 ) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -2030,13 +2033,27 @@ fun FullTranscriptDialog(
                         .padding(14.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    val isAvailable = !reel.transcript.isNullOrBlank() && !reel.transcript.equals("Not available", ignoreCase = true)
-                    Text(
-                        text = if (isAvailable) reel.transcript!! else "Spoken audio transcript is not available for this reel. AI Summary was generated directly from the post caption.",
-                        fontSize = 13.sp,
-                        color = if (isAvailable) TextSecondary else TextMuted,
-                        lineHeight = 19.sp
-                    )
+                    val isAvailable = com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(reel.transcript)
+                    val transcriptBody = if (isAvailable) {
+                        reel.transcript!!
+                    } else {
+                        reel.transcriptNote?.takeIf { it.isNotBlank() }
+                            ?: com.reelrecall.app.engine.TranscriptOutcome.CAPTION_ONLY
+                    }
+                    Column {
+                        Text(
+                            text = transcriptBody,
+                            fontSize = 13.sp,
+                            color = if (isAvailable) TextSecondary else TextMuted,
+                            lineHeight = 19.sp
+                        )
+                        if (!isAvailable && onRetryTranscription != null) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            TextButton(onClick = onRetryTranscription) {
+                                Text("Retry transcription")
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -3142,7 +3159,7 @@ fun ReelDetailScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    val hasValidTranscript = !currentReel.transcript.isNullOrBlank() && !currentReel.transcript.equals("Not available", ignoreCase = true)
+                    val hasValidTranscript = com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(currentReel.transcript)
                     if (hasValidTranscript) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
@@ -3216,11 +3233,19 @@ fun ReelDetailScreen(
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "Spoken audio transcript is not available for this reel. AI Summary was generated directly from the post caption.",
+                                    text = currentReel.transcriptNote?.takeIf { it.isNotBlank() }
+                                        ?: com.reelrecall.app.engine.TranscriptOutcome.CAPTION_ONLY,
                                     fontSize = 12.5.sp,
                                     color = colors.textMuted,
                                     lineHeight = 18.sp
                                 )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                TextButton(
+                                    onClick = { viewModel.reprocessReel(currentReel.id) },
+                                    enabled = !isRetrying
+                                ) {
+                                    Text(if (isRetrying) "Retrying…" else "Retry transcription")
+                                }
                             }
                         }
                     }

@@ -284,7 +284,7 @@ class LocalWhisperEngine(
         // Only transcribe if authentic local model weights (> 10MB) are present
         if (!targetFile.exists() || targetFile.length() < 10_000_000L) {
             return@withContext Result.failure(
-                IllegalStateException("Local Whisper weights not downloaded into storage.")
+                IllegalStateException(TranscriptOutcome.LOCAL_UNIMPLEMENTED)
             )
         }
 
@@ -292,7 +292,7 @@ class LocalWhisperEngine(
         onTokensUsed?.invoke(0L, 0L, elapsedLatency, "On-Device Whisper Base")
 
         Result.failure(
-            IllegalStateException("On-device Whisper native inference runtime is not loaded.")
+            IllegalStateException(TranscriptOutcome.LOCAL_UNIMPLEMENTED)
         )
     }
 }
