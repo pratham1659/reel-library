@@ -7,21 +7,15 @@ export const Hero: React.FC = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Official App Icon Emblem Showcase */}
-        <div className="flex items-center justify-center mb-2">
+        <div className="flex items-center justify-center mb-3">
           <div className="relative group">
-            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] opacity-35 blur-lg group-hover:opacity-60 transition duration-500" />
-            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#FCAF45] via-[#E1306C] to-[#5851DB] p-[2px] shadow-2xl">
-              <div className="w-full h-full bg-[#0C0F17] rounded-[14px] flex items-center justify-center p-2.5">
-                <svg viewBox="0 0 108 108" className="w-full h-full" fill="none">
-                  <path 
-                    d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" 
-                    stroke="#E1306C" 
-                    strokeWidth="4.5" 
-                  />
-                  <circle cx="54" cy="54" r="12" stroke="#FFFFFF" strokeWidth="4" />
-                  <path d="M51,48 L60,54 L51,60 Z" fill="#FFFFFF" />
-                </svg>
-              </div>
+            <div className="absolute -inset-2 rounded-3xl bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] opacity-40 blur-xl group-hover:opacity-70 transition duration-500" />
+            <div className="relative w-24 h-24 rounded-[28px] overflow-hidden shadow-2xl transition transform group-hover:scale-105">
+              <img 
+                src="/app-icon.svg" 
+                alt="Reel Library App Icon" 
+                className="w-full h-full object-cover" 
+              />
             </div>
           </div>
         </div>

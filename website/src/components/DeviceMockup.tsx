@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { 
-  Search, Mic, Sparkles, Cloud, Play, Volume2, 
+  Search, Mic, Sparkles, Cloud, Volume2, 
   Copy, Check, ShieldCheck, Database, RefreshCw, Cpu, Clock
 } from 'lucide-react'
 
@@ -117,11 +117,11 @@ export const DeviceMockup: React.FC = () => {
                   {/* App Bar Header */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-[#FCAF45] via-[#E1306C] to-[#5851DB] p-[1px]">
-                        <div className="w-full h-full bg-[#0C0F17] rounded-[5px] flex items-center justify-center">
-                          <Play className="w-2.5 h-2.5 fill-white text-white" />
-                        </div>
-                      </div>
+                      <img 
+                        src="/app-icon.svg" 
+                        alt="Reel Library" 
+                        className="w-6 h-6 rounded-md shadow-sm" 
+                      />
                       <span className="font-bold text-sm font-display tracking-tight text-white">Reel Vault</span>
                     </div>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300 border border-pink-500/20">

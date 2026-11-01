@@ -9,19 +9,11 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Logo with Original Sunset Pink App Icon */}
         <a href="#" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#FCAF45] via-[#E1306C] to-[#5851DB] p-[1.5px] shadow-glow-sunset transition transform group-hover:scale-105">
-            <div className="w-full h-full bg-[#0C0F17] rounded-[10.5px] flex items-center justify-center p-1">
-              <svg viewBox="0 0 108 108" className="w-full h-full" fill="none">
-                <path 
-                  d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" 
-                  stroke="#E1306C" 
-                  strokeWidth="4.5" 
-                />
-                <circle cx="54" cy="54" r="12" stroke="#FFFFFF" strokeWidth="4" />
-                <path d="M51,48 L60,54 L51,60 Z" fill="#FFFFFF" />
-              </svg>
-            </div>
-          </div>
+          <img 
+            src="/app-icon.svg" 
+            alt="Reel Library" 
+            className="w-9 h-9 rounded-xl shadow-glow-sunset transition transform group-hover:scale-105"
+          />
           <div>
             <div className="flex items-center gap-2">
               <span className="font-display font-bold text-base tracking-tight text-white">Reel Library</span>

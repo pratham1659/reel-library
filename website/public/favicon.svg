@@ -12,18 +12,25 @@
     </filter>
   </defs>
 
+  <!-- Background Squircle with Sunset Pink & Purple Gradient -->
   <rect x="0" y="0" width="108" height="108" rx="24" fill="url(#reelBg)" />
+
+  <!-- Outer Rounded Reel Squircle Outline (Pure White, No Dot) -->
   <path
     d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z"
     stroke="#FFFFFF"
     stroke-width="3.5"
     fill="none"
     filter="url(#glow)" />
+
+  <!-- Center Circle -->
   <path
     d="M54,42 A12,12 0 1,1 54,66 A12,12 0 1,1 54,42 Z"
     stroke="#FFFFFF"
     stroke-width="3"
     fill="none" />
+
+  <!-- Center Play Arrow Glyph -->
   <path
     d="M51,48 L60,54 L51,60 Z"
     fill="#FFFFFF" />
