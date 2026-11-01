@@ -92,7 +92,7 @@ export const ReleaseNotes: React.FC = () => {
               </div>
 
               <a
-                href="https://github.com/pratham1659/reel-library/releases/tag/v1.2.2"
+                href={`https://github.com/pratham1659/reel-library/releases/tag/${rel.version}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-pink-400 hover:text-pink-300 font-medium flex items-center gap-1"

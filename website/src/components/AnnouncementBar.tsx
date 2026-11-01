@@ -11,7 +11,7 @@ export const AnnouncementBar: React.FC = () => {
         <div className="inline-flex items-center gap-2 flex-wrap justify-center">
           <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-semibold text-pink-400 border border-pink-500/30">
             <Sparkles className="w-2.5 h-2.5" />
-            v1.2.2 Released
+            v1.2.3 Released
           </span>
           <span className="text-neutral-300 font-medium">
             New: Google Drive Personal Cloud, Real-time Storage & In-App Updates
