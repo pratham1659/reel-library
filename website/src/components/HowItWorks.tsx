@@ -24,7 +24,7 @@ export const HowItWorks: React.FC = () => {
   ]
 
   return (
-    <section id="how-it-works" className="relative py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <section id="how-it-works" className="relative py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden w-full">
       <div className="text-center max-w-2xl mx-auto mb-14">
         <span className="text-xs font-semibold uppercase tracking-wider text-pink-400">
           Seamless Workflow

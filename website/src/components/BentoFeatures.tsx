@@ -13,7 +13,7 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export const BentoFeatures: React.FC = () => {
   return (
-    <section id="features" className="relative py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <section id="features" className="relative py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden w-full">
       <div className="text-center max-w-2xl mx-auto mb-12">
         <span className="text-xs font-semibold uppercase tracking-wider text-pink-400">
           Core Architecture
