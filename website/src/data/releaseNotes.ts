@@ -16,9 +16,60 @@ export interface ReleaseNote {
 
 export const releaseNotesData: ReleaseNote[] = [
   {
-    version: 'v1.2.3',
+    version: 'v1.2.4',
     date: 'November 2026',
     isLatest: true,
+    title: 'Privacy Policy Onboarding, Reel Export Handling & Detailed Takeaways',
+    summary: 'Introduces a mandatory Privacy Policy onboarding screen with zero permission commitments, intelligent handling for reels with restricted export, informative transcript reasons, and exhaustive, unskewed actionable takeaways.',
+    categories: [
+      {
+        category: 'Privacy & Security',
+        badgeColor: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+        items: [
+          {
+            title: 'Privacy Policy Onboarding Screen',
+            description: 'New users are welcomed with an explicit Privacy Policy gate affirming Zero Phone Permissions, Local Encrypted Vault storage, Bring Your Own Keys (BYOK), and Zero Telemetry.'
+          },
+          {
+            title: 'Full Policy & Terms Dialog',
+            description: 'A detailed 7-section Privacy Policy & Terms modal explaining client-side storage, encrypted credentials, and BYOK direct-to-provider routing.'
+          }
+        ]
+      },
+      {
+        category: 'Media Extraction & Transcripts',
+        badgeColor: 'bg-pink-500/10 text-pink-300 border-pink-500/30',
+        items: [
+          {
+            title: 'Intelligent Reel Export Handling',
+            description: 'Detects reels where Instagram blocks direct video/audio download (e.g. age-gated or login required), marking them as Not Supported and bypassing AI summarization to save your API quota.'
+          },
+          {
+            title: 'Descriptive Transcript Explanations',
+            description: 'Replaced generic "Not available" transcript labels with helpful, context-rich reasons and post caption references in Full Transcript, Reader Mode, and Reel Detail views.'
+          }
+        ]
+      },
+      {
+        category: 'AI Knowledge Synthesis',
+        badgeColor: 'bg-purple-500/10 text-purple-300 border-purple-500/30',
+        items: [
+          {
+            title: 'Dynamic & Detailed Actionable Takeaways',
+            description: 'AI prompts no longer artificially force 5 points on brief reels and now extract every practical takeaway available on content-rich reels in full detail with exact tools, steps, and syntax.'
+          },
+          {
+            title: 'Expanded Generation Tokens',
+            description: 'Increased maximum token budget to 2,048 tokens across Groq, OpenAI, Claude, and local models to ensure extensive takeaways are never truncated.'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.2.3',
+    date: 'November 2026',
+    isLatest: false,
     title: 'Data & Storage UI Polish & Groq Qwen Lock',
     summary: 'Pixel-perfect typography and alignment refinements across Data & Storage settings, alongside a strict model lock for Groq APIs.',
     categories: [

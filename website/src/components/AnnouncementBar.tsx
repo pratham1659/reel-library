@@ -11,10 +11,10 @@ export const AnnouncementBar: React.FC = () => {
         <div className="flex items-center justify-center gap-2 sm:gap-3 text-center">
           <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-pink-400 border border-pink-500/30 whitespace-nowrap shrink-0">
             <Sparkles className="w-2.5 h-2.5" />
-            v1.2.3 Released
+            v1.2.4 Released
           </span>
           <span className="hidden sm:inline text-neutral-300 font-medium truncate max-w-md">
-            New: Storage Telemetry, Qwen LLM & In-App Updates
+            New: Privacy Policy Onboarding, Reel Export Handling & Detailed Takeaways
           </span>
           <span className="hidden sm:inline text-neutral-600">•</span>
           <span className="text-pink-400 font-semibold group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-1 text-[11px] sm:text-xs whitespace-nowrap shrink-0">

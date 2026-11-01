@@ -1,6 +1,6 @@
 # Reel Library 📱⚡
 
-[![Release](https://img.shields.io/badge/Release-v1.2.3-orange.svg)](https://github.com/pratham1659/reel-library/releases/tag/v1.2.3)
+[![Release](https://img.shields.io/badge/Release-v1.2.4-orange.svg)](https://github.com/pratham1659/reel-library/releases/tag/v1.2.4)
 [![Android](https://img.shields.io/badge/Platform-Android_8.0+_(API_26--36)-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
 [![iOS](https://img.shields.io/badge/Platform-iOS_17.0+-000000?logo=apple&logoColor=white)](https://developer.apple.com/ios/)
 [![iPadOS](https://img.shields.io/badge/Platform-iPadOS_17.0+-000000?logo=apple&logoColor=white)](https://developer.apple.com/ipados/)
@@ -87,8 +87,8 @@ flowchart TD
 
 | Platform | Target Artifact | Location | Packaging Scheme |
 | :--- | :--- | :--- | :--- |
-| **Android** | `ReelLibrary-release-v1.2.3.apk` | GitHub release v1.2.3 | APK Signature Scheme v2 |
-| **iOS / iPadOS** | `ReelLibrary-v1.2.3.ipa` | GitHub release v1.2.3 | Apple Development (registered devices) |
+| **Android** | `ReelLibrary-release-v1.2.4.apk` | GitHub release v1.2.4 | APK Signature Scheme v2 |
+| **iOS / iPadOS** | `ReelLibrary-v1.2.4.ipa` | GitHub release v1.2.4 | Apple Development (registered devices) |
 
 ---
 
