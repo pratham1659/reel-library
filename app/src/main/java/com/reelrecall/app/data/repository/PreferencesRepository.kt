@@ -7,6 +7,8 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
@@ -92,6 +94,7 @@ enum class AIProvider(
 }
 
 data class AppPreferences(
+    val hasAcceptedPrivacyPolicy: Boolean = false,
     val engineMode: EngineMode = EngineMode.CLOUD_ONLY,
     val selectedProvider: AIProvider = AIProvider.GROQ,
     val groqApiKey: String = "",
@@ -189,6 +192,7 @@ data class AppPreferences(
 class PreferencesRepository(private val context: Context) {
 
     private object PreferencesKeys {
+        val HAS_ACCEPTED_PRIVACY_POLICY = booleanPreferencesKey("has_accepted_privacy_policy")
         val ENGINE_MODE = stringPreferencesKey("engine_mode")
         val SELECTED_PROVIDER = stringPreferencesKey("selected_provider")
         val CUSTOM_BASE_URL = stringPreferencesKey("custom_base_url")
@@ -218,6 +222,7 @@ class PreferencesRepository(private val context: Context) {
         val GOOGLE_DRIVE_NAME = stringPreferencesKey("google_drive_name")
         val GOOGLE_DRIVE_PHOTO_URL = stringPreferencesKey("google_drive_photo_url")
         val LAST_DAILY_CLOUD_BACKUP_DATE = stringPreferencesKey("last_daily_cloud_backup_date")
+        val KEY_VAULT_UPDATE_TIMESTAMP = longPreferencesKey("key_vault_update_timestamp")
         // Real-Time Cloud Telemetry Keys
         val TOTAL_TOKENS_USED = longPreferencesKey("total_tokens_used")
         val TOTAL_PROMPT_TOKENS = longPreferencesKey("total_prompt_tokens")
@@ -303,8 +308,12 @@ class PreferencesRepository(private val context: Context) {
     private val tokenUsageDao by lazy { db.tokenUsageDao() }
 
     private val secureKeyVault = com.reelrecall.app.data.security.SecureKeyVault.getInstance(context)
+    private val keyVaultUpdateTrigger = MutableStateFlow(System.currentTimeMillis())
 
-    val preferencesFlow: Flow<AppPreferences> = context.dataStore.data.map { preferences ->
+    val preferencesFlow: Flow<AppPreferences> = combine(
+        context.dataStore.data,
+        keyVaultUpdateTrigger
+    ) { preferences, _ ->
         val modeString = preferences[PreferencesKeys.ENGINE_MODE] ?: EngineMode.CLOUD_ONLY.name
         val mode = try {
             EngineMode.valueOf(modeString)
@@ -363,6 +372,7 @@ class PreferencesRepository(private val context: Context) {
         val isLlmReal = (preferences[PreferencesKeys.IS_LLM_DOWNLOADED] ?: false) && llmFile.exists() && llmFile.length() > 50_000_000L
 
         AppPreferences(
+            hasAcceptedPrivacyPolicy = preferences[PreferencesKeys.HAS_ACCEPTED_PRIVACY_POLICY] ?: false,
             engineMode = mode,
             selectedProvider = selectedProvider,
             groqApiKey = groqKey,
@@ -455,6 +465,12 @@ class PreferencesRepository(private val context: Context) {
         )
     }
 
+    suspend fun setPrivacyPolicyAccepted(accepted: Boolean = true) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.HAS_ACCEPTED_PRIVACY_POLICY] = accepted
+        }
+    }
+
     suspend fun setEngineMode(mode: EngineMode) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.ENGINE_MODE] = mode.name
@@ -467,22 +483,30 @@ class PreferencesRepository(private val context: Context) {
         }
     }
 
+    private suspend fun notifyVaultUpdated() {
+        keyVaultUpdateTrigger.value = System.currentTimeMillis()
+        try {
+            context.dataStore.edit { preferences ->
+                preferences[PreferencesKeys.KEY_VAULT_UPDATE_TIMESTAMP] = System.currentTimeMillis()
+                preferences.remove(PreferencesKeys.GROQ_API_KEY)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("PreferencesRepo", "Error updating vault timestamp", e)
+        }
+    }
+
     suspend fun setGroqApiKey(key: String) {
         if (key.isBlank()) {
             deleteGroqApiKey()
         } else {
             secureKeyVault.setGroqApiKey(key)
-            context.dataStore.edit { preferences ->
-                preferences.remove(PreferencesKeys.GROQ_API_KEY)
-            }
+            notifyVaultUpdated()
         }
     }
 
     suspend fun deleteGroqApiKey() {
         secureKeyVault.deleteGroqApiKey()
-        context.dataStore.edit { preferences ->
-            preferences.remove(PreferencesKeys.GROQ_API_KEY)
-        }
+        notifyVaultUpdated()
     }
 
     suspend fun setOpenAIApiKey(key: String) {
@@ -490,11 +514,13 @@ class PreferencesRepository(private val context: Context) {
             deleteOpenAIApiKey()
         } else {
             secureKeyVault.setOpenAIApiKey(key)
+            notifyVaultUpdated()
         }
     }
 
     suspend fun deleteOpenAIApiKey() {
         secureKeyVault.deleteOpenAIApiKey()
+        notifyVaultUpdated()
     }
 
     suspend fun setClaudeApiKey(key: String) {
@@ -502,11 +528,13 @@ class PreferencesRepository(private val context: Context) {
             deleteClaudeApiKey()
         } else {
             secureKeyVault.setClaudeApiKey(key)
+            notifyVaultUpdated()
         }
     }
 
     suspend fun deleteClaudeApiKey() {
         secureKeyVault.deleteClaudeApiKey()
+        notifyVaultUpdated()
     }
 
     suspend fun setCustomApiKey(key: String) {
@@ -514,11 +542,13 @@ class PreferencesRepository(private val context: Context) {
             deleteCustomApiKey()
         } else {
             secureKeyVault.setCustomApiKey(key)
+            notifyVaultUpdated()
         }
     }
 
     suspend fun deleteCustomApiKey() {
         secureKeyVault.deleteCustomApiKey()
+        notifyVaultUpdated()
     }
 
     suspend fun setCustomSettings(baseUrl: String, summarizerModel: String, transcriptionModel: String) {

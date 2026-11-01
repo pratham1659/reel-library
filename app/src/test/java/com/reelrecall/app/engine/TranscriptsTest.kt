@@ -76,4 +76,33 @@ class TranscriptsTest {
         assertNull(outcome.text)
         assertTrue(outcome.note!!.contains("25 MB"))
     }
+
+    @Test
+    fun restrictedMediaUsesRestrictedNote() {
+        val outcome = Transcripts.resolve(
+            mediaNote = TranscriptOutcome.RESTRICTED_MEDIA,
+            audioBytes = null,
+            transcription = null,
+            cloudUpload = true
+        )
+        assertNull(outcome.text)
+        assertEquals(TranscriptOutcome.RESTRICTED_MEDIA, outcome.note)
+        assertTrue(outcome.note!!.contains("restricted"))
+    }
+
+    @Test
+    fun displayReturnsNoteWhenSpokenIsMissing() {
+        val note = "Instagram restricted this Reel (age or login requirement)."
+        assertEquals(note, Transcripts.display(null, note))
+        assertEquals(note, Transcripts.display("Not available", note))
+        assertEquals("Actual spoken text", Transcripts.display("Actual spoken text", note))
+    }
+
+    @Test
+    fun displayReturnsDefaultWhenBothAreEmpty() {
+        val result = Transcripts.display(null, null)
+        assertTrue(result.contains("Spoken audio was not transcribed"))
+        val resultFromSentinel = Transcripts.display("Not available", "Not available")
+        assertTrue(resultFromSentinel.contains("Spoken audio was not transcribed"))
+    }
 }

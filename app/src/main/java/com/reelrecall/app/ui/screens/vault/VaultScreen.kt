@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,6 +81,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -132,10 +134,14 @@ import com.reelrecall.app.data.model.ReelEntity
 import com.reelrecall.app.ui.screens.vault.components.SortFilterBottomSheet
 import com.reelrecall.app.ui.theme.ActiveBlue
 import com.reelrecall.app.ui.theme.ActiveBlueBg
+import com.reelrecall.app.ui.theme.BrandRoseEnd
+import com.reelrecall.app.ui.theme.BrandRoseMiddle
+import com.reelrecall.app.ui.theme.BrandRoseStart
 import com.reelrecall.app.ui.theme.CyanAccent
 import com.reelrecall.app.ui.theme.InstagramOrange
 import com.reelrecall.app.ui.theme.InstagramPink
 import com.reelrecall.app.ui.theme.InstagramPurple
+import com.reelrecall.app.ui.theme.WarningYellow
 import com.reelrecall.app.ui.theme.ObsidianBg
 import com.reelrecall.app.ui.theme.ObsidianCard
 import com.reelrecall.app.ui.theme.ObsidianCardBorder
@@ -1231,8 +1237,8 @@ fun RecallReelCard(
                     .background(colors.surface)
                     .clickable(onClick = onOpenReel)
             ) {
-                // Blurred Background Letterbox (Exact Recall Effect)
                 if (!reel.thumbnailUrl.isNullOrBlank()) {
+                    // Blurred Background Letterbox (Exact Recall Effect)
                     AsyncImage(
                         model = reel.thumbnailUrl,
                         contentDescription = null,
@@ -1246,10 +1252,8 @@ fun RecallReelCard(
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.45f))
                     )
-                }
 
-                // Central Vertical Portrait Video / Image
-                if (!reel.thumbnailUrl.isNullOrBlank()) {
+                    // Central Vertical Portrait Video / Image
                     AsyncImage(
                         model = reel.thumbnailUrl,
                         contentDescription = "Reel Preview",
@@ -1260,44 +1264,114 @@ fun RecallReelCard(
                             .align(Alignment.Center)
                             .clip(RoundedCornerShape(10.dp))
                     )
+
+                    if (!isSelectionMode) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .align(Alignment.Center)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.55f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Play",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
                 } else {
-                    // Fallback sleek placeholder if thumbnail hasn't loaded yet
+                    // Fallback branded Tonal Rose gradient card with Instagram glyph
+                    val isRestricted = reel.transcriptNote?.contains("restricted", ignoreCase = true) == true
                     Box(
                         modifier = Modifier
-                            .width(135.dp)
-                            .height(240.dp)
-                            .align(Alignment.Center)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(colors.pillBg),
+                            .fillMaxSize()
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        BrandRoseStart.copy(alpha = 0.85f),
+                                        BrandRoseMiddle.copy(alpha = 0.90f),
+                                        BrandRoseEnd.copy(alpha = 0.95f)
+                                    )
+                                )
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = colors.textMuted,
-                            modifier = Modifier.size(36.dp)
+                        // Dark scrim for contrast
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.35f))
                         )
+
+                        // Central Frosted Information Card
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.Black.copy(alpha = 0.45f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Watch on Instagram",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+
+                                Text(
+                                    text = if (!reel.creatorHandle.isNullOrBlank()) reel.creatorHandle!! else "Instagram Reel",
+                                    color = Color.White,
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = if (isRestricted) WarningYellow.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.18f),
+                                    border = androidx.compose.foundation.BorderStroke(0.8.dp, if (isRestricted) WarningYellow.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.3f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isRestricted) Icons.Default.Lock else Icons.AutoMirrored.Filled.OpenInNew,
+                                            contentDescription = null,
+                                            tint = if (isRestricted) WarningYellow else Color.White,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Text(
+                                            text = if (isRestricted) "Restricted on Web • Tap to Watch" else "Tap to Watch on Instagram",
+                                            color = if (isRestricted) WarningYellow else Color.White,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
-                // Play Icon Overlay or Selection Checkmark
-                if (!isSelectionMode) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .align(Alignment.Center)
-                            .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.55f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                } else {
+                if (isSelectionMode) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -1332,7 +1406,7 @@ fun RecallReelCard(
 
                 // Status Badge in Top Right
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                    RecallStatusPill(status = reel.status)
+                    RecallStatusPill(status = reel.status, transcript = reel.transcript, transcriptNote = reel.transcriptNote)
                 }
             }
 
@@ -1469,26 +1543,41 @@ private data class StatusPillStyle(
 @Composable
 fun RecallStatusPill(
     status: IngestionStatus,
+    transcript: String? = null,
+    transcriptNote: String? = null,
     isDark: Boolean = LocalIsDarkTheme.current
 ) {
+    val isAudioUnavailable = status == IngestionStatus.NOT_SUPPORTED ||
+        (status == IngestionStatus.COMPLETED && !com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(transcript))
+
     val style = if (isDark) {
-        when (status) {
-            IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFF332712), Color(0xFFFFB74D), Color(0xFFFFB74D).copy(alpha = 0.35f))
-            IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFF0F2C3A), StatusProcessing, StatusProcessing.copy(alpha = 0.35f))
-            IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFF0F2C3A), StatusProcessing, StatusProcessing.copy(alpha = 0.35f))
-            IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFF2E1C0A), SparkleOrange, SparkleOrange.copy(alpha = 0.35f))
-            IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFF122815), StatusReady, StatusReady.copy(alpha = 0.35f))
-            IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFF331515), StatusError, StatusError.copy(alpha = 0.35f))
+        if (isAudioUnavailable) {
+            StatusPillStyle("Audio Not Available", Color(0xFF2E2008), Color(0xFFFBBF24), Color(0xFFF59E0B).copy(alpha = 0.35f))
+        } else {
+            when (status) {
+                IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFF1E2230), Color(0xFF94A3B8), Color(0xFF64748B).copy(alpha = 0.35f))
+                IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFF0C2533), Color(0xFF38BDF8), Color(0xFF0EA5E9).copy(alpha = 0.35f))
+                IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFF231638), Color(0xFFC084FC), Color(0xFFA855F7).copy(alpha = 0.35f))
+                IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFF2E1608), Color(0xFFFB923C), Color(0xFFF97316).copy(alpha = 0.35f))
+                IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFF102818), Color(0xFF4ADE80), Color(0xFF22C55E).copy(alpha = 0.35f))
+                IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFF331418), Color(0xFFF87171), Color(0xFFEF4444).copy(alpha = 0.35f))
+                IngestionStatus.NOT_SUPPORTED -> StatusPillStyle("Audio Not Available", Color(0xFF2E2008), Color(0xFFFBBF24), Color(0xFFF59E0B).copy(alpha = 0.35f))
+            }
         }
     } else {
         // Obsidian Light theme: clean, vibrant, modern light pastel badges with crisp high-contrast text and subtle border
-        when (status) {
-            IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
-            IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFFE0F2FE), Color(0xFF0284C7), Color(0xFFBAE6FD))
-            IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFFE0F2FE), Color(0xFF0284C7), Color(0xFFBAE6FD))
-            IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFFFFEDD5), Color(0xFFEA580C), Color(0xFFFED7AA))
-            IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFFDCFCE7), Color(0xFF15803D), Color(0xFF86EFAC))
-            IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFFFEE2E2), Color(0xFFDC2626), Color(0xFFFCA5A5))
+        if (isAudioUnavailable) {
+            StatusPillStyle("Audio Not Available", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+        } else {
+            when (status) {
+                IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFFF1F5F9), Color(0xFF475569), Color(0xFFCBD5E1))
+                IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFFE0F2FE), Color(0xFF0284C7), Color(0xFFBAE6FD))
+                IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFFF3E8FF), Color(0xFF7E22CE), Color(0xFFD8B4FE))
+                IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFFFFEDD5), Color(0xFFC2410C), Color(0xFFFED7AA))
+                IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFFDCFCE7), Color(0xFF15803D), Color(0xFF86EFAC))
+                IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFFFEE2E2), Color(0xFFB91C1C), Color(0xFFFCA5A5))
+                IngestionStatus.NOT_SUPPORTED -> StatusPillStyle("Audio Not Available", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+            }
         }
     }
 
@@ -1603,7 +1692,7 @@ fun SearchKnowledgeView(
             OutlinedTextField(
                 value = query,
                 onValueChange = viewModel::onSearchQueryChange,
-                placeholder = { Text("Search your knowledge", color = TextMuted, fontSize = 14.sp) },
+                placeholder = { Text("Search Reel Library vault...", color = TextMuted, fontSize = 14.sp) },
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted, modifier = Modifier.size(20.dp))
                 },
@@ -1735,7 +1824,7 @@ fun EmptyVaultView(
         Spacer(modifier = Modifier.height(18.dp))
 
         Text(
-            text = "Your Knowledge Vault is Ready",
+            text = "Your Reel Library Vault is Ready",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = colors.textPrimary
@@ -1942,30 +2031,29 @@ fun ReaderModeDialog(
                     }
 
                     // SPOKEN TRANSCRIPT PREVIEW
-                    val spokenPreview = com.reelrecall.app.engine.Transcripts.display(reel.transcript, reel.transcriptNote)
-                    if (!spokenPreview.isNullOrBlank() && com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(reel.transcript)) {
+                    val hasSpoken = com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(reel.transcript)
+                    val spokenDisplay = com.reelrecall.app.engine.Transcripts.display(reel.transcript, reel.transcriptNote)
+                    Text(
+                        text = if (hasSpoken) "Audio Transcript" else "Audio Transcript (Unavailable)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (hasSpoken) TextPrimary else WarningYellow
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = ObsidianPill,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(
-                            text = "Audio Transcript",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            text = spokenDisplay,
+                            fontSize = 12.sp,
+                            color = if (hasSpoken) TextMuted else TextSecondary,
+                            lineHeight = 17.sp,
+                            modifier = Modifier.padding(12.dp)
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = ObsidianPill,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = spokenPreview,
-                                fontSize = 12.sp,
-                                color = TextMuted,
-                                lineHeight = 17.sp,
-                                modifier = Modifier.padding(12.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(20.dp))
                     }
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     // Bottom Open in Instagram Button
                     Button(
@@ -2034,22 +2122,70 @@ fun FullTranscriptDialog(
                         .verticalScroll(rememberScrollState())
                 ) {
                     val isAvailable = com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(reel.transcript)
-                    val transcriptBody = if (isAvailable) {
-                        reel.transcript!!
+                    if (isAvailable) {
+                        Column {
+                            val wordCount = reel.transcript!!.split(Regex("""\s+""")).filter { it.isNotBlank() }.size
+                            Text(
+                                text = "Word count: ~$wordCount words",
+                                fontSize = 11.sp,
+                                color = TextMuted
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = reel.transcript,
+                                fontSize = 13.sp,
+                                color = TextSecondary,
+                                lineHeight = 19.5.sp
+                            )
+                        }
                     } else {
-                        "Not available"
-                    }
-                    Column {
-                        Text(
-                            text = transcriptBody,
-                            fontSize = 13.sp,
-                            color = if (isAvailable) TextSecondary else TextMuted,
-                            lineHeight = 19.sp
-                        )
-                        if (!isAvailable && onRetryTranscription != null) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            TextButton(onClick = onRetryTranscription) {
-                                Text("Retry transcription")
+                        val reasonMessage = com.reelrecall.app.engine.Transcripts.display(reel.transcript, reel.transcriptNote)
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = WarningYellow,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "Audio Not Available",
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = WarningYellow
+                                )
+                            }
+                            Text(
+                                text = reasonMessage,
+                                fontSize = 13.sp,
+                                color = TextSecondary,
+                                lineHeight = 19.sp
+                            )
+                            if (!reel.caption.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Post Caption Reference:",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CyanAccent
+                                )
+                                Text(
+                                    text = reel.caption,
+                                    fontSize = 12.5.sp,
+                                    color = TextMuted,
+                                    lineHeight = 18.sp
+                                )
+                            }
+                            if (onRetryTranscription != null) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                TextButton(onClick = onRetryTranscription) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp), tint = ActiveBlue)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Retry transcription", color = ActiveBlue)
+                                }
                             }
                         }
                     }
@@ -2115,18 +2251,58 @@ fun RecallReelGridCard(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = colors.textMuted,
-                            modifier = Modifier.size(32.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        BrandRoseStart.copy(alpha = 0.85f),
+                                        BrandRoseMiddle.copy(alpha = 0.90f),
+                                        BrandRoseEnd.copy(alpha = 0.95f)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.35f))
                         )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.25f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Text(
+                                text = if (!reel.creatorHandle.isNullOrBlank()) reel.creatorHandle!! else "#${reel.shortcode.take(6)}",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
 
                 // Play icon overlay or Selection Checkmark
-                if (!isSelectionMode) {
+                if (!isSelectionMode && !reel.thumbnailUrl.isNullOrBlank()) {
                     Box(
                         modifier = Modifier
                             .size(32.dp)
@@ -2177,7 +2353,7 @@ fun RecallReelGridCard(
 
                 // Status Badge in Top Right
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)) {
-                    RecallStatusPill(status = reel.status)
+                    RecallStatusPill(status = reel.status, transcript = reel.transcript, transcriptNote = reel.transcriptNote)
                 }
             }
 
@@ -2317,7 +2493,7 @@ fun RecallReelTable(
                         if (!reel.userNotes.isNullOrBlank()) {
                             NotePill()
                         }
-                        RecallStatusPill(status = reel.status)
+                        RecallStatusPill(status = reel.status, transcript = reel.transcript, transcriptNote = reel.transcriptNote)
                     }
 
                     // Source
@@ -2415,6 +2591,8 @@ fun ReelDetailScreen(
 
     val isRetryingMap by viewModel.isRetryingMap.collectAsState()
     val isRetrying = isRetryingMap[currentReel.id] == true
+    val isTranscribingAudioMap by viewModel.isTranscribingAudioMap.collectAsState()
+    val isTranscribingAudio = isTranscribingAudioMap[currentReel.id] == true
 
     var isTranscriptExpanded by remember(currentReel.id) { mutableStateOf(false) }
     var isCaptionExpanded by remember(currentReel.id) { mutableStateOf(false) }
@@ -2551,22 +2729,99 @@ fun ReelDetailScreen(
                                 .align(Alignment.Center)
                                 .clip(RoundedCornerShape(10.dp))
                         )
-                    }
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .align(Alignment.Center)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.6f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Play",
+                                tint = Color.White,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                    } else {
+                        // Fallback branded Tonal Rose card with Open in Instagram
+                        val isRestricted = currentReel.transcriptNote?.contains("restricted", ignoreCase = true) == true
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            BrandRoseStart.copy(alpha = 0.85f),
+                                            BrandRoseMiddle.copy(alpha = 0.90f),
+                                            BrandRoseEnd.copy(alpha = 0.95f)
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.35f))
+                            )
 
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .align(Alignment.Center)
-                            .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.6f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(26.dp)
-                        )
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.22f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Watch on Instagram",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+
+                                Text(
+                                    text = if (!currentReel.creatorHandle.isNullOrBlank()) currentReel.creatorHandle!! else "Instagram Reel #${currentReel.shortcode}",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = if (isRestricted) WarningYellow.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.20f),
+                                    border = androidx.compose.foundation.BorderStroke(0.8.dp, if (isRestricted) WarningYellow.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.35f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                            contentDescription = null,
+                                            tint = if (isRestricted) WarningYellow else Color.White,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Text(
+                                            text = "Tap to Watch on Instagram",
+                                            color = if (isRestricted) WarningYellow else Color.White,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // Notes Badge in Left Corner
@@ -2586,7 +2841,7 @@ fun ReelDetailScreen(
                             .align(Alignment.TopEnd)
                             .padding(10.dp)
                     ) {
-                        RecallStatusPill(status = currentReel.status)
+                        RecallStatusPill(status = currentReel.status, transcript = currentReel.transcript, transcriptNote = currentReel.transcriptNote)
                     }
                 }
             }
@@ -2966,7 +3221,6 @@ fun ReelDetailScreen(
                             }
                         }
                     } else if (!hasAiContent) {
-                        // REEL > 1 MIN TOKEN SAVER CALL-TO-ACTION CARD
                         Surface(
                             shape = RoundedCornerShape(14.dp),
                             color = colors.pillBg,
@@ -2996,13 +3250,13 @@ fun ReelDetailScreen(
                                     }
                                     Column {
                                         Text(
-                                            text = "AI Summary Paused (> 1 min)",
+                                            text = "AI Summary Ready",
                                             fontSize = 13.5.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = colors.textPrimary
                                         )
                                         Text(
-                                            text = "Tokens saved during background ingest",
+                                            text = "Tap below to synthesize summary",
                                             fontSize = 11.sp,
                                             color = colors.textMuted
                                         )
@@ -3012,7 +3266,7 @@ fun ReelDetailScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                    text = "This reel is longer than 1 minute. Transcript and details are ready. Tap below to run AI token summarization on demand.",
+                                    text = "Tap below to run AI summarization on demand using available caption and transcript data.",
                                     fontSize = 12.sp,
                                     color = colors.textSecondary,
                                     lineHeight = 17.sp
@@ -3221,28 +3475,77 @@ fun ReelDetailScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Icon(Icons.Default.GraphicEq, contentDescription = null, tint = colors.textMuted, modifier = Modifier.size(15.dp))
+                                val reasonMessage = com.reelrecall.app.engine.Transcripts.display(currentReel.transcript, currentReel.transcriptNote)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.GraphicEq,
+                                        contentDescription = null,
+                                        tint = colors.textMuted,
+                                        modifier = Modifier.size(15.dp)
+                                    )
                                     Text(
-                                        text = "Not available",
-                                        fontSize = 12.sp,
+                                        text = "Audio Not Available",
+                                        fontSize = 12.5.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = colors.textMuted
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "Not available",
+                                    text = reasonMessage,
                                     fontSize = 12.5.sp,
-                                    color = colors.textMuted,
+                                    color = colors.textSecondary,
                                     lineHeight = 18.sp
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                TextButton(
-                                    onClick = { viewModel.reprocessReel(currentReel.id) },
-                                    enabled = !isRetrying
-                                ) {
-                                    Text(if (isRetrying) "Retrying…" else "Retry transcription")
+                                if (isTranscribingAudio) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(colors.accent.copy(alpha = 0.08f))
+                                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(13.dp),
+                                            strokeWidth = 2.dp,
+                                            color = colors.accent
+                                        )
+                                        Text(
+                                            text = "Downloading reel & transcribing with Whisper...",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colors.accent,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        )
+                                    }
+                                } else {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    TextButton(
+                                        onClick = { viewModel.retryAudioTranscription(currentReel.id) },
+                                        enabled = !isRetrying && !isTranscribingAudio
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Refresh,
+                                            contentDescription = null,
+                                            tint = colors.accent,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Retry transcription",
+                                            color = colors.accent,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
                                 }
                             }
                         }

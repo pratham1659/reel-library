@@ -17,8 +17,8 @@ android {
         applicationId = "com.reelrecall.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.2.3"
+        versionCode = 6
+        versionName = "1.2.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -28,6 +28,10 @@ android {
         // Room SQLite schema export directory
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
+        }
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
@@ -94,6 +98,7 @@ android {
             isDebuggable = false
         }
         release {
+            isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
@@ -128,7 +133,7 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = false
         }
     }
 
@@ -147,7 +152,7 @@ val copyReleaseApk by tasks.registering(Copy::class) {
     from(layout.buildDirectory.dir("outputs/apk/release"))
     include("*.apk")
     into(rootProject.layout.projectDirectory.dir("release"))
-    rename { "ReelLibrary-release-v1.2.3.apk" }
+    rename { "ReelLibrary-release-v1.2.4.apk" }
 }
 
 tasks.matching { it.name == "assembleRelease" }.configureEach {
@@ -186,8 +191,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
 
-    // MediaPipe GenAI for On-Device LLM Inference
-    implementation("com.google.mediapipe:tasks-genai:0.10.14")
+    // MediaPipe GenAI for On-Device LLM Inference (0.10.24+ for 16 KB ELF page alignment)
+    implementation("com.google.mediapipe:tasks-genai:0.10.24")
 
     // Google Sign-In & Google Play Services Auth for Google Drive Personal Cloud
     implementation("com.google.android.gms:play-services-auth:21.3.0")

@@ -18,7 +18,8 @@ object InstagramExtractor {
         val videoUrl: String?,
         val thumbnailUrl: String?,
         val audioFile: File? = null,
-        val audioNote: String? = null
+        val audioNote: String? = null,
+        val isRestricted: Boolean = false
     )
 
     private val OG_TITLE_REGEX = """<meta property="og:title" content="([^"]*)"\s*/?>""".toRegex()
@@ -48,10 +49,20 @@ object InstagramExtractor {
             var creator: String? = null
             var videoUrl: String? = null
             var thumbnailUrl: String? = null
+            var isRestricted = false
 
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     val html = response.body?.string() ?: ""
+
+                    if (html.contains("\"failure_reason\":\"MA\"") ||
+                        html.contains("\"restricted_age\"") ||
+                        html.contains("PolarisErrorRoot") ||
+                        html.contains("show_lox_redesigned_404_page") ||
+                        html.contains("The link to this photo or video may be broken")
+                    ) {
+                        isRestricted = true
+                    }
 
                     val descMatch = OG_DESC_REGEX.find(html)
                     val rawDesc = descMatch?.groupValues?.get(1)
@@ -116,39 +127,75 @@ object InstagramExtractor {
                 }
             }
 
-            // Step 1b: If direct videoUrl was not found in OG tags, query Instagram /embed/captioned/ endpoint
-            if (videoUrl.isNullOrBlank()) {
-                try {
-                    val embedUrl = "${canonicalUrl.trimEnd('/')}/embed/captioned/"
-                    val embedRequest = Request.Builder()
-                        .url(embedUrl)
-                        .addHeader(
-                            "User-Agent",
-                            "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
-                        )
-                        .addHeader("Accept-Language", "en-US,en;q=0.9")
-                        .build()
+            // Step 1b: If direct videoUrl was not found in OG tags, query Instagram embed endpoints
+            var isCopyrightBlocked = false
+            var licensedSongName: String? = null
+            var licensedArtistName: String? = null
 
-                    client.newCall(embedRequest).execute().use { embedRes ->
-                        if (embedRes.isSuccessful) {
-                            val embedHtml = embedRes.body?.string() ?: ""
-                            val match = Regex("""video_url[^\"]*?[\\:\"]+(https:[^\"]+?\.mp4[^\"]*)""").find(embedHtml)
-                                ?: Regex("""["']video_url["']\s*:\s*["'](https:[^"'\s\\]+[\s\S]*?)["']""").find(embedHtml)
-                                ?: Regex("""(https:[\\/]+[a-zA-Z0-9.\-_\\/]+?\.mp4[a-zA-Z0-9.\-_?&=%\\/]*)""").find(embedHtml)
-                            if (match != null) {
-                                val rawMatched = match.groupValues[1]
-                                val unescaped = rawMatched
-                                    .replace("\\/", "/")
-                                    .replace("\\u0025", "%")
-                                    .replace("\\u0026", "&")
-                                    .replace("&amp;", "&")
-                                    .replace("\\", "")
-                                videoUrl = unescaped
+            if (videoUrl.isNullOrBlank()) {
+                val embedUrls = listOf(
+                    "${canonicalUrl.trimEnd('/')}/embed/captioned/?_fb_noscript=1",
+                    "${canonicalUrl.trimEnd('/')}/embed/captioned/",
+                    "${canonicalUrl.trimEnd('/')}/embed/"
+                )
+                for (embedUrl in embedUrls) {
+                    if (!videoUrl.isNullOrBlank()) break
+                    try {
+                        val embedRequest = Request.Builder()
+                            .url(embedUrl)
+                            .addHeader(
+                                "User-Agent",
+                                "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
+                            )
+                            .addHeader("Accept-Language", "en-US,en;q=0.9")
+                            .build()
+
+                        client.newCall(embedRequest).execute().use { embedRes ->
+                            if (embedRes.isSuccessful) {
+                                val embedHtml = embedRes.body?.string() ?: ""
+                                if (embedHtml.contains("The link to this photo or video may be broken") ||
+                                    embedHtml.contains("\"restricted_age\"") ||
+                                    embedHtml.contains("PolarisErrorRoot")
+                                ) {
+                                    isRestricted = true
+                                }
+                                if (embedHtml.contains("copyright_blocked")) {
+                                    isCopyrightBlocked = true
+                                }
+                                if (licensedSongName == null) {
+                                    val songMatch = Regex("""song_name\\?\":\\?\"([^\"\\]+)""").find(embedHtml)
+                                    val song = songMatch?.groupValues?.get(1)?.trim()
+                                    if (!song.isNullOrBlank() && !song.equals("Original audio", ignoreCase = true)) {
+                                        licensedSongName = song
+                                    }
+                                }
+                                if (licensedArtistName == null) {
+                                    val artistMatch = Regex("""artist_name\\?\":\\?\"([^\"\\]+)""").find(embedHtml)
+                                    val artist = artistMatch?.groupValues?.get(1)?.trim()
+                                    if (!artist.isNullOrBlank()) {
+                                        licensedArtistName = artist
+                                    }
+                                }
+                                val match = Regex("""video_url[^\"]*?[\\:\"]+(https:[^\"]+?\.mp4[^\"]*)""").find(embedHtml)
+                                    ?: Regex("""["']video_url["']\s*:\s*["'](https:[^"'\s\\]+[\s\S]*?)["']""").find(embedHtml)
+                                    ?: Regex("""(https:[\\/]+[a-zA-Z0-9.\-_\\/]+?\.mp4[a-zA-Z0-9.\-_?&=%\\/]*)""").find(embedHtml)
+                                if (match != null) {
+                                    val rawMatched = match.groupValues[1]
+                                    val unescaped = rawMatched
+                                        .replace("\\/", "/")
+                                        .replace("\\u0025", "%")
+                                        .replace("\\u0026", "&")
+                                        .replace("&amp;", "&")
+                                        .replace("\\", "")
+                                        .trim()
+                                        .trimEnd('\\', '"', '\'', ' ', '\n', '\r')
+                                    videoUrl = unescaped
+                                }
                             }
                         }
+                    } catch (e: Exception) {
+                        android.util.Log.w("InstagramExtractor", "Embed scraping fallback error for $embedUrl", e)
                     }
-                } catch (e: Exception) {
-                    android.util.Log.w("InstagramExtractor", "Embed scraping fallback error", e)
                 }
             }
 
@@ -183,28 +230,45 @@ object InstagramExtractor {
                 if (videoFile != null) {
                     val m4a = File(cacheDir, "reel_audio_${System.currentTimeMillis()}.m4a")
                     val extracted = ReelAudioExtractor.extractM4a(videoFile, m4a)
-                    videoFile.delete()
-                    extracted.fold(
-                        onSuccess = { audioFile = it },
-                        onFailure = { error ->
-                            audioNote = error.message?.takeIf { it.isNotBlank() } ?: "Audio export failed."
-                        }
-                    )
+                    val extractedFile = extracted.getOrNull()
+                    if (extractedFile != null && extractedFile.exists() && extractedFile.length() > 0L) {
+                        videoFile.delete()
+                        audioFile = extractedFile
+                    } else {
+                        android.util.Log.w(
+                            "InstagramExtractor",
+                            "M4A remuxing failed; using downloaded MP4 video file directly for Whisper transcription (${videoFile.length()} bytes)"
+                        )
+                        audioFile = videoFile
+                    }
                 } else if (audioNote == null) {
                     audioNote = TranscriptOutcome.DOWNLOAD_FAILED
                 }
             } else {
-                audioNote = TranscriptOutcome.NO_MEDIA
+                audioNote = if (isRestricted) {
+                    TranscriptOutcome.RESTRICTED_MEDIA
+                } else if (isCopyrightBlocked || !licensedSongName.isNullOrBlank()) {
+                    if (!licensedSongName.isNullOrBlank() && !licensedArtistName.isNullOrBlank()) {
+                        "This reel uses licensed music ('$licensedSongName' by $licensedArtistName). Instagram blocks audio streaming for copyright-protected tracks outside its app. AI summary was generated using the caption."
+                    } else if (!licensedSongName.isNullOrBlank()) {
+                        "This reel uses licensed music ('$licensedSongName'). Instagram blocks audio streaming for copyright-protected tracks outside its app. AI summary was generated using the caption."
+                    } else {
+                        "This reel uses copyright-protected audio. Instagram blocks audio streaming for licensed tracks outside its app. AI summary was generated using the caption."
+                    }
+                } else {
+                    TranscriptOutcome.NO_MEDIA
+                }
             }
 
             Result.success(
                 ExtractedMetadata(
-                    caption = caption?.ifBlank { null } ?: "Instagram Reel shared to Reel Library.",
-                    creatorHandle = creator ?: "@instagram_creator",
+                    caption = caption?.trim()?.ifBlank { null },
+                    creatorHandle = creator?.trim()?.ifBlank { null },
                     videoUrl = videoUrl,
                     thumbnailUrl = thumbnailUrl,
                     audioFile = audioFile,
-                    audioNote = audioNote
+                    audioNote = audioNote,
+                    isRestricted = isRestricted
                 )
             )
 
