@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -2017,30 +2018,29 @@ fun ReaderModeDialog(
                     }
 
                     // SPOKEN TRANSCRIPT PREVIEW
-                    val spokenPreview = com.reelrecall.app.engine.Transcripts.display(reel.transcript, reel.transcriptNote)
-                    if (!spokenPreview.isNullOrBlank() && com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(reel.transcript)) {
+                    val hasSpoken = com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(reel.transcript)
+                    val spokenDisplay = com.reelrecall.app.engine.Transcripts.display(reel.transcript, reel.transcriptNote)
+                    Text(
+                        text = if (hasSpoken) "Audio Transcript" else "Audio Transcript (Unavailable)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (hasSpoken) TextPrimary else WarningYellow
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = ObsidianPill,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(
-                            text = "Audio Transcript",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            text = spokenDisplay,
+                            fontSize = 12.sp,
+                            color = if (hasSpoken) TextMuted else TextSecondary,
+                            lineHeight = 17.sp,
+                            modifier = Modifier.padding(12.dp)
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = ObsidianPill,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = spokenPreview,
-                                fontSize = 12.sp,
-                                color = TextMuted,
-                                lineHeight = 17.sp,
-                                modifier = Modifier.padding(12.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(20.dp))
                     }
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     // Bottom Open in Instagram Button
                     Button(
@@ -2109,22 +2109,70 @@ fun FullTranscriptDialog(
                         .verticalScroll(rememberScrollState())
                 ) {
                     val isAvailable = com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(reel.transcript)
-                    val transcriptBody = if (isAvailable) {
-                        reel.transcript!!
+                    if (isAvailable) {
+                        Column {
+                            val wordCount = reel.transcript!!.split(Regex("""\s+""")).filter { it.isNotBlank() }.size
+                            Text(
+                                text = "Word count: ~$wordCount words",
+                                fontSize = 11.sp,
+                                color = TextMuted
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = reel.transcript,
+                                fontSize = 13.sp,
+                                color = TextSecondary,
+                                lineHeight = 19.5.sp
+                            )
+                        }
                     } else {
-                        "Not available"
-                    }
-                    Column {
-                        Text(
-                            text = transcriptBody,
-                            fontSize = 13.sp,
-                            color = if (isAvailable) TextSecondary else TextMuted,
-                            lineHeight = 19.sp
-                        )
-                        if (!isAvailable && onRetryTranscription != null) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            TextButton(onClick = onRetryTranscription) {
-                                Text("Retry transcription")
+                        val reasonMessage = com.reelrecall.app.engine.Transcripts.display(reel.transcript, reel.transcriptNote)
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = WarningYellow,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "Spoken Audio Unavailable",
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = WarningYellow
+                                )
+                            }
+                            Text(
+                                text = reasonMessage,
+                                fontSize = 13.sp,
+                                color = TextSecondary,
+                                lineHeight = 19.sp
+                            )
+                            if (!reel.caption.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Post Caption Reference:",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CyanAccent
+                                )
+                                Text(
+                                    text = reel.caption,
+                                    fontSize = 12.5.sp,
+                                    color = TextMuted,
+                                    lineHeight = 18.sp
+                                )
+                            }
+                            if (onRetryTranscription != null && reel.status != IngestionStatus.NOT_SUPPORTED) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                TextButton(onClick = onRetryTranscription) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp), tint = ActiveBlue)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Retry transcription", color = ActiveBlue)
+                                }
                             }
                         }
                     }
@@ -3531,8 +3579,8 @@ fun ReelDetailScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
-                                val note = currentReel.transcriptNote?.takeIf { it.isNotBlank() }
-                                val isRestricted = note?.contains("restricted", ignoreCase = true) == true
+                                val reasonMessage = com.reelrecall.app.engine.Transcripts.display(currentReel.transcript, currentReel.transcriptNote)
+                                val isRestricted = currentReel.transcriptNote?.contains("restricted", ignoreCase = true) == true
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -3552,13 +3600,13 @@ fun ReelDetailScreen(
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = note ?: "Instagram audio could not be extracted for spoken transcription. Native audio and captions may be viewed directly on Instagram.",
+                                    text = reasonMessage,
                                     fontSize = 12.5.sp,
                                     color = colors.textSecondary,
                                     lineHeight = 18.sp
                                 )
                                 Spacer(modifier = Modifier.height(10.dp))
-                                if (isRestricted) {
+                                if (isRestricted || currentReel.status == IngestionStatus.NOT_SUPPORTED) {
                                     NeumorphicButton(
                                         onClick = { openInInstagram(context, currentReel.canonicalUrl) },
                                         colors = colors,

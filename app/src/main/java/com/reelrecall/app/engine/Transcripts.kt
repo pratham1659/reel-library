@@ -14,18 +14,21 @@ data class TranscriptOutcome(
 
     companion object {
         const val NO_MEDIA =
-            "Instagram did not return a downloadable video, so there is no audio to transcribe."
+            "Instagram did not return a downloadable video or audio stream for this reel."
         const val RESTRICTED_MEDIA =
-            "Instagram restricted this Reel (age or login requirement). Spoken audio and media cannot be downloaded without an authenticated Instagram session."
+            "Instagram restricted this reel (age-gated or requires account login). Audio stream cannot be downloaded without an authenticated Instagram session."
         const val DOWNLOAD_FAILED =
-            "Failed downloading the reel video, so there is no audio to transcribe."
-        const val NO_SPEECH = "The audio had no recognizable speech."
+            "Failed downloading video stream from Instagram, so audio could not be extracted for transcription."
+        const val NO_SPEECH =
+            "The reel audio was analyzed, but no recognizable spoken speech was detected (contains only music or ambient sounds)."
         const val LOCAL_UNIMPLEMENTED =
-            "On-device Whisper is not implemented in this build. Switch to Cloud and add a Groq or OpenAI key."
+            "On-device Whisper is not implemented in this build. Switch to Cloud mode or add a Groq/OpenAI key in Settings."
         const val MIGRATED =
-            "Spoken audio was not transcribed on a previous import. Retry transcription."
+            "Spoken audio was not transcribed on a previous import. Tap 'Retry transcription' to transcribe."
         const val CAPTION_ONLY =
-            "Spoken audio transcript is not available for this reel. AI Summary was generated directly from the post caption."
+            "Spoken audio is not available. AI Summary and takeaways were generated directly from the post caption."
+        const val DEFAULT_UNAVAILABLE =
+            "Spoken audio was not transcribed for this reel. The audio may contain only background music or the media stream was restricted by Instagram."
         const val MAX_UPLOAD_BYTES = 25L * 1024L * 1024L
 
         fun ready(text: String) = TranscriptOutcome(text = text, note = null)
@@ -72,7 +75,20 @@ object Transcripts {
         if (spoken.isNotEmpty() && !spoken.equals("Not available", ignoreCase = true)) {
             return spoken
         }
-        return "Not available"
+        val cleanNote = note?.trim().orEmpty()
+        if (cleanNote.isNotEmpty() && !cleanNote.equals("Not available", ignoreCase = true)) {
+            return cleanNote
+        }
+        return TranscriptOutcome.DEFAULT_UNAVAILABLE
+    }
+
+    fun reasonForUnavailable(transcript: String?, note: String? = null): String {
+        if (hasSpokenTranscript(transcript)) return ""
+        val cleanNote = note?.trim().orEmpty()
+        if (cleanNote.isNotEmpty() && !cleanNote.equals("Not available", ignoreCase = true)) {
+            return cleanNote
+        }
+        return TranscriptOutcome.DEFAULT_UNAVAILABLE
     }
 
     fun hasSpokenTranscript(transcript: String?): Boolean {
