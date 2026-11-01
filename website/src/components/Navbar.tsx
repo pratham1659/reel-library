@@ -58,8 +58,8 @@ export const Navbar: React.FC = () => {
           </a>
 
           <a 
-            href="/ReelLibrary-v1.2.2.apk" 
-            download="ReelLibrary-v1.2.2.apk"
+            href="/release/ReelLibrary-release-v1.2.2.apk" 
+            download="ReelLibrary-release-v1.2.2.apk"
             className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 px-4 py-1.5 text-xs font-semibold text-black shadow-glow-cyan transition hover:brightness-110 active:scale-95"
           >
             <Download className="w-3.5 h-3.5" />

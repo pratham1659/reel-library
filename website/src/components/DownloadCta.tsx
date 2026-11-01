@@ -27,8 +27,8 @@ export const DownloadCta: React.FC = () => {
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
-              href="/ReelLibrary-v1.2.2.apk"
-              download="ReelLibrary-v1.2.2.apk"
+              href="/release/ReelLibrary-release-v1.2.2.apk"
+              download="ReelLibrary-release-v1.2.2.apk"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-cyan-400 via-cyan-500 to-cyan-600 px-8 py-4 text-sm font-bold text-black shadow-glow-cyan hover:brightness-110 active:scale-98 transition"
             >
               <Download className="w-4 h-4" />
