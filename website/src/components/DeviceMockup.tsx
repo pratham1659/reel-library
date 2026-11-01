@@ -15,7 +15,7 @@ export const DeviceMockup: React.FC = () => {
   }
 
   return (
-    <section id="demo" className="relative py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <section id="demo" className="relative py-12 px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
       {/* Section Header */}
       <div className="text-center max-w-2xl mx-auto mb-10">
         <span className="text-xs font-semibold uppercase tracking-wider text-pink-400">
@@ -24,70 +24,70 @@ export const DeviceMockup: React.FC = () => {
         <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-white mt-1 font-display">
           See Reel Library in Action
         </h2>
-        <p className="text-sm text-neutral-400 mt-2">
+        <p className="text-sm text-neutral-400 mt-2 px-2 sm:px-0">
           Click the feature tabs below to preview the native Android interface, 
           from instantaneous speech transcription to multi-model AI reasoning.
         </p>
 
-        {/* Tab Controls */}
-        <div className="mt-6 inline-flex p-1 rounded-xl bg-obsidian-card border border-white/[0.08] shadow-neumorphic-inset flex-wrap justify-center gap-1">
+        {/* Tab Controls (2x2 grid on mobile, inline-flex on larger screens) */}
+        <div className="mt-6 grid grid-cols-2 sm:inline-flex p-1 rounded-xl bg-obsidian-card border border-white/[0.08] shadow-neumorphic-inset gap-1 max-w-full">
           <button
             onClick={() => setActiveTab('vault')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'vault'
                 ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] text-white font-semibold shadow-glow-sunset'
                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <Search className="w-3.5 h-3.5" />
-            <span>Vault & Search</span>
+            <Search className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Vault & Search</span>
           </button>
 
           <button
             onClick={() => setActiveTab('transcript')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'transcript'
                 ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] text-white font-semibold shadow-glow-sunset'
                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <Mic className="w-3.5 h-3.5" />
-            <span>Audio & Transcript</span>
+            <Mic className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Audio & Notes</span>
           </button>
 
           <button
             onClick={() => setActiveTab('models')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'models'
                 ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] text-white font-semibold shadow-glow-sunset'
                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Multi-LLM Engine</span>
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Multi-LLM Engine</span>
           </button>
 
           <button
             onClick={() => setActiveTab('cloud')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'cloud'
                 ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] text-white font-semibold shadow-glow-sunset'
                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <Cloud className="w-3.5 h-3.5" />
-            <span>Google Drive Vault</span>
+            <Cloud className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Drive Vault</span>
           </button>
         </div>
       </div>
 
       {/* Phone Bezel Container */}
-      <div className="relative mx-auto max-w-[340px] sm:max-w-[380px]">
+      <div className="relative mx-auto w-full max-w-[310px] sm:max-w-[360px] md:max-w-[380px]">
         {/* Outer Phone Ambient Shadow */}
         <div className="absolute -inset-4 rounded-[50px] bg-gradient-to-b from-pink-500/20 via-purple-500/10 to-transparent blur-2xl -z-10" />
 
         {/* Physical Bezel */}
-        <div className="relative rounded-[44px] p-3 bg-neutral-900 border-[3px] border-neutral-700/80 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)]">
+        <div className="relative rounded-[44px] p-2.5 sm:p-3 bg-neutral-900 border-[3px] border-neutral-700/80 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)]">
           {/* Antenna bands */}
           <div className="absolute top-24 -left-1.5 w-1 h-8 bg-neutral-700 rounded-l" />
           <div className="absolute top-36 -left-1.5 w-1 h-12 bg-neutral-700 rounded-l" />
@@ -363,7 +363,7 @@ export const DeviceMockup: React.FC = () => {
                         <div style={{ width: '30%' }} className="bg-purple-500 h-full" title="Transcripts" />
                         <div style={{ width: '15%' }} className="bg-amber-400 h-full" title="SQLite Index" />
                       </div>
-                      <div className="flex items-center justify-between text-[8px] text-neutral-500">
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-[8px] text-neutral-500">
                         <span>■ Audio (64 MB)</span>
                         <span>■ Transcripts (42 MB)</span>
                         <span>■ Metadata (36 MB)</span>

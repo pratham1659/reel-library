@@ -3897,17 +3897,39 @@ private fun AccountDetailItem(
     label: String,
     value: String,
     colors: NeumorphicColors,
+    sublabel: String? = null,
     valueColor: Color = colors.textPrimary
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
-        Text(text = label, fontSize = 13.sp, color = colors.textSecondary)
-        Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = valueColor)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                color = colors.textSecondary
+            )
+            if (!sublabel.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = sublabel,
+                    fontSize = 11.sp,
+                    color = colors.textMuted
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = value,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = valueColor,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End
+        )
     }
 }
 
@@ -6426,7 +6448,7 @@ private fun DataStorageScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
-                    // Header Row
+                    // Header Row: Google Drive Title & Status Badge
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -6438,7 +6460,7 @@ private fun DataStorageScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(42.dp)
+                                    .size(40.dp)
                                     .clip(CircleShape)
                                     .background(
                                         if (preferences.isGoogleDriveConnected)
@@ -6452,24 +6474,31 @@ private fun DataStorageScreen(
                                     imageVector = if (preferences.isGoogleDriveConnected) Icons.Default.CloudDone else Icons.Default.CloudUpload,
                                     contentDescription = null,
                                     tint = if (preferences.isGoogleDriveConnected) StatusReady else CyanAccent,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
-                            Column {
+                            Column(modifier = Modifier.weight(1f, fill = false)) {
                                 Text(
-                                    text = "Google Drive (Personal Cloud)",
+                                    text = "Google Drive",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = colors.textPrimary
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Private backup in /ReelLibrary_Vault",
+                                    text = "Personal Cloud Backup",
                                     fontSize = 11.sp,
-                                    color = colors.textSecondary
+                                    color = colors.textSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
+
+                        Spacer(modifier = Modifier.width(8.dp))
 
                         Surface(
                             shape = RoundedCornerShape(8.dp),
@@ -6481,21 +6510,19 @@ private fun DataStorageScreen(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
                             ) {
-                                if (preferences.isGoogleDriveConnected) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .clip(CircleShape)
-                                            .background(StatusReady)
-                                    )
-                                    Spacer(modifier = Modifier.width(5.dp))
-                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(if (preferences.isGoogleDriveConnected) StatusReady else colors.textMuted.copy(alpha = 0.5f))
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
                                 Text(
                                     text = if (preferences.isGoogleDriveConnected) "Connected" else "Not Connected",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = if (preferences.isGoogleDriveConnected) StatusReady else colors.textMuted
                                 )
                             }
@@ -6509,7 +6536,7 @@ private fun DataStorageScreen(
                     if (!preferences.isGoogleDriveConnected) {
                         // Unconnected State
                         Text(
-                            text = "Connect your private Google Drive to securely back up and restore your reels, AI summaries, and full transcripts. Backups are stored in your own Google Drive in the folder /ReelLibrary_Vault.",
+                            text = "Connect your private Google Drive to securely back up and restore your reels, AI summaries, and full transcripts. Backups are stored in your own Google Drive in the folder\u00A0/ReelLibrary_Vault.",
                             fontSize = 12.sp,
                             color = colors.textSecondary,
                             lineHeight = 17.sp
@@ -6545,22 +6572,27 @@ private fun DataStorageScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
                         Row(
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Top
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Security,
                                 contentDescription = null,
                                 tint = colors.textMuted,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .padding(top = 1.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Uses drive.file scope: only accesses files created by Reel Library.",
-                                fontSize = 10.sp,
-                                color = colors.textMuted
+                                fontSize = 11.sp,
+                                lineHeight = 16.sp,
+                                color = colors.textMuted,
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     } else {
@@ -6597,17 +6629,21 @@ private fun DataStorageScreen(
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(10.dp))
-                                    Column {
+                                    Column(modifier = Modifier.weight(1f, fill = false)) {
                                         Text(
                                             text = preferences.googleDriveName.ifBlank { "Google Drive Account" },
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = colors.textPrimary
+                                            color = colors.textPrimary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
                                             text = preferences.googleDriveEmail,
                                             fontSize = 11.sp,
-                                            color = colors.textSecondary
+                                            color = colors.textSecondary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
                                 }
@@ -6865,7 +6901,10 @@ private fun DataStorageScreen(
             // CARD 2: UNIVERSAL EXPORT & IMPORT (ZIP / JSON)
             NeumorphicCard(colors = colors) {
                 Column(modifier = Modifier.padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
@@ -6881,13 +6920,14 @@ private fun DataStorageScreen(
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Universal Export & Import",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = colors.textPrimary
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "Universal format (.zip) with metadata & transcripts",
                                 fontSize = 11.sp,
@@ -7079,6 +7119,7 @@ private fun DataStorageScreen(
                     AccountDetailItem(
                         label = "Room SQLite Database",
                         value = storageBreakdown.databaseFormatted,
+                        sublabel = storageBreakdown.databaseSublabel.ifBlank { null },
                         colors = colors
                     )
                     AccountDetailItem(

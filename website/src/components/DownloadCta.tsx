@@ -3,8 +3,8 @@ import { Download, Github, ShieldCheck, Smartphone, Sparkles } from 'lucide-reac
 
 export const DownloadCta: React.FC = () => {
   return (
-    <section id="download" className="relative py-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
-      <div className="relative rounded-3xl p-8 sm:p-14 bg-gradient-to-b from-obsidian-card via-obsidian-elevated to-obsidian border border-pink-500/30 shadow-[0_0_80px_rgba(225,48,108,0.25)] overflow-hidden">
+    <section id="download" className="relative py-14 sm:py-20 px-3 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
+      <div className="relative rounded-3xl p-5 sm:p-10 md:p-14 bg-gradient-to-b from-obsidian-card via-obsidian-elevated to-obsidian border border-pink-500/30 shadow-[0_0_80px_rgba(225,48,108,0.25)] overflow-hidden">
         
         {/* Top Glow Ambient */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-40 bg-pink-500/20 blur-3xl pointer-events-none" />
@@ -15,25 +15,25 @@ export const DownloadCta: React.FC = () => {
             <span>Ready for Android 8.0+ (API 26+)</span>
           </div>
 
-          <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white font-display">
-            Start Building Your <br />
+          <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white font-display">
+            Start Building Your <br className="hidden sm:inline" />
             <span className="gradient-accent">Personal Reel Knowledge Base</span>
           </h2>
 
-          <p className="text-sm sm:text-base text-neutral-400">
+          <p className="text-sm sm:text-base text-neutral-400 px-2 sm:px-0">
             Free forever, zero tracking, open-source under the MIT License. 
             Download the official APK or review the code on GitHub.
           </p>
 
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full">
             <a
-              href="/release/ReelLibrary-release-v1.2.2.apk"
-              download="ReelLibrary-release-v1.2.2.apk"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] px-8 py-4 text-sm font-bold text-white shadow-glow-sunset hover:brightness-110 active:scale-98 transition"
+              href="/release/ReelLibrary-release-v1.2.3.apk"
+              download="ReelLibrary-release-v1.2.3.apk"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 sm:gap-2.5 rounded-xl bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] px-6 sm:px-8 py-3.5 sm:py-4 text-sm font-bold text-white shadow-glow-sunset hover:brightness-110 active:scale-98 transition"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-4 h-4 shrink-0" />
               <span>Direct APK Download</span>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/20 ml-1">v1.2.2 • 5.7 MB</span>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/20 ml-1">v1.2.3 • 5.7 MB</span>
             </a>
 
             <a

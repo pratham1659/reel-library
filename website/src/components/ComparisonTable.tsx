@@ -34,8 +34,13 @@ export const ComparisonTable: React.FC = () => {
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-obsidian-card shadow-neumorphic-sm">
-        <table className="w-full text-left border-collapse min-w-[640px]">
+      {/* Mobile scroll hint */}
+      <div className="md:hidden flex items-center justify-center gap-1.5 text-[11px] text-pink-400/90 pb-3">
+        <span>👈 Swipe horizontally to view full comparison 👉</span>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-obsidian-card shadow-neumorphic-sm max-w-full touch-pan-x">
+        <table className="w-full text-left border-collapse min-w-[560px] sm:min-w-[640px]">
           <thead>
             <tr className="border-b border-white/[0.08] bg-white/[0.02]">
               <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-neutral-400">

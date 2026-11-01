@@ -66,6 +66,7 @@ data class DownloadProgressState(
 data class StorageBreakdown(
     val databaseBytes: Long = 0L,
     val databaseFormatted: String = "Calculating...",
+    val databaseSublabel: String = "",
     val reelCount: Int = 0,
     val cacheBytes: Long = 0L,
     val cacheFormatted: String = "Calculating...",
@@ -1594,7 +1595,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
                 storageBreakdown.value = StorageBreakdown(
                     databaseBytes = dbSize,
-                    databaseFormatted = "${formatStorageBytes(dbSize)} • $reelCountText indexed",
+                    databaseFormatted = formatStorageBytes(dbSize),
+                    databaseSublabel = "$reelCountText indexed",
                     reelCount = count,
                     cacheBytes = totalCache,
                     cacheFormatted = formatStorageBytes(totalCache),

@@ -16,9 +16,42 @@ export interface ReleaseNote {
 
 export const releaseNotesData: ReleaseNote[] = [
   {
-    version: 'v1.2.2',
+    version: 'v1.2.3',
     date: 'November 2026',
     isLatest: true,
+    title: 'Data & Storage UI Polish & Groq Qwen Lock',
+    summary: 'Pixel-perfect typography and alignment refinements across Data & Storage settings, alongside a strict model lock for Groq APIs.',
+    categories: [
+      {
+        category: 'UI & Layout Polish',
+        badgeColor: 'bg-pink-500/10 text-pink-300 border-pink-500/30',
+        items: [
+          {
+            title: 'Data & Storage Alignment Refinements',
+            description: 'Balanced Google Drive card header with single-line status pills, aligned Room SQLite Database metrics with secondary reel count sublabels, and perfected drive.file scope security icon alignment.'
+          },
+          {
+            title: 'Storage Breakdown Typography',
+            description: 'Clean top-aligned baselines for database sizes and item counts, ensuring crisp readability across diverse screen densities.'
+          }
+        ]
+      },
+      {
+        category: 'AI Engine Stability',
+        badgeColor: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+        items: [
+          {
+            title: 'Groq Qwen Model Lock',
+            description: 'Enforced dedicated qwen/qwen3.8-27b model usage across Groq inference pipelines without unintended model fallbacks.'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.2.2',
+    date: 'November 2026',
+    isLatest: false,
     title: 'Personal Cloud Vault & Real-Time Telemetry',
     summary: 'A major milestone introducing private Google Drive personal cloud backups, live storage telemetry, direct in-app GitHub updates, and an updated brand identity.',
     categories: [
