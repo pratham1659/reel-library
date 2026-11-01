@@ -107,6 +107,7 @@ import java.util.Locale
 enum class DrawerFilter {
     ALL,
     READY,
+    AUDIO_UNAVAILABLE,
     PROCESSING,
     FAILED,
     NOTES
@@ -139,8 +140,20 @@ fun KnowledgeDrawerContent(
 
     // Counts for filters
     val totalCount = reels.size
-    val readyCount = remember(reels) { reels.count { it.status == IngestionStatus.COMPLETED } }
-    val processingCount = remember(reels) { reels.count { it.status != IngestionStatus.COMPLETED && it.status != IngestionStatus.FAILED } }
+    val readyCount = remember(reels) { reels.count { it.status == IngestionStatus.COMPLETED && com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(it.transcript) } }
+    val audioUnavailableCount = remember(reels) {
+        reels.count {
+            it.status == IngestionStatus.NOT_SUPPORTED ||
+            (it.status == IngestionStatus.COMPLETED && !com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(it.transcript))
+        }
+    }
+    val processingCount = remember(reels) {
+        reels.count {
+            it.status != IngestionStatus.COMPLETED &&
+            it.status != IngestionStatus.FAILED &&
+            it.status != IngestionStatus.NOT_SUPPORTED
+        }
+    }
     val failedCount = remember(reels) { reels.count { it.status == IngestionStatus.FAILED } }
     val notesCount = remember(reels) { reels.count { !it.userNotes.isNullOrBlank() } }
 
@@ -169,8 +182,16 @@ fun KnowledgeDrawerContent(
         // 2. Category / Status Filter
         list = when (selectedFilter) {
             DrawerFilter.ALL -> list
-            DrawerFilter.READY -> list.filter { it.status == IngestionStatus.COMPLETED }
-            DrawerFilter.PROCESSING -> list.filter { it.status != IngestionStatus.COMPLETED && it.status != IngestionStatus.FAILED }
+            DrawerFilter.READY -> list.filter { it.status == IngestionStatus.COMPLETED && com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(it.transcript) }
+            DrawerFilter.AUDIO_UNAVAILABLE -> list.filter {
+                it.status == IngestionStatus.NOT_SUPPORTED ||
+                (it.status == IngestionStatus.COMPLETED && !com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(it.transcript))
+            }
+            DrawerFilter.PROCESSING -> list.filter {
+                it.status != IngestionStatus.COMPLETED &&
+                it.status != IngestionStatus.FAILED &&
+                it.status != IngestionStatus.NOT_SUPPORTED
+            }
             DrawerFilter.FAILED -> list.filter { it.status == IngestionStatus.FAILED }
             DrawerFilter.NOTES -> list.filter { !it.userNotes.isNullOrBlank() }
         }
@@ -361,6 +382,13 @@ fun KnowledgeDrawerContent(
                             selected = selectedFilter == DrawerFilter.READY,
                             isDark = isDarkTheme,
                             onClick = { selectedFilter = DrawerFilter.READY }
+                        )
+                        DrawerFilterChip(
+                            label = "Audio Not Available",
+                            count = audioUnavailableCount,
+                            selected = selectedFilter == DrawerFilter.AUDIO_UNAVAILABLE,
+                            isDark = isDarkTheme,
+                            onClick = { selectedFilter = DrawerFilter.AUDIO_UNAVAILABLE }
                         )
                         DrawerFilterChip(
                             label = "Processing",
@@ -645,6 +673,7 @@ private fun DrawerFilterChip(
         if (selected) {
             when (label) {
                 "Ready" -> Color(0xFF132819)
+                "Audio Not Available" -> Color(0xFF2E2008)
                 "Failed" -> Color(0xFF331616)
                 else -> Color(0xFF202336)
             }
@@ -653,12 +682,14 @@ private fun DrawerFilterChip(
         if (selected) {
             when (label) {
                 "Ready" -> Color(0xFFDCFCE7)
+                "Audio Not Available" -> Color(0xFFFEF3C7)
                 "Failed" -> Color(0xFFFEE2E2)
                 else -> Color(0xFFEFF6FF)
             }
         } else {
             when (label) {
                 "Ready" -> Color(0xFFF0FDF4)
+                "Audio Not Available" -> Color(0xFFFFFBEB)
                 "Failed" -> Color(0xFFFEF2F2)
                 else -> Color(0xFFF1F5F9)
             }
@@ -669,6 +700,7 @@ private fun DrawerFilterChip(
         if (selected) {
             when (label) {
                 "Ready" -> StatusReady
+                "Audio Not Available" -> Color(0xFFF59E0B)
                 "Failed" -> StatusError
                 else -> ActiveBlue
             }
@@ -677,12 +709,14 @@ private fun DrawerFilterChip(
         if (selected) {
             when (label) {
                 "Ready" -> Color(0xFF86EFAC)
+                "Audio Not Available" -> Color(0xFFFDE68A)
                 "Failed" -> Color(0xFFFCA5A5)
                 else -> ActiveBlue
             }
         } else {
             when (label) {
                 "Ready" -> Color(0xFFBBF7D0)
+                "Audio Not Available" -> Color(0xFFFDE68A)
                 "Failed" -> Color(0xFFFECACA)
                 else -> Color(0xFFE2E8F0)
             }
@@ -693,12 +727,14 @@ private fun DrawerFilterChip(
         if (selected) {
             when (label) {
                 "Ready" -> StatusReady
+                "Audio Not Available" -> Color(0xFFFBBF24)
                 "Failed" -> StatusError
                 else -> TextPrimary
             }
         } else {
             when (label) {
                 "Ready" -> StatusReady.copy(alpha = 0.85f)
+                "Audio Not Available" -> Color(0xFFFBBF24).copy(alpha = 0.85f)
                 "Failed" -> StatusError.copy(alpha = 0.85f)
                 else -> TextSecondary
             }
@@ -707,12 +743,14 @@ private fun DrawerFilterChip(
         if (selected) {
             when (label) {
                 "Ready" -> Color(0xFF15803D)
+                "Audio Not Available" -> Color(0xFFB45309)
                 "Failed" -> Color(0xFFDC2626)
                 else -> ActiveBlue
             }
         } else {
             when (label) {
                 "Ready" -> Color(0xFF166534)
+                "Audio Not Available" -> Color(0xFF92400E)
                 "Failed" -> Color(0xFF991B1B)
                 else -> Color(0xFF475569)
             }
@@ -722,12 +760,14 @@ private fun DrawerFilterChip(
     val countColor = if (selected) {
         when (label) {
             "Ready" -> if (isDark) StatusReady else Color(0xFF15803D)
+            "Audio Not Available" -> if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
             "Failed" -> if (isDark) StatusError else Color(0xFFDC2626)
             else -> ActiveBlue
         }
     } else {
         when (label) {
             "Ready" -> if (isDark) StatusReady.copy(alpha = 0.7f) else Color(0xFF15803D)
+            "Audio Not Available" -> if (isDark) Color(0xFFFBBF24).copy(alpha = 0.7f) else Color(0xFF92400E)
             "Failed" -> if (isDark) StatusError.copy(alpha = 0.7f) else Color(0xFFDC2626)
             else -> (if (isDark) TextMuted else Color(0xFF94A3B8))
         }
