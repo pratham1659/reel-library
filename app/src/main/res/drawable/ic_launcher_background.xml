@@ -5,19 +5,18 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Tonal Raspberry Rose Background matching user reference photo (Zero yellow/orange/blue) -->
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="14"
-                android:startY="94"
-                android:endX="94"
-                android:endY="14"
+                android:startX="18"
+                android:startY="90"
+                android:endX="90"
+                android:endY="18"
                 android:type="linear">
-                <item android:offset="0.0" android:color="#FCAF45" />
-                <item android:offset="0.2" android:color="#FF5252" />
-                <item android:offset="0.5" android:color="#E1306C" />
-                <item android:offset="0.8" android:color="#C13584" />
-                <item android:offset="1.0" android:color="#5851DB" />
+                <item android:offset="0.0" android:color="#F03850" />
+                <item android:offset="0.5" android:color="#E22058" />
+                <item android:offset="1.0" android:color="#C81466" />
             </gradient>
         </aapt:attr>
     </path>
