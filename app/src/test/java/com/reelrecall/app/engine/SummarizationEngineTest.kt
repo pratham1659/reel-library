@@ -1,5 +1,15 @@
 package com.reelrecall.app.engine
 
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -94,5 +104,100 @@ class SummarizationEngineTest {
 
         assertTrue(retryContent.contains("B".repeat(4_000) + "... [truncated]"))
         assertTrue(retryContent.contains("D".repeat(1_000) + "... [truncated]"))
+    }
+
+    @Test
+    fun testGroqSummarizerEngine_strictlyUsesQwenModel_neverUsesLlama() = runBlocking {
+        val interceptedModels = mutableListOf<String>()
+        val interceptor = Interceptor { chain ->
+            val req = chain.request()
+            val buffer = okio.Buffer()
+            req.body?.writeTo(buffer)
+            val bodyString = buffer.readUtf8()
+            if (bodyString.contains("\"model\"")) {
+                val json = Json.parseToJsonElement(bodyString).jsonObject
+                val model = json["model"]?.jsonPrimitive?.content
+                if (model != null) interceptedModels.add(model)
+            }
+            Response.Builder()
+                .request(req)
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body("""
+                    {
+                      "choices": [
+                        {
+                          "message": {
+                            "content": "{\"title\":\"Test Title\",\"one_line_summary\":\"Test summary briefing.\",\"actionable_takeaways\":[\"Step 1\",\"Step 2\"],\"tags\":[\"test\",\"groq\"]}"
+                          }
+                        }
+                      ]
+                    }
+                """.trimIndent().toResponseBody("application/json".toMediaType()))
+                .build()
+        }
+        val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
+        val engine = GroqSummarizerEngine(apiKey = "gsk_test123", client = client)
+        val result = engine.summarize("test caption", "test transcript")
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("qwen/qwen3.8-27b"), interceptedModels)
+        assertFalse("Must never call any Llama models", interceptedModels.any { it.contains("llama", ignoreCase = true) })
+    }
+
+    @Test
+    fun testGroqSummarizerEngine_onRetry_stillUsesQwenModel_neverSwitchesToLlama() = runBlocking {
+        val interceptedModels = mutableListOf<String>()
+        var callCount = 0
+        val interceptor = Interceptor { chain ->
+            val req = chain.request()
+            callCount++
+            val buffer = okio.Buffer()
+            req.body?.writeTo(buffer)
+            val bodyString = buffer.readUtf8()
+            if (bodyString.contains("\"model\"")) {
+                val json = Json.parseToJsonElement(bodyString).jsonObject
+                val model = json["model"]?.jsonPrimitive?.content
+                if (model != null) interceptedModels.add(model)
+            }
+
+            if (callCount == 1) {
+                // First call fails with context length exceeded
+                Response.Builder()
+                    .request(req)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(400)
+                    .message("Bad Request")
+                    .body("""{"error":{"message":"context_length_exceeded"}}""".toResponseBody("application/json".toMediaType()))
+                    .build()
+            } else {
+                // Second call succeeds
+                Response.Builder()
+                    .request(req)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("""
+                        {
+                          "choices": [
+                            {
+                              "message": {
+                                "content": "{\"title\":\"Retried Title\",\"one_line_summary\":\"Retried summary.\",\"actionable_takeaways\":[\"Step A\"],\"tags\":[\"retry\"]}"
+                              }
+                            }
+                          ]
+                        }
+                    """.trimIndent().toResponseBody("application/json".toMediaType()))
+                    .build()
+            }
+        }
+        val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
+        val engine = GroqSummarizerEngine(apiKey = "gsk_test123", client = client)
+        val result = engine.summarize("test caption", "test transcript")
+        assertTrue(result.isSuccess)
+        assertEquals(2, interceptedModels.size)
+        // Both attempts must strictly be Qwen!
+        assertEquals(listOf("qwen/qwen3.8-27b", "qwen/qwen3.8-27b"), interceptedModels)
+        assertFalse("Must never fallback to any Llama models on retry", interceptedModels.any { it.contains("llama", ignoreCase = true) })
     }
 }

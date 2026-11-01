@@ -146,7 +146,7 @@ class GroqWhisperEngine(
                     "4. Output ONLY the finalized text. Do not add quotes, introductory remarks, or explanations."
             val payload = """
                 {
-                  "model": "llama-3.1-8b-instant",
+                  "model": "qwen/qwen3.8-27b",
                   "messages": [
                     {"role": "system", "content": ${Json.encodeToString(kotlinx.serialization.serializer(), systemPrompt)}},
                     {"role": "user", "content": ${Json.encodeToString(kotlinx.serialization.serializer(), rawText)}}

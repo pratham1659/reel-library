@@ -913,9 +913,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 // 3. TEST MODEL 2: Groq LPU ~ Qwen (LLM Generation)
                 // ========================================================
                 val qwenCandidates = mutableListOf<String>()
-                // Prioritize qwen models, then other active Groq chat models
+                // Strictly use Qwen models (free-tier compatible; never test or fallback to Llama)
                 qwenCandidates.addAll(fetchedChatModels.filter { it.contains("qwen", ignoreCase = true) })
-                qwenCandidates.addAll(listOf("qwen/qwen3.8-27b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"))
+                if (!qwenCandidates.contains("qwen/qwen3.8-27b")) {
+                    qwenCandidates.add("qwen/qwen3.8-27b")
+                }
                 val distinctQwenCandidates = qwenCandidates.distinct()
 
                 val qwenStart = SystemClock.elapsedRealtime()
