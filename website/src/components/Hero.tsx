@@ -50,7 +50,7 @@ export const Hero: React.FC = () => {
           >
             <Download className="w-4 h-4 shrink-0" />
             <span>Direct APK Download</span>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/20 ml-1">v1.2.3 • 5.7 MB</span>
+            <span className="text-[11px] font-semibold tracking-tight px-2 py-0.5 rounded-md bg-white/20 ml-1">v1.2.3 • 5.5 MB</span>
           </a>
 
           <a 
@@ -78,10 +78,15 @@ export const Hero: React.FC = () => {
             <HardDrive className="w-4 h-4 text-pink-400 shrink-0" />
             <span>Portable Universal Export</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>MIT Open Source</span>
-          </div>
+          <a 
+            href="/LICENSE" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="flex items-center gap-1.5 hover:text-white transition group"
+          >
+            <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+            <span className="underline decoration-white/20 underline-offset-2 group-hover:decoration-white/60">MIT Open Source</span>
+          </a>
         </div>
 
       </div>

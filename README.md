@@ -10,7 +10,7 @@
 [![SwiftUI](https://img.shields.io/badge/UI-SwiftUI_Obsidian_Neumorphic-007AFF?logo=swift&logoColor=white)](https://developer.apple.com/xcode/swiftui/)
 [![Groq LPU](https://img.shields.io/badge/Inference-Groq_LPU_Whisper_%26_Qwen-F55036)](https://groq.com)
 [![Security](https://img.shields.io/badge/Security-Keychain_%2B_Keystore-10B981)](https://developer.apple.com/documentation/security/keychain_services)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-pink.svg)](LICENSE)
 
 **Reel Library** is a multi-platform native mobile intelligence vault (**Android & iOS/iPadOS**) that transforms fleeting Instagram Reels into structured, searchable knowledge assets. Captured seamlessly via the system share sheet, each reel is ingested in the background, its audio transcribed into clean Hinglish/English text, and synthesized into actionable executive briefings using hybrid on-device and ultra-low-latency cloud intelligence.
 
@@ -146,4 +146,8 @@ Reel Library does not collect, sell, or transmit your personal data to any third
 
 ## 📄 License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+Licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+Crafted with ❤️ by pratham builds
