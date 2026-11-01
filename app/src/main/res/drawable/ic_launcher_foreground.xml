@@ -5,7 +5,7 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Outer Rounded Reel Camera Squircle Outline (Pure White) -->
+    <!-- Outer Rounded Reel Media Card Squircle (Pure White) -->
     <path
         android:strokeColor="#FFFFFF"
         android:strokeWidth="3.2"
@@ -24,8 +24,4 @@
         android:fillColor="#FFFFFF"
         android:pathData="M51,48 L60,54 L51,60 Z" />
 
-    <!-- Top Right Camera Flash / AI Sparkle Dot -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M72,37 A2.8,2.8 0 1,1 72,42.6 A2.8,2.8 0 1,1 72,37 Z" />
 </vector>
