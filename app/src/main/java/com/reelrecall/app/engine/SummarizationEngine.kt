@@ -506,8 +506,7 @@ class LocalMediaPipeSummarizerEngine(
                 val options = LlmInference.LlmInferenceOptions.builder()
                     .setModelPath(targetFile.absolutePath)
                     .setMaxTokens(2048)
-                    .setTemperature(0.2f)
-                    .setTopK(40)
+                    .setMaxTopK(40)
                     .build()
 
                 val llmInference = LlmInference.createFromOptions(context, options)

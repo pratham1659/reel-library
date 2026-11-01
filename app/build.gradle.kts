@@ -29,6 +29,10 @@ android {
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
         }
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -94,7 +98,7 @@ android {
             isDebuggable = false
         }
         release {
-            isDebuggable = true
+            isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
@@ -129,7 +133,7 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = false
         }
     }
 
@@ -187,8 +191,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
 
-    // MediaPipe GenAI for On-Device LLM Inference
-    implementation("com.google.mediapipe:tasks-genai:0.10.14")
+    // MediaPipe GenAI for On-Device LLM Inference (0.10.24+ for 16 KB ELF page alignment)
+    implementation("com.google.mediapipe:tasks-genai:0.10.24")
 
     // Google Sign-In & Google Play Services Auth for Google Drive Personal Cloud
     implementation("com.google.android.gms:play-services-auth:21.3.0")
