@@ -108,15 +108,30 @@ export const Navbar: React.FC = () => {
           >
             FAQ
           </a>
-          <div className="pt-2 border-t border-white/[0.06]">
+          <a 
+            href="#footer" 
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm font-medium text-neutral-300 hover:text-white py-1 flex items-center justify-between"
+          >
+            <span>MIT License & About</span>
+            <span className="text-[10px] text-pink-400 font-mono">pratham builds</span>
+          </a>
+          <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between">
             <a 
               href="https://github.com/pratham1659/reel-library" 
               target="_blank" 
-              rel="noopener noreferrer"
+              rel="noopener noreferrer" 
               className="flex items-center gap-2 text-sm text-neutral-400 hover:text-white"
             >
               <Github className="w-4 h-4" />
-              <span>GitHub Repository</span>
+              <span>GitHub</span>
+            </a>
+            <a
+              href="#footer"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-xs text-pink-400 hover:text-pink-300 font-medium"
+            >
+              Footer &darr;
             </a>
           </div>
         </div>
