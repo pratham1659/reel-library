@@ -2591,6 +2591,8 @@ fun ReelDetailScreen(
 
     val isRetryingMap by viewModel.isRetryingMap.collectAsState()
     val isRetrying = isRetryingMap[currentReel.id] == true
+    val isTranscribingAudioMap by viewModel.isTranscribingAudioMap.collectAsState()
+    val isTranscribingAudio = isTranscribingAudioMap[currentReel.id] == true
 
     var isTranscriptExpanded by remember(currentReel.id) { mutableStateOf(false) }
     var isCaptionExpanded by remember(currentReel.id) { mutableStateOf(false) }
@@ -3498,23 +3500,43 @@ fun ReelDetailScreen(
                                     color = colors.textSecondary,
                                     lineHeight = 18.sp
                                 )
-                                Spacer(modifier = Modifier.height(10.dp))
-                                TextButton(
-                                    onClick = { viewModel.reprocessReel(currentReel.id) },
-                                    enabled = !isRetrying
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Refresh,
-                                        contentDescription = null,
-                                        tint = colors.accent,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = if (isRetrying) "Retrying…" else "Retry transcription",
-                                        color = colors.accent,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                                if (isTranscribingAudio) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(13.dp),
+                                            strokeWidth = 2.dp,
+                                            color = colors.accent
+                                        )
+                                        Text(
+                                            text = "Downloading reel & transcribing with Whisper...",
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colors.accent
+                                        )
+                                    }
+                                } else {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    TextButton(
+                                        onClick = { viewModel.retryAudioTranscription(currentReel.id) },
+                                        enabled = !isRetrying && !isTranscribingAudio
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Refresh,
+                                            contentDescription = null,
+                                            tint = colors.accent,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Retry transcription",
+                                            color = colors.accent,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
                                 }
                             }
                         }

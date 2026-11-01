@@ -127,46 +127,54 @@ object InstagramExtractor {
                 }
             }
 
-            // Step 1b: If direct videoUrl was not found in OG tags, query Instagram /embed/captioned/ endpoint
+            // Step 1b: If direct videoUrl was not found in OG tags, query Instagram embed endpoints
             if (videoUrl.isNullOrBlank()) {
-                try {
-                    val embedUrl = "${canonicalUrl.trimEnd('/')}/embed/captioned/"
-                    val embedRequest = Request.Builder()
-                        .url(embedUrl)
-                        .addHeader(
-                            "User-Agent",
-                            "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
-                        )
-                        .addHeader("Accept-Language", "en-US,en;q=0.9")
-                        .build()
+                val embedUrls = listOf(
+                    "${canonicalUrl.trimEnd('/')}/embed/captioned/?_fb_noscript=1",
+                    "${canonicalUrl.trimEnd('/')}/embed/captioned/",
+                    "${canonicalUrl.trimEnd('/')}/embed/"
+                )
+                for (embedUrl in embedUrls) {
+                    if (!videoUrl.isNullOrBlank()) break
+                    try {
+                        val embedRequest = Request.Builder()
+                            .url(embedUrl)
+                            .addHeader(
+                                "User-Agent",
+                                "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
+                            )
+                            .addHeader("Accept-Language", "en-US,en;q=0.9")
+                            .build()
 
-                    client.newCall(embedRequest).execute().use { embedRes ->
-                        if (embedRes.isSuccessful) {
-                            val embedHtml = embedRes.body?.string() ?: ""
-                            if (embedHtml.contains("The link to this photo or video may be broken") ||
-                                embedHtml.contains("\"restricted_age\"") ||
-                                embedHtml.contains("PolarisErrorRoot") ||
-                                embedHtml.contains("failure_reason")
-                            ) {
-                                isRestricted = true
-                            }
-                            val match = Regex("""video_url[^\"]*?[\\:\"]+(https:[^\"]+?\.mp4[^\"]*)""").find(embedHtml)
-                                ?: Regex("""["']video_url["']\s*:\s*["'](https:[^"'\s\\]+[\s\S]*?)["']""").find(embedHtml)
-                                ?: Regex("""(https:[\\/]+[a-zA-Z0-9.\-_\\/]+?\.mp4[a-zA-Z0-9.\-_?&=%\\/]*)""").find(embedHtml)
-                            if (match != null) {
-                                val rawMatched = match.groupValues[1]
-                                val unescaped = rawMatched
-                                    .replace("\\/", "/")
-                                    .replace("\\u0025", "%")
-                                    .replace("\\u0026", "&")
-                                    .replace("&amp;", "&")
-                                    .replace("\\", "")
-                                videoUrl = unescaped
+                        client.newCall(embedRequest).execute().use { embedRes ->
+                            if (embedRes.isSuccessful) {
+                                val embedHtml = embedRes.body?.string() ?: ""
+                                if (embedHtml.contains("The link to this photo or video may be broken") ||
+                                    embedHtml.contains("\"restricted_age\"") ||
+                                    embedHtml.contains("PolarisErrorRoot")
+                                ) {
+                                    isRestricted = true
+                                }
+                                val match = Regex("""video_url[^\"]*?[\\:\"]+(https:[^\"]+?\.mp4[^\"]*)""").find(embedHtml)
+                                    ?: Regex("""["']video_url["']\s*:\s*["'](https:[^"'\s\\]+[\s\S]*?)["']""").find(embedHtml)
+                                    ?: Regex("""(https:[\\/]+[a-zA-Z0-9.\-_\\/]+?\.mp4[a-zA-Z0-9.\-_?&=%\\/]*)""").find(embedHtml)
+                                if (match != null) {
+                                    val rawMatched = match.groupValues[1]
+                                    val unescaped = rawMatched
+                                        .replace("\\/", "/")
+                                        .replace("\\u0025", "%")
+                                        .replace("\\u0026", "&")
+                                        .replace("&amp;", "&")
+                                        .replace("\\", "")
+                                        .trim()
+                                        .trimEnd('\\', '"', '\'', ' ', '\n', '\r')
+                                    videoUrl = unescaped
+                                }
                             }
                         }
+                    } catch (e: Exception) {
+                        android.util.Log.w("InstagramExtractor", "Embed scraping fallback error for $embedUrl", e)
                     }
-                } catch (e: Exception) {
-                    android.util.Log.w("InstagramExtractor", "Embed scraping fallback error", e)
                 }
             }
 
@@ -201,13 +209,17 @@ object InstagramExtractor {
                 if (videoFile != null) {
                     val m4a = File(cacheDir, "reel_audio_${System.currentTimeMillis()}.m4a")
                     val extracted = ReelAudioExtractor.extractM4a(videoFile, m4a)
-                    videoFile.delete()
-                    extracted.fold(
-                        onSuccess = { audioFile = it },
-                        onFailure = { error ->
-                            audioNote = error.message?.takeIf { it.isNotBlank() } ?: "Audio export failed."
-                        }
-                    )
+                    val extractedFile = extracted.getOrNull()
+                    if (extractedFile != null && extractedFile.exists() && extractedFile.length() > 0L) {
+                        videoFile.delete()
+                        audioFile = extractedFile
+                    } else {
+                        android.util.Log.w(
+                            "InstagramExtractor",
+                            "M4A remuxing failed; using downloaded MP4 video file directly for Whisper transcription (${videoFile.length()} bytes)"
+                        )
+                        audioFile = videoFile
+                    }
                 } else if (audioNote == null) {
                     audioNote = TranscriptOutcome.DOWNLOAD_FAILED
                 }

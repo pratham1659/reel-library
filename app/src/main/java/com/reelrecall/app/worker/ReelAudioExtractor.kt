@@ -46,14 +46,24 @@ object ReelAudioExtractor {
             val buffer = ByteBuffer.allocate(256 * 1024)
             val info = MediaCodec.BufferInfo()
             var samples = 0
+            var lastTimestampUs = -1L
             while (true) {
                 info.offset = 0
                 info.size = extractor.readSampleData(buffer, 0)
                 if (info.size < 0) break
-                info.presentationTimeUs = extractor.sampleTime
+                var sampleTime = extractor.sampleTime
+                if (sampleTime <= lastTimestampUs) {
+                    sampleTime = lastTimestampUs + 1000L
+                }
+                lastTimestampUs = sampleTime
+                info.presentationTimeUs = sampleTime
                 info.flags = extractor.sampleFlags
-                created.writeSampleData(track, buffer, info)
-                samples += 1
+                try {
+                    created.writeSampleData(track, buffer, info)
+                    samples += 1
+                } catch (e: Exception) {
+                    android.util.Log.w("ReelAudioExtractor", "writeSampleData skipped sample: ${e.message}")
+                }
                 extractor.advance()
             }
             if (samples == 0) {
