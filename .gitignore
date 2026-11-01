@@ -1,5 +1,9 @@
 # Built application files
 *.apk
+!release/*.apk
+!website/public/**/*.apk
+!website/public/*.apk
+
 *.aar
 *.ap_
 *.aab
@@ -65,6 +69,9 @@ cmake-build-*/
 ehthumbs.db
 Thumbs.db
 .tempmediaStorage/
+Screenshot_*.jpg
+Screenshot_*.png
+
 
 # Keystore & Signing secrets
 *.jks
@@ -97,5 +104,16 @@ project.xcworkspace/xcuserdata/
 # Cloudflare Wrangler
 .wrangler/
 worker-configuration.d.ts
+
+# Node / Website
+node_modules/
+*/node_modules/
+website/dist/
+dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 
 

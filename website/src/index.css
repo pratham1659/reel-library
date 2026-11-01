@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #090A0E;
+    color: #EDEDF0;
+    font-family: 'Geist', sans-serif;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Smooth custom scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #090A0E;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1D2330;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #E1306C;
+  }
+}
+
+@layer utilities {
+  /* Ambient background grid */
+  .bg-grid {
+    background-size: 40px 40px;
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  }
+
+  /* Top ambient spotlight glow with Warm Sunset Rose & Fuchsia aura */
+  .spotlight-glow {
+    position: absolute;
+    top: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1000px;
+    height: 520px;
+    background: radial-gradient(circle at 50% 30%, rgba(225, 48, 108, 0.22) 0%, rgba(193, 53, 132, 0.14) 28%, rgba(252, 175, 69, 0.09) 55%, transparent 75%);
+    filter: blur(75px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Gradient typography matching Sunset Icon */
+  .gradient-heading {
+    background: linear-gradient(180deg, #FFFFFF 20%, #94A3B8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .gradient-accent {
+    background: linear-gradient(135deg, #FCAF45 0%, #FF5252 20%, #E1306C 55%, #C13584 80%, #5851DB 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .bg-gradient-sunset {
+    background: linear-gradient(135deg, #FCAF45 0%, #FF5252 20%, #E1306C 55%, #C13584 80%, #5851DB 100%);
+  }
+
+  /* Mobile bezel phone glass reflection */
+  .phone-glass-reflection {
+    background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 40%, transparent 60%);
+  }
+}

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <defs>
+    <!-- Exact Tonal Raspberry Rose Gradient: #F03850 to #C81466 (Zero yellow/orange/blue) -->
+    <linearGradient id="photoMatchedGradNote" x1="18" y1="90" x2="90" y2="18" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F03850" />
+      <stop offset="50%" stop-color="#E22058" />
+      <stop offset="100%" stop-color="#C81466" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Squircle -->
+  <rect x="0" y="0" width="108" height="108" rx="24" fill="url(#photoMatchedGradNote)" />
+
+  <!-- Outer Reel Camera Frame (NO TOP-RIGHT DOT) -->
+  <rect x="25" y="25" width="58" height="58" rx="14" 
+        fill="none" 
+        stroke="#FFFFFF" 
+        stroke-width="3.5" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+
+  <!-- Note Document Card with Folded Dog-Ear Corner (NO PLAY BUTTON) -->
+  <path d="M40,37 L60,37 L68,45 L68,69 A3,3 0 0,1 65,72 L43,72 A3,3 0 0,1 40,69 Z" 
+        fill="none" 
+        stroke="#FFFFFF" 
+        stroke-width="2.6" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+
+  <!-- Folded Corner Flap -->
+  <path d="M60,37 L60,45 L68,45" 
+        fill="none" 
+        stroke="#FFFFFF" 
+        stroke-width="2.2" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+
+  <!-- Note Lines -->
+  <line x1="46" y1="47" x2="55" y2="47" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" />
+  <line x1="46" y1="54" x2="62" y2="54" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" />
+  <line x1="46" y1="61" x2="58" y2="61" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" />
+
+  <!-- AI Knowledge Sparkle Icon -->
+  <path d="M33,37 Q33,40 31,41 Q33,42 33,45 Q33,42 35,41 Q33,40 33,37 Z" fill="#FFFFFF" opacity="0.9" />
+</svg>
