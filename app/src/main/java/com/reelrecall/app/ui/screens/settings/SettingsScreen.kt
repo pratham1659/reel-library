@@ -68,6 +68,7 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
@@ -6403,6 +6404,7 @@ private fun DataStorageScreen(
 
     var showRestoreDialog by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
+    var isSharingExport by remember { mutableStateOf(false) }
     var isImporting by remember { mutableStateOf(false) }
     val showGoogleDriveInUi = false
 
@@ -6476,6 +6478,34 @@ private fun DataStorageScreen(
                         ).show()
                     }
                 )
+            }
+        }
+    }
+
+    // Activity launcher for saving universal backup (.zip) directly to user-selected folder in Files
+    val exportFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                isExporting = true
+                try {
+                    val zipFile = viewModel.exportMetadataZip(context)
+                    if (zipFile != null && zipFile.exists()) {
+                        context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                            zipFile.inputStream().use { inputStream ->
+                                inputStream.copyTo(outputStream)
+                            }
+                        }
+                        Toast.makeText(context, "Vault backup successfully saved to Files!", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "Failed to create export package", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Save to Files error: ${e.message}", Toast.LENGTH_SHORT).show()
+                } finally {
+                    isExporting = false
+                }
             }
         }
     }
@@ -7044,39 +7074,13 @@ private fun DataStorageScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Export Button
+                    // 1. Primary Action: Save directly to Files / Device Storage
                     NeumorphicButton(
                         onClick = {
-                            coroutineScope.launch {
-                                isExporting = true
-                                val zipFile = viewModel.exportMetadataZip(context)
-                                isExporting = false
-
-                                if (zipFile != null && zipFile.exists()) {
-                                    try {
-                                        val contentUri = FileProvider.getUriForFile(
-                                            context,
-                                            "${context.packageName}.fileprovider",
-                                            zipFile
-                                        )
-                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                            type = "application/zip"
-                                            putExtra(Intent.EXTRA_STREAM, contentUri)
-                                            putExtra(Intent.EXTRA_SUBJECT, "Reel Library Vault Backup")
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        }
-                                        context.startActivity(
-                                            Intent.createChooser(shareIntent, "Save Vault Backup (.zip) to Cloud or Files")
-                                        )
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Export error: ${e.message}", Toast.LENGTH_SHORT).show()
-                                    }
-                                } else {
-                                    Toast.makeText(context, "Failed to create export package", Toast.LENGTH_SHORT).show()
-                                }
-                            }
+                            val timeStamp = java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.getDefault()).format(java.util.Date())
+                            exportFileLauncher.launch("ReelLibrary_Vault_Backup_$timeStamp.zip")
                         },
-                        enabled = !isExporting,
+                        enabled = !isExporting && !isSharingExport && !isImporting,
                         colors = colors,
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -7092,7 +7096,7 @@ private fun DataStorageScreen(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Generating Universal Archive...",
+                                    text = "Saving to Files...",
                                     fontSize = 13.sp,
                                     color = colors.textPrimary
                                 )
@@ -7105,7 +7109,7 @@ private fun DataStorageScreen(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Export Vault (.zip Archive)",
+                                    text = "Save to Files (.zip Archive)",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = colors.textPrimary
@@ -7114,12 +7118,87 @@ private fun DataStorageScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // 2. Secondary Action: Share Archive via Apps / Cloud
+                    Surface(
+                        onClick = {
+                            coroutineScope.launch {
+                                isSharingExport = true
+                                val zipFile = viewModel.exportMetadataZip(context)
+                                isSharingExport = false
+
+                                if (zipFile != null && zipFile.exists()) {
+                                    try {
+                                        val contentUri = FileProvider.getUriForFile(
+                                            context,
+                                            "${context.packageName}.fileprovider",
+                                            zipFile
+                                        )
+                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "application/zip"
+                                            putExtra(Intent.EXTRA_STREAM, contentUri)
+                                            putExtra(Intent.EXTRA_SUBJECT, "Reel Library Vault Backup")
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(
+                                            Intent.createChooser(shareIntent, "Share Vault Backup (.zip) to Cloud or Apps")
+                                        )
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Export error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    Toast.makeText(context, "Failed to create export package", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        enabled = !isExporting && !isSharingExport && !isImporting,
+                        shape = RoundedCornerShape(14.dp),
+                        color = colors.pillBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            if (isSharingExport) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = colors.accent,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Preparing Share Archive...",
+                                    fontSize = 13.sp,
+                                    color = colors.textPrimary
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = null,
+                                    tint = colors.textSecondary,
+                                    modifier = Modifier.size(17.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "Share Archive to Apps / Cloud",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colors.textPrimary
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     // Import Button
                     Surface(
                         onClick = { importLauncher.launch("*/*") },
-                        enabled = !isImporting,
+                        enabled = !isImporting && !isExporting && !isSharingExport,
                         shape = RoundedCornerShape(14.dp),
                         color = colors.pillBg,
                         border = androidx.compose.foundation.BorderStroke(1.dp, colors.border),
