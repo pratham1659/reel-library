@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
   <defs>
+    <!-- Sunset Pink & Purple Gradient matching user phone screenshot -->
     <linearGradient id="reelBg" x1="14" y1="94" x2="94" y2="14" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#FCAF45" />
       <stop offset="20%" stop-color="#FF5252" />
@@ -12,26 +13,56 @@
     </filter>
   </defs>
 
-  <!-- Background Squircle with Sunset Pink & Purple Gradient -->
+  <!-- Background Continuous-Curve Squircle -->
   <rect x="0" y="0" width="108" height="108" rx="24" fill="url(#reelBg)" />
 
-  <!-- Outer Rounded Reel Squircle Outline (Pure White, No Dot) -->
+  <!-- Outer Rounded Reel Squircle Outline (Pure White, Top-Right Dot Removed) -->
   <path
-    d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z"
+    d="M38,29 L70,29 A12,12 0 0,1 82,41 L82,63 A12,12 0 0,1 70,75 L38,75 A12,12 0 0,1 26,63 L26,41 A12,12 0 0,1 38,29 Z"
     stroke="#FFFFFF"
-    stroke-width="3.5"
+    stroke-width="3.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
     fill="none"
     filter="url(#glow)" />
 
-  <!-- Center Circle -->
-  <path
-    d="M54,42 A12,12 0 1,1 54,66 A12,12 0 1,1 54,42 Z"
+  <!-- Center Circle Lens -->
+  <circle
+    cx="54"
+    cy="50"
+    r="11"
     stroke="#FFFFFF"
-    stroke-width="3"
+    stroke-width="2.6"
     fill="none" />
 
   <!-- Center Play Arrow Glyph -->
   <path
-    d="M51,48 L60,54 L51,60 Z"
+    d="M51,45 L59,50 L51,55 Z"
     fill="#FFFFFF" />
+
+  <!-- Library Illustration: Open Book Upper Page Curve -->
+  <path
+    d="M35,67.5 Q44.5,63 54,66 Q63.5,63 73,67.5"
+    stroke="#FFFFFF"
+    stroke-width="2.6"
+    stroke-linecap="round"
+    fill="none" />
+
+  <!-- Library Illustration: Open Book Lower Page Curve -->
+  <path
+    d="M35,71.5 Q44.5,67 54,70 Q63.5,67 73,71.5"
+    stroke="#FFFFFF"
+    stroke-width="2.0"
+    stroke-linecap="round"
+    fill="none" />
+
+  <!-- Library Illustration: Center Book Spine Line -->
+  <line
+    x1="54"
+    y1="66"
+    x2="54"
+    y2="70.5"
+    stroke="#FFFFFF"
+    stroke-width="1.8"
+    stroke-linecap="round" />
 </svg>

@@ -5,23 +5,49 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Outer Rounded Reel Media Card Squircle (Pure White) -->
+    <!-- Outer Rounded Reel Camera Squircle Outline (Pure White, Top-Right Dot Removed) -->
     <path
         android:strokeColor="#FFFFFF"
         android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
         android:fillColor="#00000000"
-        android:pathData="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" />
+        android:pathData="M38,29 L70,29 A12,12 0 0,1 82,41 L82,63 A12,12 0 0,1 70,75 L38,75 A12,12 0 0,1 26,63 L26,41 A12,12 0 0,1 38,29 Z" />
 
     <!-- Center Play/Lens Circle -->
     <path
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.8"
+        android:strokeWidth="2.6"
         android:fillColor="#00000000"
-        android:pathData="M54,42 A12,12 0 1,1 54,66 A12,12 0 1,1 54,42 Z" />
+        android:pathData="M54,39 A11,11 0 1,1 54,61 A11,11 0 1,1 54,39 Z" />
 
     <!-- Center Play Arrow Glyph -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M51,48 L60,54 L51,60 Z" />
+        android:pathData="M51,45 L59,50 L51,55 Z" />
+
+    <!-- Library Illustration: Open Book Upper Page Curve -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M35,67.5 Q44.5,63 54,66 Q63.5,63 73,67.5" />
+
+    <!-- Library Illustration: Open Book Lower Page Curve -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M35,71.5 Q44.5,67 54,70 Q63.5,67 73,71.5" />
+
+    <!-- Library Illustration: Center Book Spine Line -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M54,66 L54,70.5" />
 
 </vector>
