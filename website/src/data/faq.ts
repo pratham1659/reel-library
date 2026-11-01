@@ -13,8 +13,8 @@ export const faqList: FaqItem[] = [
     answer: "Whisper speech-to-text and SQLite Room indexing are 100% on-device and operational today. Local on-device LLM summarization (running lightweight neural models like Gemma directly on your phone) is currently in active development and marked as Coming Soon for the v1.3 release. Today, summarization uses secure BYOK cloud APIs (Gemini, Groq, OpenAI)."
   },
   {
-    question: "How does the new Google Drive Personal Cloud feature work?",
-    answer: "Starting in v1.2.2, you can link your private Google Drive via Google Sign-In. The app communicates directly with the official Google Drive API using a secure, scoped access token (drive.file). Your summaries, audio notes, and backups are stored directly in your own cloud account—no middleman or intermediate backend has access to your files."
+    question: "Where is my data stored and how can I export it?",
+    answer: "All your transcripts, extracted audio notes, and AI summaries are stored in an encrypted offline SQLite database on your device. You can export your entire library at any time into a universal .zip archive containing standard JSON and media files."
   },
   {
     question: "Is Reel Library free, or is there a hidden monthly subscription?",

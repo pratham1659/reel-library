@@ -8,6 +8,7 @@ import com.reelrecall.app.util.UpdateManager
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -287,34 +288,7 @@ private fun ProfileMainScreen(
                 elevation = 6.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // 1. Account
-                ProfileMenuRow(
-                    icon = Icons.Default.Person,
-                    title = "Account",
-                    badgeText = "Coming Soon",
-                    badgeColor = Color(0xFFFFB74D),
-                    colors = colors,
-                    onClick = {
-                        Toast.makeText(context, "Account & Cloud Profiles are coming soon!", Toast.LENGTH_SHORT).show()
-                    }
-                )
-                NeumorphicDivider(colors = colors)
-
-                // 2. Preferences
-                ProfileMenuRow(
-                    icon = Icons.Default.Tune,
-                    iconTint = ElectricIndigo,
-                    title = "Preferences",
-                    badgeText = "Coming Soon",
-                    badgeColor = Color(0xFFFFB74D),
-                    colors = colors,
-                    onClick = {
-                        Toast.makeText(context, "Preferences customization is coming soon!", Toast.LENGTH_SHORT).show()
-                    }
-                )
-                NeumorphicDivider(colors = colors)
-
-                // 3. Appearance (Neumorphic Dark / Light Theme Toggle)
+                // 1. Appearance (Neumorphic Dark / Light Theme Toggle)
                 ProfileMenuRow(
                     icon = Icons.Default.Palette,
                     title = "Appearance",
@@ -333,7 +307,7 @@ private fun ProfileMainScreen(
                 )
                 NeumorphicDivider(colors = colors)
 
-                // 4. Models & API (Opens Models & API Subscreen)
+                // 2. Models & API (Opens Models & API Subscreen)
                 val isApiKeySet = preferences.groqApiKey.isNotBlank()
                 val apiBadgeText = when {
                     !isApiKeySet -> "API Not Set"
@@ -359,23 +333,23 @@ private fun ProfileMainScreen(
                 )
                 NeumorphicDivider(colors = colors)
 
-                // 5. Data & Storage (Cloud Backup, Google Drive & Universal Export/Import)
+                // 3. Data & Storage (Universal Export/Import & Storage Breakdown)
                 ProfileMenuRow(
                     icon = Icons.Default.Storage,
                     iconTint = CyanAccent,
                     title = "Data & Storage",
-                    badgeText = if (preferences.isCloudBackupEnabled) "Cloud Sync" else "Local Storage",
+                    badgeText = "Local Storage",
                     badgeColor = CyanAccent,
                     colors = colors,
                     onClick = onNavigateToData
                 )
                 NeumorphicDivider(colors = colors)
 
-                // 6. Check for update (Native software update row)
+                // 4. Check for update (Native software update row - single line)
                 ProfileMenuRow(
                     icon = Icons.Default.SystemUpdate,
                     iconTint = CyanAccent,
-                    title = "Check for update",
+                    title = "Check for Updates",
                     badgeText = "v${BuildConfig.VERSION_NAME} • Up to date",
                     badgeColor = StatusReady,
                     colors = colors,
@@ -383,7 +357,7 @@ private fun ProfileMainScreen(
                 )
                 NeumorphicDivider(colors = colors)
 
-                // 7. Help & Feedback (Highlight with coral/orange accent)
+                // 5. Help & Feedback (Highlight with coral/orange accent)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -431,8 +405,8 @@ private sealed interface UpdateDialogState {
     data object Checking : UpdateDialogState
     data class UpToDate(val checkedAt: String) : UpdateDialogState
     data class Available(val updateInfo: AppUpdateInfo) : UpdateDialogState
-    data class Downloading(val progress: Float, val downloadedBytes: Long, val totalBytes: Long) : UpdateDialogState
-    data class Downloaded(val apkFile: java.io.File) : UpdateDialogState
+    data class Downloading(val progress: Float, val downloadedBytes: Long, val totalBytes: Long, val updateInfo: AppUpdateInfo? = null) : UpdateDialogState
+    data class Downloaded(val apkFile: java.io.File, val updateInfo: AppUpdateInfo? = null) : UpdateDialogState
     data class Error(val message: String) : UpdateDialogState
 }
 
@@ -566,19 +540,19 @@ private fun SoftwareUpdateDialog(
 
     fun startDownload(info: AppUpdateInfo) {
         scope.launch {
-            updateState = UpdateDialogState.Downloading(0f, 0L, 0L)
+            updateState = UpdateDialogState.Downloading(0f, 0L, 0L, info)
             val result = UpdateManager.downloadApk(
                 context = context,
                 apkUrl = info.apkUrl,
                 onProgress = { bytesRead, totalBytes ->
                     val progress = if (totalBytes > 0) (bytesRead.toFloat() / totalBytes).coerceIn(0f, 1f) else 0f
-                    updateState = UpdateDialogState.Downloading(progress, bytesRead, totalBytes)
+                    updateState = UpdateDialogState.Downloading(progress, bytesRead, totalBytes, info)
                 }
             )
             result.fold(
                 onSuccess = { file ->
                     // Download complete. Wait for user to explicitly review and click 'Install Now'.
-                    updateState = UpdateDialogState.Downloaded(file)
+                    updateState = UpdateDialogState.Downloaded(file, info)
                 },
                 onFailure = { err ->
                     updateState = UpdateDialogState.Error(err.localizedMessage ?: "Failed to download update")
@@ -765,19 +739,72 @@ private fun SoftwareUpdateDialog(
 
                             Spacer(modifier = Modifier.height(6.dp))
 
-                            // Current Version Pill
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                color = colors.pillBg,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
-                            ) {
-                                Text(
-                                    text = "Current Version: v${BuildConfig.VERSION_NAME}",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = CyanAccent,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
-                                )
+                            // Version Pills: Display both Current & Latest versions when an update is in progress
+                            val targetUpdateInfo = when (val state = updateState) {
+                                is UpdateDialogState.Available -> state.updateInfo
+                                is UpdateDialogState.Downloading -> state.updateInfo
+                                is UpdateDialogState.Downloaded -> state.updateInfo
+                                else -> null
+                            }
+
+                            if (targetUpdateInfo != null) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(20.dp),
+                                        color = colors.pillBg,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
+                                    ) {
+                                        Text(
+                                            text = "Current: v${BuildConfig.VERSION_NAME}",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colors.textSecondary,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(6.dp))
+
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = null,
+                                        tint = CyanAccent,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+
+                                    Spacer(modifier = Modifier.width(6.dp))
+
+                                    Surface(
+                                        shape = RoundedCornerShape(20.dp),
+                                        color = CyanAccent.copy(alpha = 0.15f),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent.copy(alpha = 0.35f))
+                                    ) {
+                                        Text(
+                                            text = "Latest: v${targetUpdateInfo.versionName}",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CyanAccent,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                        )
+                                    }
+                                }
+                            } else {
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = colors.pillBg,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
+                                ) {
+                                    Text(
+                                        text = "Current Version: v${BuildConfig.VERSION_NAME}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = CyanAccent,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                                    )
+                                }
                             }
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -894,11 +921,44 @@ private fun SoftwareUpdateDialog(
                                         is UpdateDialogState.Downloaded -> {
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(text = "Current Version", fontSize = 12.sp, color = colors.textSecondary)
+                                                Text(
+                                                    text = "v${BuildConfig.VERSION_NAME}",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = colors.textPrimary
+                                                )
+                                            }
+                                            if (state.updateInfo != null) {
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(text = "Latest Version", fontSize = 12.sp, color = colors.textSecondary)
+                                                    Text(
+                                                        text = "v${state.updateInfo.versionName}",
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = CyanAccent
+                                                    )
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Text(text = "Status", fontSize = 12.sp, color = colors.textSecondary)
                                                 Text(text = "Download complete", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = StatusReady)
                                             }
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            HorizontalDivider(color = colors.border.copy(alpha = 0.5f), thickness = 0.8.dp)
                                             Spacer(modifier = Modifier.height(8.dp))
                                             Text(
                                                 text = "Update downloaded successfully. Tap 'Install Now' below to proceed with the update.",
@@ -1013,7 +1073,16 @@ private fun SoftwareUpdateDialog(
                             }
                             is UpdateDialogState.Downloaded -> {
                                 NeumorphicButton(
-                                    onClick = { UpdateManager.installApk(context, state.apkFile) },
+                                    onClick = {
+                                        val installed = UpdateManager.installApk(context, state.apkFile)
+                                        if (!installed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "Please allow 'Install unknown apps' to update Reel Library",
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    },
                                     colors = colors,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
@@ -1029,7 +1098,7 @@ private fun SoftwareUpdateDialog(
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = "Install Now",
+                                            text = if (state.updateInfo != null) "Install Now (v${state.updateInfo.versionName})" else "Install Now",
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = colors.textPrimary
@@ -2371,15 +2440,17 @@ private fun SelectModelsScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(18.dp))
+                    val showCloudTokenUsage = false
+                    if (showCloudTokenUsage) {
+                        Spacer(modifier = Modifier.height(18.dp))
 
-                    // REAL-TIME TOKEN TRACKING (PER-API SELECTION & TELEMETRY - ZERO DEMO DATA)
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = colors.pillBg,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.6f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                        // REAL-TIME TOKEN TRACKING (PER-API SELECTION & TELEMETRY - ZERO DEMO DATA)
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = colors.pillBg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, colors.border.copy(alpha = 0.6f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             // Header Row
                             Row(
@@ -2887,13 +2958,17 @@ private fun SelectModelsScreen(
                     }
                 }
             }
+            }
 
-            // MODEL EXECUTION HISTORY TABLE (PER-REQUEST CALLS & RED HIGHLIGHT ABOVE AVERAGE)
-            ModelExecutionHistoryTableCard(
-                recentLogs = cloudRecentLogs,
-                initialModel = selectedTokenApi,
-                colors = colors
-            )
+            val showModelExecutionHistory = false
+            if (showModelExecutionHistory) {
+                // MODEL EXECUTION HISTORY TABLE (PER-REQUEST CALLS & RED HIGHLIGHT ABOVE AVERAGE)
+                ModelExecutionHistoryTableCard(
+                    recentLogs = cloudRecentLogs,
+                    initialModel = selectedTokenApi,
+                    colors = colors
+                )
+            }
         } else if (showLocalLlmInUi) {
             // CARD 3: LOCAL DOWNLOAD PROGRESS & TEST ENGINE
             NeumorphicCard(colors = colors) {
@@ -3834,30 +3909,38 @@ private fun ProfileMenuRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 15.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f, fill = false)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = iconTint,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = title,
-                fontSize = 15.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = colors.textPrimary
+                color = colors.textPrimary,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
+        ) {
             if (badgeText != null) {
                 Surface(
                     shape = RoundedCornerShape(6.dp),
@@ -3865,19 +3948,21 @@ private fun ProfileMenuRow(
                 ) {
                     Text(
                         text = badgeText,
-                        fontSize = 11.sp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = badgeColor,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
             }
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
                 tint = chevronTint,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
         }
     }
@@ -6316,6 +6401,7 @@ private fun DataStorageScreen(
     var showRestoreDialog by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
     var isImporting by remember { mutableStateOf(false) }
+    val showGoogleDriveInUi = false
 
     LaunchedEffect(Unit) {
         viewModel.refreshStorageBreakdown(context)
@@ -6427,7 +6513,7 @@ private fun DataStorageScreen(
                     color = colors.textPrimary
                 )
                 Text(
-                    text = "Cloud backup, universal export & storage",
+                    text = "Universal export, import & local storage",
                     fontSize = 11.sp,
                     color = colors.textSecondary
                 )
@@ -6442,11 +6528,12 @@ private fun DataStorageScreen(
                 .padding(horizontal = 18.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // CARD 1: GOOGLE DRIVE (PERSONAL CLOUD BACKUP)
-            NeumorphicCard(
-                colors = colors,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            if (showGoogleDriveInUi) {
+                // CARD 1: GOOGLE DRIVE (PERSONAL CLOUD BACKUP)
+                NeumorphicCard(
+                    colors = colors,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     // Header Row: Google Drive Title & Status Badge
                     Row(
@@ -6478,7 +6565,7 @@ private fun DataStorageScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f, fill = false)) {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "Google Drive",
                                     fontSize = 16.sp,
@@ -6489,7 +6576,7 @@ private fun DataStorageScreen(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Personal Cloud Backup",
+                                    text = "Personal Cloud",
                                     fontSize = 11.sp,
                                     color = colors.textSecondary,
                                     maxLines = 1,
@@ -6536,7 +6623,7 @@ private fun DataStorageScreen(
                     if (!preferences.isGoogleDriveConnected) {
                         // Unconnected State
                         Text(
-                            text = "Connect your private Google Drive to securely back up and restore your reels, AI summaries, and full transcripts. Backups are stored in your own Google Drive in the folder\u00A0/ReelLibrary_Vault.",
+                            text = "Connect your private Google Drive to securely back up and restore your reels, AI summaries, and full transcripts. Backups are saved directly in your Google Drive folder: ReelLibrary_Vault.",
                             fontSize = 12.sp,
                             color = colors.textSecondary,
                             lineHeight = 17.sp
@@ -6897,6 +6984,7 @@ private fun DataStorageScreen(
                     }
                 }
             }
+            }
 
             // CARD 2: UNIVERSAL EXPORT & IMPORT (ZIP / JSON)
             NeumorphicCard(colors = colors) {
@@ -6925,13 +7013,17 @@ private fun DataStorageScreen(
                                 text = "Universal Export & Import",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary
+                                color = colors.textPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Universal format (.zip) with metadata & transcripts",
+                                text = "Universal format (.zip) with metadata",
                                 fontSize = 11.sp,
-                                color = colors.textSecondary
+                                color = colors.textSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -7172,7 +7264,7 @@ private fun DataStorageScreen(
         }
 
         // RESTORE FROM GOOGLE DRIVE DIALOG
-        if (showRestoreDialog) {
+        if (showGoogleDriveInUi && showRestoreDialog) {
             Dialog(
                 onDismissRequest = {
                     if (!isDriveRestoring) showRestoreDialog = false

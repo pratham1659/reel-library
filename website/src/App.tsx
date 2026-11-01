@@ -5,7 +5,6 @@ import { Hero } from './components/Hero'
 import { DeviceMockup } from './components/DeviceMockup'
 import { BentoFeatures } from './components/BentoFeatures'
 import { HowItWorks } from './components/HowItWorks'
-import { GoogleDriveVault } from './components/GoogleDriveVault'
 import { ReleaseNotes } from './components/ReleaseNotes'
 import { ComparisonTable } from './components/ComparisonTable'
 import { FaqSection } from './components/FaqSection'
@@ -33,7 +32,6 @@ export const App: React.FC = () => {
           <DeviceMockup />
           <BentoFeatures />
           <HowItWorks />
-          <GoogleDriveVault />
           <ReleaseNotes />
           <ComparisonTable />
           <FaqSection />

@@ -23,7 +23,6 @@ export const Footer: React.FC = () => {
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-center">
           <a href="#features" className="hover:text-white transition">Features</a>
           <a href="#demo" className="hover:text-white transition">Demo</a>
-          <a href="#cloud-vault" className="hover:text-white transition">Google Drive</a>
           <a href="#release-notes" className="hover:text-white transition">Release Notes</a>
           <a href="#faq" className="hover:text-white transition">FAQ</a>
           <a 

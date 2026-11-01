@@ -25,7 +25,7 @@ export const comparisonData: ComparisonRow[] = [
     genericNotes: false
   },
   {
-    feature: "Personal Google Drive Cloud Vault",
+    feature: "Universal Portable Vault Export (.zip)",
     reelLibrary: true,
     instagramSaved: false,
     genericNotes: "Requires premium tier"

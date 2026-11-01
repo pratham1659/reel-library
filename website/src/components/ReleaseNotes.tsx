@@ -1,6 +1,6 @@
 import React from 'react'
 import { releaseNotesData } from '../data/releaseNotes'
-import { Sparkles, CheckCircle2, Cloud, RefreshCw, Cpu } from 'lucide-react'
+import { Sparkles, CheckCircle2, HardDrive, RefreshCw, Cpu } from 'lucide-react'
 
 export const ReleaseNotes: React.FC = () => {
   return (
@@ -81,7 +81,7 @@ export const ReleaseNotes: React.FC = () => {
             <div className="pt-3 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-400">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1.5 text-neutral-300">
-                  <Cloud className="w-3.5 h-3.5 text-pink-400" /> Google Drive Scoped
+                  <HardDrive className="w-3.5 h-3.5 text-pink-400" /> Universal Vault Export
                 </span>
                 <span className="flex items-center gap-1.5 text-neutral-300">
                   <RefreshCw className="w-3.5 h-3.5 text-emerald-400" /> Direct GitHub Updates

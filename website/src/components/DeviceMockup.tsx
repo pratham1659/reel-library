@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import { 
-  Search, Mic, Sparkles, Cloud, Volume2, 
-  Copy, Check, ShieldCheck, Database, RefreshCw, Cpu, Clock
+  Search, Mic, Sparkles, Volume2, 
+  Copy, Check, Cpu, Clock
 } from 'lucide-react'
 
 export const DeviceMockup: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'vault' | 'transcript' | 'models' | 'cloud'>('vault')
+  const [activeTab, setActiveTab] = useState<'vault' | 'transcript' | 'models'>('vault')
   const [copied, setCopied] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -29,54 +29,42 @@ export const DeviceMockup: React.FC = () => {
           from instantaneous speech transcription to multi-model AI reasoning.
         </p>
 
-        {/* Tab Controls (2x2 grid on mobile, inline-flex on larger screens) */}
-        <div className="mt-6 grid grid-cols-2 sm:inline-flex p-1 rounded-xl bg-obsidian-card border border-white/[0.08] shadow-neumorphic-inset gap-1 max-w-full">
+        {/* Tab Controls (3 clean responsive tabs) */}
+        <div className="mt-6 flex flex-wrap justify-center p-1 rounded-xl bg-obsidian-card border border-white/[0.08] shadow-neumorphic-inset gap-1 max-w-full">
           <button
             onClick={() => setActiveTab('vault')}
-            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'vault'
                 ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] text-white font-semibold shadow-glow-sunset'
                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             <Search className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Vault & Search</span>
+            <span>Vault & Search</span>
           </button>
 
           <button
             onClick={() => setActiveTab('transcript')}
-            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'transcript'
                 ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] text-white font-semibold shadow-glow-sunset'
                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             <Mic className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Audio & Notes</span>
+            <span>Audio & Notes</span>
           </button>
 
           <button
             onClick={() => setActiveTab('models')}
-            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'models'
                 ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] text-white font-semibold shadow-glow-sunset'
                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Multi-LLM Engine</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('cloud')}
-            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition ${
-              activeTab === 'cloud'
-                ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] text-white font-semibold shadow-glow-sunset'
-                : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
-            }`}
-          >
-            <Cloud className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Drive Vault</span>
+            <span>Multi-LLM Engine</span>
           </button>
         </div>
       </div>
@@ -311,75 +299,6 @@ export const DeviceMockup: React.FC = () => {
                       <div className="font-semibold text-white pt-1">⚡ Key Technique:</div>
                       <p className="text-[10px] text-neutral-400">Deglaze hot pan fond with cream on low heat to preserve emulsion.</p>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 4: GOOGLE DRIVE VAULT */}
-              {activeTab === 'cloud' && (
-                <div className="space-y-3.5 animate-fadeIn">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-blue-500/20 flex items-center justify-center text-blue-400">
-                        <Cloud className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="font-bold text-sm text-white">Google Drive Personal Vault</span>
-                    </div>
-                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300 border border-pink-500/20">
-                      Scoped API
-                    </span>
-                  </div>
-
-                  {/* Connected Account */}
-                  <div className="p-3 rounded-2xl bg-obsidian-card border border-white/[0.08] space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-400 to-pink-500 flex items-center justify-center font-bold text-xs text-white">
-                          P
-                        </div>
-                        <div>
-                          <div className="text-[11px] font-semibold text-white">user@gmail.com</div>
-                          <div className="text-[9px] text-neutral-400 flex items-center gap-1">
-                            <ShieldCheck className="w-2.5 h-2.5 text-emerald-400" />
-                            Direct OAuth2 Scoped Token
-                          </div>
-                        </div>
-                      </div>
-                      <button className="text-[9px] px-2 py-1 rounded bg-white/[0.06] text-neutral-300 hover:text-white flex items-center gap-1">
-                        <RefreshCw className="w-2.5 h-2.5" /> Sync
-                      </button>
-                    </div>
-
-                    {/* Storage Breakdown Real-time */}
-                    <div className="space-y-1.5 pt-1">
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-neutral-400 flex items-center gap-1">
-                          <Database className="w-3 h-3 text-pink-400" /> Real-time Storage
-                        </span>
-                        <span className="font-mono text-neutral-200">142.8 MB / 15 GB</span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-white/[0.06] overflow-hidden flex">
-                        <div style={{ width: '45%' }} className="bg-pink-500 h-full" title="Reels Audio" />
-                        <div style={{ width: '30%' }} className="bg-purple-500 h-full" title="Transcripts" />
-                        <div style={{ width: '15%' }} className="bg-amber-400 h-full" title="SQLite Index" />
-                      </div>
-                      <div className="flex flex-wrap items-center justify-between gap-1 text-[8px] text-neutral-500">
-                        <span>■ Audio (64 MB)</span>
-                        <span>■ Transcripts (42 MB)</span>
-                        <span>■ Metadata (36 MB)</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Security Highlights */}
-                  <div className="p-3 rounded-2xl bg-obsidian-card border border-white/[0.08] space-y-1.5 text-[10px] text-neutral-300">
-                    <div className="font-semibold text-white flex items-center gap-1 text-[11px]">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                      Zero Intermediate Servers
-                    </div>
-                    <p className="text-neutral-400 text-[10px] leading-relaxed">
-                      Uploads travel strictly between your smartphone and Google Drive via encrypted HTTPS. No company servers ever touch your files.
-                    </p>
                   </div>
                 </div>
               )}

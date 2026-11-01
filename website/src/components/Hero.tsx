@@ -1,5 +1,5 @@
 import React from 'react'
-import { Download, Github, Shield, Cpu, Cloud, CheckCircle } from 'lucide-react'
+import { Download, Github, Shield, Cpu, HardDrive, CheckCircle } from 'lucide-react'
 
 export const Hero: React.FC = () => {
   return (
@@ -24,7 +24,7 @@ export const Hero: React.FC = () => {
         <div className="inline-flex items-center gap-2 rounded-full border border-pink-500/25 bg-pink-500/[0.08] px-3 sm:px-3.5 py-1 text-[11px] sm:text-xs text-pink-300 shadow-[0_0_20px_rgba(225,48,108,0.25)] max-w-full">
           <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse shrink-0"></span>
           <span className="font-medium tracking-wide truncate sm:whitespace-normal">
-            Private • On-Device Speech • Multi-LLM • Google Drive Backup
+            Private • On-Device Speech • Multi-LLM • Offline SQLite Vault
           </span>
         </div>
 
@@ -38,7 +38,7 @@ export const Hero: React.FC = () => {
         <p className="max-w-2xl mx-auto text-sm sm:text-lg text-neutral-400 font-normal leading-relaxed px-2 sm:px-0">
           Save cooking recipes, coding tutorials, and travel tips from Instagram. 
           Transcribe spoken audio locally with Whisper, generate structured AI bullet summaries, 
-          and sync securely to your own private Google Drive.
+          and store everything securely in your private offline vault.
         </p>
 
         {/* Primary CTA Buttons */}
@@ -75,8 +75,8 @@ export const Hero: React.FC = () => {
             <span>Zero Third-Party Trackers</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Cloud className="w-4 h-4 text-pink-400 shrink-0" />
-            <span>Direct Google Drive API</span>
+            <HardDrive className="w-4 h-4 text-pink-400 shrink-0" />
+            <span>Portable Universal Export</span>
           </div>
           <div className="flex items-center gap-1.5">
             <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
