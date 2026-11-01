@@ -6,38 +6,41 @@ export const Footer: React.FC = () => {
 
   return (
     <>
-      <footer className="relative border-t border-white/[0.06] bg-obsidian/90 py-12 px-4 sm:px-6 lg:px-8 text-xs text-neutral-400">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+      <footer 
+        id="footer" 
+        className="relative z-20 border-t border-white/[0.06] bg-obsidian/95 backdrop-blur-md pt-12 pb-28 sm:py-12 px-4 sm:px-6 lg:px-8 text-xs text-neutral-400"
+      >
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
           
           {/* Brand */}
-          <div className="flex items-center gap-3">
-            <img 
-              src="/app-icon.svg" 
-              alt="Reel Library" 
-              className="w-8 h-8 rounded-xl shadow-glow-sunset"
-            />
-            <div>
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="flex items-center gap-3">
+              <img 
+                src="/app-icon.svg" 
+                alt="Reel Library" 
+                className="w-8 h-8 rounded-xl shadow-glow-sunset" 
+              />
               <span className="font-bold text-sm text-white">Reel Library</span>
-              <button 
-                onClick={() => setIsLicenseOpen(true)}
-                className="ml-2 inline-flex items-center gap-1 text-[10px] text-pink-400/90 hover:text-pink-300 font-mono px-1.5 py-0.5 rounded bg-pink-500/10 border border-pink-500/20 transition hover:bg-pink-500/20"
-                title="View MIT License"
-              >
-                <Scale className="w-3 h-3" />
-                <span>MIT License</span>
-              </button>
             </div>
+            <button 
+              onClick={() => setIsLicenseOpen(true)}
+              className="inline-flex items-center gap-1 text-[11px] text-pink-400 hover:text-pink-300 font-mono px-2.5 py-1 rounded-lg bg-pink-500/10 border border-pink-500/20 transition hover:bg-pink-500/20 active:scale-95"
+              title="View MIT License"
+            >
+              <Scale className="w-3.5 h-3.5" />
+              <span>MIT License</span>
+            </button>
           </div>
 
           {/* Navigation Links */}
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-center">
-            <a href="#features" className="hover:text-white transition">Features</a>
-            <a href="#demo" className="hover:text-white transition">Demo</a>
-            <a href="#release-notes" className="hover:text-white transition">Release Notes</a>
-            <a href="#faq" className="hover:text-white transition">FAQ</a>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 sm:gap-x-6 gap-y-3 text-center">
+            <a href="#features" className="hover:text-white transition py-1">Features</a>
+            <a href="#demo" className="hover:text-white transition py-1">Demo</a>
+            <a href="#release-notes" className="hover:text-white transition py-1">Release Notes</a>
+            <a href="#faq" className="hover:text-white transition py-1">FAQ</a>
             <button 
               onClick={() => setIsLicenseOpen(true)} 
-              className="hover:text-white transition"
+              className="hover:text-white transition py-1"
             >
               MIT License
             </button>
@@ -45,7 +48,7 @@ export const Footer: React.FC = () => {
               href="https://github.com/pratham1659/reel-library" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="hover:text-white transition flex items-center gap-1"
+              className="hover:text-white transition inline-flex items-center gap-1 py-1"
             >
               <Github className="w-3.5 h-3.5" />
               <span>Source Code</span>
@@ -53,14 +56,14 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Author Branding / Crafted With */}
-          <div className="flex items-center gap-1.5 text-neutral-400">
+          <div className="flex items-center justify-center gap-1.5 text-neutral-300 text-xs sm:text-sm py-2 px-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] shadow-sm">
             <span>crafted with</span>
-            <Heart className="w-3.5 h-3.5 text-pink-500 fill-pink-500" />
+            <Heart className="w-3.5 h-3.5 text-pink-500 fill-pink-500 animate-pulse" />
             <a 
               href="https://github.com/pratham1659" 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="font-semibold text-pink-400 hover:text-pink-300 transition"
+              className="font-bold text-pink-400 hover:text-pink-300 transition underline underline-offset-4 decoration-pink-500/40 hover:decoration-pink-400"
             >
               pratham builds
             </a>
@@ -72,11 +75,11 @@ export const Footer: React.FC = () => {
       {/* MIT License Modal Dialog */}
       {isLicenseOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn"
           onClick={() => setIsLicenseOpen(false)}
         >
           <div 
-            className="relative w-full max-w-xl max-h-[85vh] rounded-3xl bg-obsidian-card border border-pink-500/30 p-6 sm:p-8 shadow-[0_0_80px_rgba(225,48,108,0.25)] flex flex-col justify-between overflow-hidden"
+            className="relative w-full max-w-xl max-h-[85vh] rounded-3xl bg-obsidian-card border border-pink-500/30 p-5 sm:p-8 shadow-[0_0_80px_rgba(225,48,108,0.25)] flex flex-col justify-between overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -140,7 +143,7 @@ SOFTWARE.`}
 
               <button
                 onClick={() => setIsLicenseOpen(false)}
-                className="px-4 py-1.5 rounded-lg bg-white/[0.08] text-white hover:bg-white/[0.12] transition font-medium text-xs"
+                className="px-4 py-2 rounded-lg bg-pink-500/20 text-pink-300 hover:bg-pink-500/30 border border-pink-500/30 transition font-medium text-xs active:scale-95"
               >
                 Close
               </button>
