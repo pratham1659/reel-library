@@ -128,6 +128,10 @@ object InstagramExtractor {
             }
 
             // Step 1b: If direct videoUrl was not found in OG tags, query Instagram embed endpoints
+            var isCopyrightBlocked = false
+            var licensedSongName: String? = null
+            var licensedArtistName: String? = null
+
             if (videoUrl.isNullOrBlank()) {
                 val embedUrls = listOf(
                     "${canonicalUrl.trimEnd('/')}/embed/captioned/?_fb_noscript=1",
@@ -154,6 +158,23 @@ object InstagramExtractor {
                                     embedHtml.contains("PolarisErrorRoot")
                                 ) {
                                     isRestricted = true
+                                }
+                                if (embedHtml.contains("copyright_blocked")) {
+                                    isCopyrightBlocked = true
+                                }
+                                if (licensedSongName == null) {
+                                    val songMatch = Regex("""song_name\\?\":\\?\"([^\"\\]+)""").find(embedHtml)
+                                    val song = songMatch?.groupValues?.get(1)?.trim()
+                                    if (!song.isNullOrBlank() && !song.equals("Original audio", ignoreCase = true)) {
+                                        licensedSongName = song
+                                    }
+                                }
+                                if (licensedArtistName == null) {
+                                    val artistMatch = Regex("""artist_name\\?\":\\?\"([^\"\\]+)""").find(embedHtml)
+                                    val artist = artistMatch?.groupValues?.get(1)?.trim()
+                                    if (!artist.isNullOrBlank()) {
+                                        licensedArtistName = artist
+                                    }
                                 }
                                 val match = Regex("""video_url[^\"]*?[\\:\"]+(https:[^\"]+?\.mp4[^\"]*)""").find(embedHtml)
                                     ?: Regex("""["']video_url["']\s*:\s*["'](https:[^"'\s\\]+[\s\S]*?)["']""").find(embedHtml)
@@ -226,6 +247,14 @@ object InstagramExtractor {
             } else {
                 audioNote = if (isRestricted) {
                     TranscriptOutcome.RESTRICTED_MEDIA
+                } else if (isCopyrightBlocked || !licensedSongName.isNullOrBlank()) {
+                    if (!licensedSongName.isNullOrBlank() && !licensedArtistName.isNullOrBlank()) {
+                        "This reel uses licensed music ('$licensedSongName' by $licensedArtistName). Instagram blocks audio streaming for copyright-protected tracks outside its app. AI summary was generated using the caption."
+                    } else if (!licensedSongName.isNullOrBlank()) {
+                        "This reel uses licensed music ('$licensedSongName'). Instagram blocks audio streaming for copyright-protected tracks outside its app. AI summary was generated using the caption."
+                    } else {
+                        "This reel uses copyright-protected audio. Instagram blocks audio streaming for licensed tracks outside its app. AI summary was generated using the caption."
+                    }
                 } else {
                     TranscriptOutcome.NO_MEDIA
                 }

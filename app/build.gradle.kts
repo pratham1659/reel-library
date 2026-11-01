@@ -94,6 +94,7 @@ android {
             isDebuggable = false
         }
         release {
+            isDebuggable = true
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")

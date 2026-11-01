@@ -1548,7 +1548,7 @@ fun RecallStatusPill(
     isDark: Boolean = LocalIsDarkTheme.current
 ) {
     val isAudioUnavailable = status == IngestionStatus.NOT_SUPPORTED ||
-        (status == IngestionStatus.COMPLETED && transcript.isNullOrBlank() && !transcriptNote.isNullOrBlank())
+        (status == IngestionStatus.COMPLETED && !com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(transcript))
 
     val style = if (isDark) {
         if (isAudioUnavailable) {
