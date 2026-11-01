@@ -3,12 +3,32 @@ import { Download, Github, Shield, Cpu, Cloud, CheckCircle } from 'lucide-react'
 
 export const Hero: React.FC = () => {
   return (
-    <section className="relative pt-16 pb-12 sm:pt-24 sm:pb-16 text-center px-4 sm:px-6 lg:px-8">
+    <section className="relative pt-14 pb-12 sm:pt-20 sm:pb-16 text-center px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-6">
         
+        {/* Official App Icon Emblem Showcase */}
+        <div className="flex items-center justify-center mb-2">
+          <div className="relative group">
+            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-cyan-500 to-amber-400 opacity-25 blur-lg group-hover:opacity-50 transition duration-500" />
+            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#080C16] via-[#0F2438] to-[#22D3EE] p-[2px] shadow-2xl">
+              <div className="w-full h-full bg-[#080C16] rounded-[14px] flex items-center justify-center p-2.5">
+                <svg viewBox="0 0 108 108" className="w-full h-full" fill="none">
+                  <path 
+                    d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" 
+                    stroke="#22D3EE" 
+                    strokeWidth="4.5" 
+                  />
+                  <circle cx="54" cy="54" r="12" stroke="#FFFFFF" strokeWidth="4" />
+                  <path d="M51,48 L60,54 L51,60 Z" fill="#FFFFFF" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Pill Badge */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-pink-500/25 bg-pink-500/[0.08] px-3.5 py-1 text-xs text-pink-300 shadow-[0_0_20px_rgba(225,48,108,0.25)]">
-          <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse"></span>
+        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-cyan-500/[0.08] px-3.5 py-1 text-xs text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.25)]">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
           <span className="font-medium tracking-wide">
             Private • On-Device Speech • Multi-LLM • Google Drive Backup
           </span>
@@ -28,14 +48,14 @@ export const Hero: React.FC = () => {
         </p>
 
         {/* Primary CTA Buttons */}
-        <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-4">
           <a 
             href="#download" 
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#833AB4] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_0_35px_rgba(225,48,108,0.5)] transition hover:brightness-110 active:scale-98"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-cyan-400 via-cyan-500 to-cyan-600 px-7 py-3.5 text-sm font-bold text-black shadow-glow-cyan transition hover:brightness-110 active:scale-98"
           >
             <Download className="w-4 h-4" />
             <span>Download Reel Library APK</span>
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/20 ml-1">v1.2.2</span>
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-black/20 ml-1">v1.2.2</span>
           </a>
 
           <a 
@@ -50,17 +70,17 @@ export const Hero: React.FC = () => {
         </div>
 
         {/* Trust Badges Bar */}
-        <div className="pt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-neutral-400">
+        <div className="pt-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-neutral-400">
           <div className="flex items-center gap-1.5">
-            <Cpu className="w-4 h-4 text-pink-400" />
+            <Cpu className="w-4 h-4 text-cyan-400" />
             <span>Offline STT Transcription</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Shield className="w-4 h-4 text-pink-400" />
+            <Shield className="w-4 h-4 text-cyan-400" />
             <span>Zero Third-Party Trackers</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Cloud className="w-4 h-4 text-pink-400" />
+            <Cloud className="w-4 h-4 text-cyan-400" />
             <span>Direct Google Drive API</span>
           </div>
           <div className="flex items-center gap-1.5">

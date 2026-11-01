@@ -12,7 +12,7 @@ export const FaqSection: React.FC = () => {
   return (
     <section id="faq" className="relative py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
       <div className="text-center mb-12">
-        <span className="text-xs font-semibold uppercase tracking-wider text-pink-400">
+        <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
           Frequently Asked Questions
         </span>
         <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mt-1 font-display">
@@ -39,7 +39,7 @@ export const FaqSection: React.FC = () => {
                   {item.question}
                 </span>
                 <ChevronDown
-                  className={`w-4 h-4 text-pink-400 transition-transform duration-200 shrink-0 ${
+                  className={`w-4 h-4 text-cyan-400 transition-transform duration-200 shrink-0 ${
                     isOpen ? 'rotate-180' : ''
                   }`}
                 />

@@ -6,6 +6,7 @@ import { DeviceMockup } from './components/DeviceMockup'
 import { BentoFeatures } from './components/BentoFeatures'
 import { HowItWorks } from './components/HowItWorks'
 import { GoogleDriveVault } from './components/GoogleDriveVault'
+import { ReleaseNotes } from './components/ReleaseNotes'
 import { ComparisonTable } from './components/ComparisonTable'
 import { FaqSection } from './components/FaqSection'
 import { DownloadCta } from './components/DownloadCta'
@@ -13,9 +14,9 @@ import { Footer } from './components/Footer'
 
 export const App: React.FC = () => {
   return (
-    <div className="relative min-h-screen bg-obsidian text-[#EDEDF0] selection:bg-pink-500/30 selection:text-pink-200">
+    <div className="relative min-h-screen bg-obsidian text-[#EDEDF0] selection:bg-cyan-500/30 selection:text-cyan-200">
       
-      {/* Top Ambient Spotlight Flare with Sunset Pink Aura */}
+      {/* Top Ambient Spotlight Flare with Electric Cyan Aura */}
       <div className="spotlight-glow" aria-hidden="true" />
 
       {/* Vertical Guide Lines Frame (Inspired by getplexo.app) */}
@@ -33,6 +34,7 @@ export const App: React.FC = () => {
           <BentoFeatures />
           <HowItWorks />
           <GoogleDriveVault />
+          <ReleaseNotes />
           <ComparisonTable />
           <FaqSection />
           <DownloadCta />

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { 
   Search, Mic, Sparkles, Cloud, Play, Volume2, 
-  Copy, Check, ShieldCheck, Database, RefreshCw, Cpu
+  Copy, Check, ShieldCheck, Database, RefreshCw, Cpu, Clock
 } from 'lucide-react'
 
 export const DeviceMockup: React.FC = () => {
@@ -18,7 +18,7 @@ export const DeviceMockup: React.FC = () => {
     <section id="demo" className="relative py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Section Header */}
       <div className="text-center max-w-2xl mx-auto mb-10">
-        <span className="text-xs font-semibold uppercase tracking-wider text-pink-400">
+        <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
           Interactive Experience
         </span>
         <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-white mt-1 font-display">
@@ -35,7 +35,7 @@ export const DeviceMockup: React.FC = () => {
             onClick={() => setActiveTab('vault')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'vault'
-                ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#833AB4] text-white shadow-glow-sunset'
+                ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-semibold shadow-glow-cyan'
                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
@@ -47,7 +47,7 @@ export const DeviceMockup: React.FC = () => {
             onClick={() => setActiveTab('transcript')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'transcript'
-                ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#833AB4] text-white shadow-glow-sunset'
+                ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-semibold shadow-glow-cyan'
                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
@@ -59,7 +59,7 @@ export const DeviceMockup: React.FC = () => {
             onClick={() => setActiveTab('models')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'models'
-                ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#833AB4] text-white shadow-glow-sunset'
+                ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-semibold shadow-glow-cyan'
                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
@@ -71,7 +71,7 @@ export const DeviceMockup: React.FC = () => {
             onClick={() => setActiveTab('cloud')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'cloud'
-                ? 'bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#833AB4] text-white shadow-glow-sunset'
+                ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-semibold shadow-glow-cyan'
                 : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
             }`}
           >
@@ -84,11 +84,11 @@ export const DeviceMockup: React.FC = () => {
       {/* Phone Bezel Container */}
       <div className="relative mx-auto max-w-[340px] sm:max-w-[380px]">
         {/* Outer Phone Ambient Shadow */}
-        <div className="absolute -inset-4 rounded-[50px] bg-gradient-to-b from-pink-500/20 via-purple-500/10 to-transparent blur-2xl -z-10" />
+        <div className="absolute -inset-4 rounded-[50px] bg-gradient-to-b from-cyan-500/20 via-blue-500/10 to-transparent blur-2xl -z-10" />
 
         {/* Physical Bezel */}
         <div className="relative rounded-[44px] p-3 bg-neutral-900 border-[3px] border-neutral-700/80 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)]">
-          {/* Antenna bands / physical styling */}
+          {/* Antenna bands */}
           <div className="absolute top-24 -left-1.5 w-1 h-8 bg-neutral-700 rounded-l" />
           <div className="absolute top-36 -left-1.5 w-1 h-12 bg-neutral-700 rounded-l" />
           <div className="absolute top-28 -right-1.5 w-1 h-14 bg-neutral-700 rounded-r" />
@@ -104,7 +104,7 @@ export const DeviceMockup: React.FC = () => {
               </div>
               <div className="flex items-center gap-1.5 text-[10px]">
                 <span>5G</span>
-                <span className="font-mono">100%</span>
+                <span className="font-mono text-cyan-400">100%</span>
               </div>
             </div>
 
@@ -117,14 +117,14 @@ export const DeviceMockup: React.FC = () => {
                   {/* App Bar Header */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-[#FCAF45] via-[#E1306C] to-[#833AB4] p-[1px]">
-                        <div className="w-full h-full bg-[#0C0F17] rounded-[5px] flex items-center justify-center">
-                          <Play className="w-2.5 h-2.5 fill-white text-white" />
+                      <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-[#080C16] to-[#22D3EE] p-[1px]">
+                        <div className="w-full h-full bg-[#080C16] rounded-[5px] flex items-center justify-center">
+                          <Play className="w-2.5 h-2.5 fill-cyan-400 text-cyan-400" />
                         </div>
                       </div>
                       <span className="font-bold text-sm font-display tracking-tight text-white">Reel Vault</span>
                     </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300 border border-pink-500/20">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
                       42 Reels Indexed
                     </span>
                   </div>
@@ -137,20 +137,20 @@ export const DeviceMockup: React.FC = () => {
                       placeholder="Search transcripts, recipes, tags..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2 rounded-xl bg-obsidian-card border border-white/[0.08] text-[11px] text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-pink-500/50"
+                      className="w-full pl-8 pr-3 py-2 rounded-xl bg-obsidian-card border border-white/[0.08] text-[11px] text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-cyan-500/50"
                     />
                   </div>
 
                   {/* Filter Pills */}
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[10px]">
-                    <span className="px-2.5 py-1 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 whitespace-nowrap font-medium">All Reels</span>
+                    <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 whitespace-nowrap font-medium">All Reels</span>
                     <span className="px-2.5 py-1 rounded-full bg-white/[0.04] text-neutral-400 border border-white/[0.06] whitespace-nowrap">🍳 Recipes</span>
                     <span className="px-2.5 py-1 rounded-full bg-white/[0.04] text-neutral-400 border border-white/[0.06] whitespace-nowrap">💻 Tech</span>
                     <span className="px-2.5 py-1 rounded-full bg-white/[0.04] text-neutral-400 border border-white/[0.06] whitespace-nowrap">✈️ Travel</span>
                   </div>
 
                   {/* Reel Card 1 */}
-                  <div className="p-3 rounded-2xl bg-obsidian-card border border-white/[0.08] shadow-neumorphic-sm space-y-2 hover:border-pink-500/30 transition">
+                  <div className="p-3 rounded-2xl bg-obsidian-card border border-white/[0.08] shadow-neumorphic-sm space-y-2 hover:border-cyan-500/30 transition">
                     <div className="flex items-center justify-between text-[10px] text-neutral-400">
                       <span className="font-medium text-neutral-300">@chef_antonio • 54s</span>
                       <span className="text-emerald-400 flex items-center gap-1">
@@ -164,9 +164,9 @@ export const DeviceMockup: React.FC = () => {
                       "Heat olive oil in a skillet, sear seasoned chicken breasts 5 mins each side. Deglaze with sun-dried tomatoes, heavy cream, garlic, and baby spinach..."
                     </p>
                     <div className="flex items-center gap-1.5 pt-1">
-                      <span className="text-[9px] px-2 py-0.5 rounded bg-pink-500/10 text-pink-300 font-mono">#dinner</span>
+                      <span className="text-[9px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 font-mono">#dinner</span>
                       <span className="text-[9px] px-2 py-0.5 rounded bg-white/[0.04] text-neutral-400 font-mono">#recipe</span>
-                      <span className="text-[9px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 font-mono">Gemini 1.5</span>
+                      <span className="text-[9px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-mono">Gemini 1.5</span>
                     </div>
                   </div>
 
@@ -193,7 +193,7 @@ export const DeviceMockup: React.FC = () => {
                 <div className="space-y-3.5 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-pink-500/20 flex items-center justify-center text-pink-400">
+                      <div className="w-6 h-6 rounded-md bg-cyan-500/20 flex items-center justify-center text-cyan-400">
                         <Mic className="w-3.5 h-3.5" />
                       </div>
                       <span className="font-bold text-sm text-white">Whisper Speech-to-Text</span>
@@ -207,7 +207,7 @@ export const DeviceMockup: React.FC = () => {
                   <div className="p-3 rounded-2xl bg-obsidian-card border border-white/[0.08] space-y-2.5">
                     <div className="flex items-center justify-between text-[10px]">
                       <span className="text-neutral-400 flex items-center gap-1">
-                        <Volume2 className="w-3 h-3 text-pink-400" /> audio_track.aac
+                        <Volume2 className="w-3 h-3 text-cyan-400" /> audio_track.aac
                       </span>
                       <span className="font-mono text-neutral-400">00:45 / 00:54</span>
                     </div>
@@ -219,7 +219,7 @@ export const DeviceMockup: React.FC = () => {
                           key={i}
                           style={{ height: `${h}%` }}
                           className={`w-1 rounded-full transition-all ${
-                            i < 18 ? 'bg-gradient-to-t from-[#FF5252] to-[#E1306C]' : 'bg-neutral-700'
+                            i < 18 ? 'bg-gradient-to-t from-cyan-600 to-cyan-400' : 'bg-neutral-700'
                           }`}
                         />
                       ))}
@@ -232,7 +232,7 @@ export const DeviceMockup: React.FC = () => {
                       <span className="font-semibold text-neutral-300">Timestamped Transcript</span>
                       <button 
                         onClick={handleCopy}
-                        className="text-[10px] text-pink-400 hover:text-pink-300 flex items-center gap-1"
+                        className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
                       >
                         {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                         <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -240,10 +240,10 @@ export const DeviceMockup: React.FC = () => {
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-obsidian-elevated border border-white/[0.06] font-mono text-[10px] text-neutral-300 space-y-1.5 leading-relaxed max-h-48 overflow-y-auto">
-                      <div><span className="text-pink-400">[00:00 - 00:08]</span> "Today I am showing you the fastest one-pan garlic Tuscan chicken recipe."</div>
-                      <div><span className="text-pink-400">[00:08 - 00:22]</span> "Start with 2 chicken breasts butterflied. Season both sides with smoked paprika, salt, and oregano."</div>
-                      <div><span className="text-pink-400">[00:22 - 00:37]</span> "In a hot skillet with olive oil, sear 5 minutes each side until golden brown crust forms."</div>
-                      <div><span className="text-pink-400">[00:37 - 00:54]</span> "Lower the heat, pour in heavy cream and garlic, add spinach and sun-dried tomatoes. Simmer 3 mins."</div>
+                      <div><span className="text-cyan-400">[00:00 - 00:08]</span> "Today I am showing you the fastest one-pan garlic Tuscan chicken recipe."</div>
+                      <div><span className="text-cyan-400">[00:08 - 00:22]</span> "Start with 2 chicken breasts butterflied. Season both sides with smoked paprika, salt, and oregano."</div>
+                      <div><span className="text-cyan-400">[00:22 - 00:37]</span> "In a hot skillet with olive oil, sear 5 minutes each side until golden brown crust forms."</div>
+                      <div><span className="text-cyan-400">[00:37 - 00:54]</span> "Lower the heat, pour in heavy cream and garlic, add spinach and sun-dried tomatoes. Simmer 3 mins."</div>
                     </div>
                   </div>
                 </div>
@@ -254,12 +254,12 @@ export const DeviceMockup: React.FC = () => {
                 <div className="space-y-3.5 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-purple-500/20 flex items-center justify-center text-purple-400">
+                      <div className="w-6 h-6 rounded-md bg-cyan-500/20 flex items-center justify-center text-cyan-400">
                         <Sparkles className="w-3.5 h-3.5" />
                       </div>
                       <span className="font-bold text-sm text-white">Multi-LLM Engine</span>
                     </div>
-                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300 border border-pink-500/20">
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
                       BYOK
                     </span>
                   </div>
@@ -267,17 +267,20 @@ export const DeviceMockup: React.FC = () => {
                   {/* Model Selector Card */}
                   <div className="p-3 rounded-2xl bg-obsidian-card border border-white/[0.08] space-y-2">
                     <span className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider">Active Inference Provider</span>
-                    <div className="p-2 rounded-xl bg-white/[0.04] border border-pink-500/30 flex items-center justify-between">
+                    
+                    {/* Active Gemini */}
+                    <div className="p-2 rounded-xl bg-white/[0.04] border border-cyan-500/30 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-md bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white">G</div>
+                        <div className="w-5 h-5 rounded-md bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-[10px] font-bold text-white">G</div>
                         <div>
                           <div className="text-[11px] font-semibold text-white">Google Gemini 1.5 Flash</div>
-                          <div className="text-[9px] text-neutral-400">Default • Ultra-fast • Free Tier</div>
+                          <div className="text-[9px] text-neutral-400">Active • Ultra-fast • Free Tier</div>
                         </div>
                       </div>
                       <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-mono">Connected</span>
                     </div>
 
+                    {/* Providers Grid */}
                     <div className="grid grid-cols-3 gap-1.5 text-[9px] text-center pt-1">
                       <div className="p-1.5 rounded-lg bg-obsidian-elevated border border-white/[0.06] text-neutral-300">
                         Groq Llama-3
@@ -285,8 +288,11 @@ export const DeviceMockup: React.FC = () => {
                       <div className="p-1.5 rounded-lg bg-obsidian-elevated border border-white/[0.06] text-neutral-300">
                         OpenAI GPT-4o
                       </div>
-                      <div className="p-1.5 rounded-lg bg-obsidian-elevated border border-white/[0.06] text-neutral-300">
-                        Ollama Local
+                      <div className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 relative group">
+                        <div className="font-semibold flex items-center justify-center gap-1">
+                          <Clock className="w-2.5 h-2.5" /> Local LLM
+                        </div>
+                        <div className="text-[8px] text-purple-400 font-mono">Coming Soon</div>
                       </div>
                     </div>
                   </div>
@@ -294,10 +300,10 @@ export const DeviceMockup: React.FC = () => {
                   {/* AI Structured Summary Card */}
                   <div className="p-3 rounded-2xl bg-obsidian-card border border-white/[0.08] space-y-2">
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-pink-400 flex items-center gap-1">
+                      <span className="font-semibold text-cyan-400 flex items-center gap-1">
                         <Cpu className="w-3.5 h-3.5" /> Structured Output
                       </span>
-                      <span className="text-[9px] text-neutral-500 font-mono">0.42s latency</span>
+                      <span className="text-[9px] text-neutral-500 font-mono">0.38s latency</span>
                     </div>
                     <div className="text-[11px] text-neutral-300 space-y-1 leading-snug">
                       <div className="font-semibold text-white">🛒 Ingredients Needed:</div>
@@ -314,12 +320,12 @@ export const DeviceMockup: React.FC = () => {
                 <div className="space-y-3.5 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-blue-500/20 flex items-center justify-center text-blue-400">
+                      <div className="w-6 h-6 rounded-md bg-cyan-500/20 flex items-center justify-center text-cyan-400">
                         <Cloud className="w-3.5 h-3.5" />
                       </div>
                       <span className="font-bold text-sm text-white">Google Drive Personal Vault</span>
                     </div>
-                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300 border border-pink-500/20">
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
                       Scoped API
                     </span>
                   </div>
@@ -328,7 +334,7 @@ export const DeviceMockup: React.FC = () => {
                   <div className="p-3 rounded-2xl bg-obsidian-card border border-white/[0.08] space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-400 to-pink-500 flex items-center justify-center font-bold text-xs text-white">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 flex items-center justify-center font-bold text-xs text-black">
                           P
                         </div>
                         <div>
@@ -348,13 +354,13 @@ export const DeviceMockup: React.FC = () => {
                     <div className="space-y-1.5 pt-1">
                       <div className="flex items-center justify-between text-[10px]">
                         <span className="text-neutral-400 flex items-center gap-1">
-                          <Database className="w-3 h-3 text-pink-400" /> Real-time Storage
+                          <Database className="w-3 h-3 text-cyan-400" /> Real-time Storage
                         </span>
                         <span className="font-mono text-neutral-200">142.8 MB / 15 GB</span>
                       </div>
                       <div className="h-2 w-full rounded-full bg-white/[0.06] overflow-hidden flex">
-                        <div style={{ width: '45%' }} className="bg-pink-500 h-full" title="Reels Audio" />
-                        <div style={{ width: '30%' }} className="bg-purple-500 h-full" title="Transcripts" />
+                        <div style={{ width: '45%' }} className="bg-cyan-500 h-full" title="Reels Audio" />
+                        <div style={{ width: '30%' }} className="bg-blue-500 h-full" title="Transcripts" />
                         <div style={{ width: '15%' }} className="bg-amber-400 h-full" title="SQLite Index" />
                       </div>
                       <div className="flex items-center justify-between text-[8px] text-neutral-500">

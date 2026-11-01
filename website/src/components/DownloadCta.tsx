@@ -4,13 +4,13 @@ import { Download, Github, ShieldCheck, Smartphone, Sparkles } from 'lucide-reac
 export const DownloadCta: React.FC = () => {
   return (
     <section id="download" className="relative py-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
-      <div className="relative rounded-3xl p-8 sm:p-14 bg-gradient-to-b from-obsidian-card via-obsidian-elevated to-obsidian border border-pink-500/30 shadow-[0_0_80px_rgba(225,48,108,0.25)] overflow-hidden">
+      <div className="relative rounded-3xl p-8 sm:p-14 bg-gradient-to-b from-obsidian-card via-obsidian-elevated to-obsidian border border-cyan-500/30 shadow-[0_0_80px_rgba(6,182,212,0.25)] overflow-hidden">
         
         {/* Top Glow Ambient */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-40 bg-pink-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-40 bg-cyan-500/20 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 max-w-2xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-xs text-pink-300">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Ready for Android 8.0+ (API 26+)</span>
           </div>
@@ -28,7 +28,7 @@ export const DownloadCta: React.FC = () => {
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
               href="https://github.com/pratham1659/reel-library/releases/latest/download/app-release.apk"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#833AB4] px-8 py-4 text-sm font-bold text-white shadow-glow-sunset hover:brightness-110 active:scale-98 transition"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-cyan-400 via-cyan-500 to-cyan-600 px-8 py-4 text-sm font-bold text-black shadow-glow-cyan hover:brightness-110 active:scale-98 transition"
             >
               <Download className="w-4 h-4" />
               <span>Download APK (v1.2.2)</span>
@@ -47,11 +47,11 @@ export const DownloadCta: React.FC = () => {
 
           <div className="pt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-neutral-400">
             <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-pink-400" />
+              <ShieldCheck className="w-4 h-4 text-cyan-400" />
               Signed with Official Release Key
             </span>
             <span className="flex items-center gap-1.5">
-              <Smartphone className="w-4 h-4 text-pink-400" />
+              <Smartphone className="w-4 h-4 text-cyan-400" />
               Automatic In-App Updates via GitHub
             </span>
           </div>

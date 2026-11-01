@@ -30,12 +30,14 @@
             'obsidian-elevated': '#161B26',
             'obsidian-border': 'rgba(255, 255, 255, 0.08)',
             'obsidian-border-hover': 'rgba(255, 255, 255, 0.16)',
-            sunset: {
-              gold: '#FCAF45',
-              coral: '#FF5252',
-              rose: '#E1306C',
-              magenta: '#C13584',
-              purple: '#833AB4',
+            cyan: {
+              400: '#22D3EE',
+              500: '#06B6D4',
+              600: '#0891B2',
+            },
+            amber: {
+              400: '#FBBF24',
+              500: '#F59E0B',
             },
             status: {
               ready: '#10B981',
@@ -48,8 +50,8 @@
             mono: ['Geist Mono', 'monospace'],
           },
           boxShadow: {
-            'glow-sunset': '0 0 35px -5px rgba(225, 48, 108, 0.45)',
-            'glow-sunset-lg': '0 0 60px -10px rgba(225, 48, 108, 0.55)',
+            'glow-cyan': '0 0 35px -5px rgba(6, 182, 212, 0.25)',
+            'glow-amber': '0 0 35px -5px rgba(245, 158, 11, 0.2)',
             'neumorphic-sm': '4px 4px 10px rgba(0, 0, 0, 0.5), -2px -2px 6px rgba(255, 255, 255, 0.03)',
             'neumorphic-md': '8px 8px 20px rgba(0, 0, 0, 0.6), -4px -4px 12px rgba(255, 255, 255, 0.04)',
             'neumorphic-inset': 'inset 3px 3px 8px rgba(0, 0, 0, 0.6), inset -2px -2px 6px rgba(255, 255, 255, 0.03)',
@@ -76,16 +78,16 @@
         linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
     }
 
-    /* Top ambient spotlight glow with Sunset Pink & Coral aura */
+    /* Top ambient spotlight glow (inspired by getplexo.app) */
     .spotlight-glow {
       position: absolute;
       top: -120px;
       left: 50%;
       transform: translateX(-50%);
       width: 1000px;
-      height: 520px;
-      background: radial-gradient(circle at 50% 30%, rgba(225, 48, 108, 0.22) 0%, rgba(193, 53, 132, 0.14) 28%, rgba(252, 175, 69, 0.09) 55%, transparent 75%);
-      filter: blur(75px);
+      height: 480px;
+      background: radial-gradient(circle at 50% 30%, rgba(6, 182, 212, 0.16) 0%, rgba(245, 158, 11, 0.05) 45%, transparent 75%);
+      filter: blur(70px);
       pointer-events: none;
       z-index: 0;
     }
@@ -103,10 +105,10 @@
       border-radius: 999px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #E1306C;
+      background: #06B6D4;
     }
 
-    /* Gradient typography matching Sunset Pink Icon */
+    /* Gradient typography */
     .gradient-heading {
       background: linear-gradient(180deg, #FFFFFF 20%, #94A3B8 100%);
       -webkit-background-clip: text;
@@ -114,17 +116,9 @@
     }
     
     .gradient-accent {
-      background: linear-gradient(135deg, #FCAF45 0%, #FF5252 20%, #E1306C 55%, #C13584 80%, #833AB4 100%);
+      background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 50%, #F59E0B 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-    }
-
-    .bg-gradient-sunset {
-      background: linear-gradient(135deg, #FCAF45 0%, #FF5252 20%, #E1306C 55%, #C13584 80%, #833AB4 100%);
-    }
-
-    .border-gradient-sunset {
-      border-image: linear-gradient(135deg, #FCAF45, #E1306C, #833AB4) 1;
     }
 
     /* Mobile bezel phone glass reflection */
@@ -134,9 +128,9 @@
   </style>
 </head>
 
-<body class="relative min-h-screen selection:bg-pink-500/30 selection:text-pink-200">
+<body class="relative min-h-screen selection:bg-cyan-500/30 selection:text-cyan-200">
 
-  <!-- Top Ambient Spotlight Flare with Sunset Pink Aura -->
+  <!-- Top Ambient Spotlight Flare -->
   <div class="spotlight-glow" aria-hidden="true"></div>
 
   <!-- Vertical Guide Lines Frame (Inspired by getplexo.app) -->
@@ -150,13 +144,13 @@
   <header class="relative z-50">
     <a href="#download" class="group block border-b border-white/[0.06] bg-obsidian/80 backdrop-blur-md px-4 py-2 text-center text-xs text-neutral-400 transition hover:bg-white/[0.02]">
       <div class="inline-flex items-center gap-2">
-        <span class="inline-flex items-center rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-semibold text-pink-400 border border-pink-500/30">
+        <span class="inline-flex items-center rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-400 border border-cyan-500/30">
           v1.2.2 Released
         </span>
         <span class="text-neutral-300 font-medium">
           New: Google Drive Personal Cloud Vault & Multi-LLM API BYOK
         </span>
-        <span class="text-pink-400 font-semibold group-hover:translate-x-1 transition-transform inline-block">
+        <span class="text-cyan-400 font-semibold group-hover:translate-x-1 transition-transform inline-block">
           Download APK &rarr;
         </span>
       </div>
@@ -167,13 +161,13 @@
     <!-- ========================================================================= -->
     <nav class="sticky top-0 z-40 border-b border-white/[0.06] bg-obsidian/75 backdrop-blur-xl">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <!-- Logo with Official Sunset Pink App Icon (No Dot) -->
+        <!-- Logo -->
         <a href="#" class="flex items-center gap-3 group">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#FCAF45] via-[#E1306C] to-[#833AB4] p-[1.5px] shadow-[0_0_20px_rgba(225,48,108,0.4)] transition transform group-hover:scale-105">
-            <div class="w-full h-full bg-[#0C0F17] rounded-[10.5px] flex items-center justify-center p-1">
-              <!-- Official Reel Library App Icon SVG -->
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#080C16] via-[#0F2438] to-[#22D3EE] p-[1.5px] shadow-glow-cyan/50 transition transform group-hover:scale-105">
+            <div class="w-full h-full bg-[#080C16] rounded-[10.5px] flex items-center justify-center p-1">
+              <!-- Official Reel Library App Icon (No dot, Obsidian-Cyan theme) -->
               <svg viewBox="0 0 108 108" class="w-full h-full" fill="none">
-                <path d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" stroke="#E1306C" stroke-width="4.5" />
+                <path d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" stroke="#22D3EE" stroke-width="4.5" />
                 <path d="M54,42 A12,12 0 1,1 54,66 A12,12 0 1,1 54,42 Z" stroke="#FFFFFF" stroke-width="4" />
                 <path d="M51,48 L60,54 L51,60 Z" fill="#FFFFFF" />
               </svg>
@@ -205,7 +199,7 @@
             <span>GitHub</span>
           </a>
 
-          <a href="#download" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#C13584] text-xs font-semibold text-white shadow-[0_0_20px_rgba(225,48,108,0.4)] hover:brightness-110 active:scale-95 transition">
+          <a href="#download" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-xs font-semibold text-black shadow-glow-cyan hover:brightness-110 active:scale-95 transition">
             <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
               <path d="M12 16l4-5h-3V4h-2v7H8l4 5zm-7 4h14v-2H5v2z" />
             </svg>
@@ -222,15 +216,14 @@
   <main id="main" class="relative z-10 pt-16 pb-24 lg:pt-24 lg:pb-32 bg-grid">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       
-      <!-- Official App Icon Emblem Showcase (With Sunset Pink Gradient & Glow) -->
+      <!-- Official App Icon Emblem Showcase -->
       <div class="flex items-center justify-center mb-6">
         <div class="relative group">
-          <div class="absolute -inset-1.5 rounded-3xl bg-gradient-to-r from-[#FCAF45] via-[#E1306C] to-[#833AB4] opacity-40 blur-xl group-hover:opacity-75 transition duration-500"></div>
-          <div class="relative w-24 h-24 rounded-3xl bg-gradient-to-tr from-[#FCAF45] via-[#FF5252] via-[#E1306C] via-[#C13584] to-[#833AB4] p-[2.5px] shadow-[0_15px_35px_rgba(225,48,108,0.35)]">
-            <div class="w-full h-full rounded-[21.5px] overflow-hidden relative flex items-center justify-center bg-gradient-to-tr from-[#FCAF45] via-[#FF5252] via-[#E1306C] via-[#C13584] to-[#833AB4] p-3.5">
-              <!-- Outer Squircle with White Glow -->
-              <svg viewBox="0 0 108 108" class="w-full h-full drop-shadow-[0_2px_10px_rgba(0,0,0,0.4)]" fill="none">
-                <path d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" stroke="#FFFFFF" stroke-width="4.2" />
+          <div class="absolute -inset-1 rounded-3xl bg-gradient-to-r from-cyan-500 to-cyan-300 opacity-25 blur-lg group-hover:opacity-50 transition duration-500"></div>
+          <div class="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#080C16] via-[#0F2438] to-[#22D3EE] p-[2px] shadow-2xl">
+            <div class="w-full h-full bg-[#080C16] rounded-[14px] flex items-center justify-center p-3">
+              <svg viewBox="0 0 108 108" class="w-full h-full" fill="none">
+                <path d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" stroke="#22D3EE" stroke-width="4.5" />
                 <path d="M54,42 A12,12 0 1,1 54,66 A12,12 0 1,1 54,42 Z" stroke="#FFFFFF" stroke-width="3.8" />
                 <path d="M51,48 L60,54 L51,60 Z" fill="#FFFFFF" />
               </svg>
@@ -246,10 +239,10 @@
           100% Free & Open-Source Android App
         </span>
         <span class="text-neutral-500">•</span>
-        <span class="text-xs font-mono text-pink-400">Zero Cloud Data Retention</span>
+        <span class="text-xs font-mono text-cyan-400">Zero Cloud Data Retention</span>
       </div>
 
-      <!-- Main Headline (Infused with Sunset Pink Gradient) -->
+      <!-- Main Headline -->
       <h1 class="text-4xl sm:text-6xl lg:text-7xl font-display font-extrabold tracking-tight max-w-4xl mx-auto leading-[1.1] mb-6">
         Turn fleeting Reels into a <br class="hidden sm:inline" />
         <span class="gradient-accent">searchable personal vault.</span>
@@ -262,18 +255,18 @@
 
       <!-- Primary Action Buttons -->
       <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-        <a href="https://github.com/pratham1659/reel-library/releases/download/v1.2.2/ReelLibrary-release-v1.2.2.apk" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#C13584] text-white font-semibold text-sm shadow-[0_0_35px_rgba(225,48,108,0.45)] hover:shadow-[0_0_50px_rgba(225,48,108,0.65)] hover:scale-[1.02] active:scale-[0.98] transition">
+        <a href="https://github.com/pratham1659/reel-library/releases/download/v1.2.2/ReelLibrary-release-v1.2.2.apk" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-7 py-3.5 rounded-xl bg-gradient-to-r from-cyan-400 via-cyan-500 to-cyan-600 text-black font-semibold text-sm shadow-glow-cyan hover:shadow-cyan-500/40 hover:scale-[1.02] active:scale-[0.98] transition">
           <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
             <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9996.4482.9996.9993.0001.5511-.4486.9997-.9996.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.4116 13.8533 8.0818 12 8.0818s-3.5902.3298-5.1368.8682L4.8409 5.447a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3435-4.1021-2.6892-7.5743-6.1185-9.4396" />
           </svg>
           <div class="text-left">
-            <div class="leading-none text-xs font-bold uppercase tracking-wider text-white/80">Download APK</div>
-            <div class="leading-none text-sm font-extrabold text-white">Reel Library v1.2.2</div>
+            <div class="leading-none text-xs font-bold uppercase tracking-wider text-black/70">Download APK</div>
+            <div class="leading-none text-sm font-extrabold text-black">Reel Library v1.2.2</div>
           </div>
-          <span class="ml-2 text-xs font-mono font-bold bg-black/25 px-2 py-0.5 rounded text-white">5.5 MB</span>
+          <span class="ml-2 text-xs font-mono font-bold bg-black/15 px-2 py-0.5 rounded text-black">5.5 MB</span>
         </a>
 
-        <a href="https://github.com/pratham1659/reel-library" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-4 rounded-xl border border-white/[0.12] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/[0.2] text-neutral-200 font-medium text-sm transition">
+        <a href="https://github.com/pratham1659/reel-library" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl border border-white/[0.12] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/[0.2] text-neutral-200 font-medium text-sm transition">
           <svg class="w-5 h-5 fill-current text-neutral-400" viewBox="0 0 24 24">
             <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
           </svg>
@@ -284,19 +277,19 @@
       <!-- Feature Pill Checklist -->
       <div class="flex flex-wrap items-center justify-center gap-y-2 gap-x-6 text-xs text-neutral-400">
         <div class="flex items-center gap-1.5">
-          <svg class="w-4 h-4 text-pink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
           <span>Offline Whisper & Gemma</span>
         </div>
         <div class="flex items-center gap-1.5">
-          <svg class="w-4 h-4 text-pink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
           <span>Multi-LLM BYOK (Groq, OpenAI, Gemini)</span>
         </div>
         <div class="flex items-center gap-1.5">
-          <svg class="w-4 h-4 text-pink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
           <span>Google Drive Cloud Backup</span>
         </div>
         <div class="flex items-center gap-1.5">
-          <svg class="w-4 h-4 text-pink-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+          <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
           <span>Android 8.0+ Compatible</span>
         </div>
       </div>
@@ -312,13 +305,13 @@
       
       <!-- Section Header -->
       <div class="text-center mb-12">
-        <h2 class="text-xs font-mono font-bold tracking-widest uppercase text-pink-400 mb-2">Native Obsidian Neumorphism</h2>
+        <h2 class="text-xs font-mono font-bold tracking-widest uppercase text-cyan-400 mb-2">Native Obsidian Neumorphism</h2>
         <p class="text-2xl sm:text-4xl font-display font-extrabold text-white">Experience the Reel Library Interface</p>
         <p class="text-neutral-400 text-sm max-w-xl mx-auto mt-2">Click any tab below to test drive the actual screens and workflows of the application.</p>
 
         <!-- Interactive Screen Switcher Tabs -->
         <div class="inline-flex p-1.5 rounded-xl border border-white/[0.08] bg-obsidian-card mt-6 gap-1 shadow-lg overflow-x-auto max-w-full">
-          <button onclick="switchScreen('vault')" id="tab-vault" class="screen-tab px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#C13584] shadow-[0_0_20px_rgba(225,48,108,0.4)] transition">
+          <button onclick="switchScreen('vault')" id="tab-vault" class="screen-tab px-4 py-2 rounded-lg text-xs font-semibold text-black bg-cyan-400 shadow-glow-cyan transition">
             1. Vault & Search
           </button>
           <button onclick="switchScreen('transcript')" id="tab-transcript" class="screen-tab px-4 py-2 rounded-lg text-xs font-medium text-neutral-400 hover:text-white transition">
@@ -336,8 +329,8 @@
       <!-- Device Bezel Frame Container -->
       <div class="relative mx-auto max-w-[360px] sm:max-w-[400px]">
         
-        <!-- Outer Device Shell with Neumorphic Rim & Sunset Glow -->
-        <div class="relative rounded-[44px] p-3 bg-gradient-to-b from-[#251E28] via-[#14121A] to-[#0A0C11] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9),0_0_40px_rgba(225,48,108,0.2)] border border-white/[0.12]">
+        <!-- Outer Device Shell with Neumorphic Rim -->
+        <div class="relative rounded-[44px] p-3 bg-gradient-to-b from-[#222736] via-[#11141B] to-[#0A0C11] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9),0_0_40px_rgba(6,182,212,0.15)] border border-white/[0.12]">
           
           <!-- Inner Screen Bezel -->
           <div class="relative rounded-[34px] bg-[#0A0C12] overflow-hidden border border-black h-[680px] flex flex-col phone-glass-reflection text-left">
@@ -365,37 +358,35 @@
                     <h3 class="text-base font-bold font-display text-white">Knowledge Vault</h3>
                     <p class="text-[11px] text-neutral-400">42 reels indexed • 100% local</p>
                   </div>
-                  <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-[#FCAF45] via-[#E1306C] to-[#833AB4] p-[1px] flex items-center justify-center">
-                    <div class="w-full h-full bg-[#0C0F17] rounded-full flex items-center justify-center text-pink-400 font-bold text-xs">
-                      RL
-                    </div>
+                  <div class="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-xs">
+                    RL
                   </div>
                 </div>
 
                 <!-- Neumorphic Search Bar -->
                 <div class="relative mb-4">
                   <input type="text" readonly value="system design architectural pattern" class="w-full bg-[#12151E] text-xs text-white rounded-xl py-2.5 pl-8 pr-3 border border-white/[0.08] shadow-neumorphic-inset focus:outline-none" />
-                  <svg class="w-3.5 h-3.5 text-pink-400 absolute left-2.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  <svg class="w-3.5 h-3.5 text-cyan-400 absolute left-2.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                 </div>
 
                 <!-- Category Chips -->
                 <div class="flex items-center gap-1.5 mb-4 overflow-x-hidden text-[10px]">
-                  <span class="px-2.5 py-1 rounded-full bg-gradient-to-r from-[#FF5252] to-[#E1306C] text-white font-bold shadow-[0_0_12px_rgba(225,48,108,0.4)]">All</span>
+                  <span class="px-2.5 py-1 rounded-full bg-cyan-500 text-black font-bold">All</span>
                   <span class="px-2.5 py-1 rounded-full bg-[#141822] text-neutral-300 border border-white/[0.06]">Coding</span>
                   <span class="px-2.5 py-1 rounded-full bg-[#141822] text-neutral-300 border border-white/[0.06]">AI Agents</span>
                   <span class="px-2.5 py-1 rounded-full bg-[#141822] text-neutral-300 border border-white/[0.06]">Design</span>
                 </div>
 
                 <!-- Reel Card 1 (Active Hit) -->
-                <div class="bg-[#121520] rounded-2xl p-3 border border-pink-500/40 shadow-[0_0_20px_rgba(225,48,108,0.2)] mb-3">
+                <div class="bg-[#121520] rounded-2xl p-3 border border-cyan-500/30 shadow-glow-cyan/20 mb-3">
                   <div class="flex gap-3">
                     <div class="w-16 h-20 rounded-xl bg-gradient-to-br from-neutral-800 to-neutral-900 flex-shrink-0 relative overflow-hidden border border-white/[0.1]">
                       <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=200&q=80')"></div>
-                      <span class="absolute bottom-1 right-1 bg-black/80 px-1 py-0.5 rounded text-[8px] font-mono text-pink-300">0:48</span>
+                      <span class="absolute bottom-1 right-1 bg-black/80 px-1 py-0.5 rounded text-[8px] font-mono text-cyan-300">0:48</span>
                     </div>
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center justify-between">
-                        <span class="text-[10px] font-mono text-pink-400 font-semibold">@techlead_alex</span>
+                        <span class="text-[10px] font-mono text-cyan-400">@techlead_alex</span>
                         <span class="text-[9px] text-neutral-400">2h ago</span>
                       </div>
                       <h4 class="text-xs font-bold text-white mt-0.5 truncate">Database Sharding vs Partitioning in 60s</h4>
@@ -403,8 +394,8 @@
                         Summary: Horizontal sharding splits data across instances via hash keys, while partitioning keeps tables on the same server.
                       </p>
                       <div class="flex items-center gap-1 mt-2">
-                        <span class="text-[8px] bg-pink-950/80 text-pink-300 px-1.5 py-0.5 rounded border border-pink-800/40 font-mono">Whisper Local</span>
-                        <span class="text-[8px] bg-amber-950/80 text-amber-300 px-1.5 py-0.5 rounded border border-amber-800/40 font-mono">Groq LPU</span>
+                        <span class="text-[8px] bg-cyan-950 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-800/40 font-mono">Whisper Local</span>
+                        <span class="text-[8px] bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded border border-amber-800/40 font-mono">Groq LPU</span>
                       </div>
                     </div>
                   </div>
@@ -433,7 +424,7 @@
 
               <!-- Bottom Floating Tab Bar -->
               <div class="bg-[#11141D] rounded-2xl p-2 border border-white/[0.08] flex items-center justify-around shadow-neumorphic-md">
-                <span class="text-pink-400 text-xs font-bold flex flex-col items-center gap-0.5">
+                <span class="text-cyan-400 text-xs font-bold flex flex-col items-center gap-0.5">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                   Vault
                 </span>
@@ -450,7 +441,7 @@
             <div id="screen-transcript" class="screen-content hidden flex-1 p-4 overflow-y-auto">
               <div class="flex items-center justify-between mb-3">
                 <span class="text-xs font-bold text-white flex items-center gap-1.5">
-                  <span class="text-pink-400">&larr;</span> Detail & Transcript
+                  <span class="text-cyan-400">&larr;</span> Detail & Transcript
                 </span>
                 <span class="text-[10px] font-mono text-status-ready bg-status-ready/10 px-2 py-0.5 rounded-full border border-status-ready/30">Verified</span>
               </div>
@@ -459,18 +450,18 @@
               <div class="bg-[#121520] rounded-2xl p-3 border border-white/[0.08] mb-3 shadow-neumorphic-md">
                 <div class="flex items-center justify-between mb-2">
                   <span class="text-[10px] font-mono text-neutral-400">Extracted Audio Track</span>
-                  <span class="text-[10px] font-mono text-pink-400">0:18 / 0:48</span>
+                  <span class="text-[10px] font-mono text-cyan-400">0:18 / 0:48</span>
                 </div>
-                <!-- Waveform mockup in sunset rose -->
+                <!-- Waveform mockup -->
                 <div class="h-8 flex items-center justify-between gap-0.5 px-1 py-1 bg-black/40 rounded-lg mb-2">
-                  <div class="w-1 bg-pink-500 h-3 rounded-full"></div>
-                  <div class="w-1 bg-pink-500 h-5 rounded-full"></div>
-                  <div class="w-1 bg-pink-500 h-7 rounded-full"></div>
-                  <div class="w-1 bg-pink-400 h-4 rounded-full"></div>
-                  <div class="w-1 bg-pink-400 h-6 rounded-full"></div>
-                  <div class="w-1 bg-[#FF5252] h-8 rounded-full"></div>
-                  <div class="w-1 bg-[#FF5252] h-5 rounded-full"></div>
-                  <div class="w-1 bg-[#FF5252] h-6 rounded-full"></div>
+                  <div class="w-1 bg-cyan-400 h-3 rounded-full"></div>
+                  <div class="w-1 bg-cyan-400 h-5 rounded-full"></div>
+                  <div class="w-1 bg-cyan-400 h-7 rounded-full"></div>
+                  <div class="w-1 bg-cyan-400 h-4 rounded-full"></div>
+                  <div class="w-1 bg-cyan-400 h-6 rounded-full"></div>
+                  <div class="w-1 bg-cyan-500 h-8 rounded-full"></div>
+                  <div class="w-1 bg-cyan-500 h-5 rounded-full"></div>
+                  <div class="w-1 bg-cyan-500 h-6 rounded-full"></div>
                   <div class="w-1 bg-neutral-700 h-4 rounded-full"></div>
                   <div class="w-1 bg-neutral-700 h-5 rounded-full"></div>
                   <div class="w-1 bg-neutral-700 h-3 rounded-full"></div>
@@ -481,7 +472,7 @@
                 <!-- Play Controls -->
                 <div class="flex items-center justify-between">
                   <span class="text-[9px] text-neutral-400 font-mono">1.0x Speed</span>
-                  <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-[#FF5252] to-[#E1306C] text-white flex items-center justify-center font-bold text-xs shadow-[0_0_10px_rgba(225,48,108,0.5)]">▶</div>
+                  <div class="w-7 h-7 rounded-full bg-cyan-500 text-black flex items-center justify-center font-bold text-xs">▶</div>
                   <span class="text-[9px] text-neutral-400 font-mono">Loop ON</span>
                 </div>
               </div>
@@ -489,12 +480,12 @@
               <!-- Full Transcript Box -->
               <div class="bg-[#121520] rounded-2xl p-3 border border-white/[0.08]">
                 <div class="flex items-center justify-between mb-2">
-                  <span class="text-[11px] font-bold text-pink-400">Word-for-Word Transcript</span>
+                  <span class="text-[11px] font-bold text-cyan-400">Word-for-Word Transcript</span>
                   <button class="text-[9px] text-neutral-400 hover:text-white bg-white/[0.05] px-2 py-0.5 rounded">Copy</button>
                 </div>
                 <div class="text-[11px] text-neutral-300 leading-relaxed font-normal space-y-2 max-h-[300px] overflow-y-auto">
-                  <p><span class="text-pink-400 font-mono text-[9px]">[00:00]</span> "Most software engineers confuse database partitioning with database sharding. Here is the single distinction you must remember."</p>
-                  <p class="bg-pink-500/10 p-1.5 rounded border border-pink-500/20 text-white"><span class="text-pink-400 font-mono text-[9px]">[00:12]</span> "Partitioning happens on a single machine. The database engine divides one giant table into smaller sub-tables behind the scenes."</p>
+                  <p><span class="text-cyan-400 font-mono text-[9px]">[00:00]</span> "Most software engineers confuse database partitioning with database sharding. Here is the single distinction you must remember."</p>
+                  <p class="bg-cyan-500/10 p-1.5 rounded border border-cyan-500/20 text-white"><span class="text-cyan-400 font-mono text-[9px]">[00:12]</span> "Partitioning happens on a single machine. The database engine divides one giant table into smaller sub-tables behind the scenes."</p>
                   <p><span class="text-neutral-500 font-mono text-[9px]">[00:28]</span> "Sharding, on the other hand, means data is physically hosted on completely different database clusters across multiple servers."</p>
                 </div>
               </div>
@@ -511,25 +502,25 @@
 
               <div class="space-y-2.5">
                 <!-- Groq LPU Card -->
-                <div class="bg-[#121520] rounded-2xl p-3 border border-pink-500/40 shadow-[0_0_20px_rgba(225,48,108,0.2)]">
+                <div class="bg-[#121520] rounded-2xl p-3 border border-cyan-500/40 shadow-glow-cyan/15">
                   <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span class="w-2 h-2 rounded-full bg-pink-400"></span> Groq LPU (Whisper + Llama)
+                      <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Groq LPU (Whisper + Llama)
                     </span>
-                    <span class="text-[9px] font-mono bg-pink-500/20 text-pink-300 px-1.5 py-0.5 rounded">Active</span>
+                    <span class="text-[9px] font-mono bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded">Active</span>
                   </div>
                   <p class="text-[10px] text-neutral-400 mt-1">Sub-second inference speed with 0.4s latency. Zero battery drain.</p>
                 </div>
 
-                <!-- 100% On-Device AI -->
-                <div class="bg-[#121520] rounded-2xl p-3 border border-white/[0.08]">
+                <!-- 100% On-Device AI (Coming Soon) -->
+                <div class="bg-[#121520] rounded-2xl p-3 border border-purple-500/30">
                   <div class="flex items-center justify-between">
                     <span class="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span class="w-2 h-2 rounded-full bg-neutral-600"></span> 100% Offline (Whisper + Gemma)
+                      <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span> Local Neural LLM (Gemma)
                     </span>
-                    <span class="text-[9px] font-mono bg-white/[0.05] text-neutral-400 px-1.5 py-0.5 rounded">Private</span>
+                    <span class="text-[9px] font-mono bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-semibold">Coming Soon</span>
                   </div>
-                  <p class="text-[10px] text-neutral-400 mt-1">Runs entirely on mobile NPU/GPU. Zero network transmission.</p>
+                  <p class="text-[10px] text-neutral-400 mt-1">On-device neural inference in active development for v1.3. Zero cloud requests.</p>
                 </div>
 
                 <!-- OpenAI / DeepSeek / Gemini -->
@@ -553,13 +544,13 @@
               </div>
 
               <!-- Google Drive Card -->
-              <div class="bg-[#121520] rounded-2xl p-3.5 border border-pink-500/40 shadow-[0_0_20px_rgba(225,48,108,0.2)] mb-3">
+              <div class="bg-[#121520] rounded-2xl p-3.5 border border-cyan-500/40 shadow-glow-cyan/20 mb-3">
                 <div class="flex items-center justify-between mb-2">
                   <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-[#FCAF45] via-[#E1306C] to-[#833AB4] flex items-center justify-center text-xs font-bold text-white">G</div>
+                    <div class="w-7 h-7 rounded-full bg-white/[0.08] flex items-center justify-center text-xs font-bold text-white">G</div>
                     <div>
                       <h4 class="text-xs font-bold text-white">Google Drive Vault</h4>
-                      <p class="text-[10px] text-pink-400 font-mono">alex.dev@gmail.com</p>
+                      <p class="text-[10px] text-cyan-400 font-mono">alex.dev@gmail.com</p>
                     </div>
                   </div>
                   <span class="text-[9px] font-bold text-status-ready bg-status-ready/15 px-2 py-0.5 rounded">Connected</span>
@@ -572,7 +563,7 @@
                   </div>
                   <div class="flex justify-between text-neutral-400">
                     <span>Auto-Backup:</span>
-                    <span class="text-pink-400 font-semibold">Every midnight (Daily)</span>
+                    <span class="text-cyan-400">Every midnight (Daily)</span>
                   </div>
                   <div class="flex justify-between text-neutral-400">
                     <span>Network Rule:</span>
@@ -590,7 +581,7 @@
                       <div class="text-white font-medium">ReelLibrary_Vault_Nov1.zip</div>
                       <div class="text-[9px] text-neutral-400">Today at 12:05 AM • 42 reels</div>
                     </div>
-                    <span class="text-[9px] font-mono text-pink-400">2.1 MB</span>
+                    <span class="text-[9px] font-mono text-cyan-400">2.1 MB</span>
                   </div>
                 </div>
               </div>
@@ -605,13 +596,13 @@
   </section>
 
   <!-- ========================================================================= -->
-  <!-- 5. BENTO GRID FEATURES                                                    -->
+  <!-- 5. BENTO GRID FEATURES (IN PURSUIT OF GETPLEXO.APP POLISH)                -->
   <!-- ========================================================================= -->
   <section id="features" class="relative z-10 py-24 border-t border-white/[0.06] bg-obsidian">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       <div class="text-center max-w-3xl mx-auto mb-16">
-        <h2 class="text-xs font-mono font-bold tracking-widest uppercase text-pink-400 mb-3">Engineered for Privacy & Speed</h2>
+        <h2 class="text-xs font-mono font-bold tracking-widest uppercase text-cyan-400 mb-3">Engineered for Privacy & Speed</h2>
         <p class="text-3xl sm:text-5xl font-display font-extrabold text-white tracking-tight">Everything you need. Nothing you don't.</p>
         <p class="text-neutral-400 text-base mt-4">No tracking pixels. No subscriptions. No proprietary lock-in. Just pure mobile utility.</p>
       </div>
@@ -620,9 +611,9 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         <!-- Bento 1: 1-Tap Native Share Ingestion (Wide 2-col) -->
-        <div class="md:col-span-2 rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-pink-500/40 transition shadow-neumorphic-md relative overflow-hidden group">
+        <div class="md:col-span-2 rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-cyan-500/30 transition shadow-neumorphic-md relative overflow-hidden group">
           <div class="relative z-10">
-            <span class="text-xs font-mono font-semibold text-pink-400 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 mb-4 inline-block">1-Tap Share Sheet Ingest</span>
+            <span class="text-xs font-mono font-semibold text-cyan-400 px-3 py-1 rounded-full bg-cyan-400/10 border border-cyan-400/20 mb-4 inline-block">1-Tap Share Sheet Ingest</span>
             <h3 class="text-2xl font-bold font-display text-white mb-3">Zero Copy-Pasting. Direct from Instagram.</h3>
             <p class="text-neutral-400 text-sm max-w-lg leading-relaxed">
               Whenever you come across an insightful tutorial, recipe, or tech breakdown, simply tap Instagram's native <strong>Share</strong> button and choose <strong>Reel Library</strong>. The background worker instantly fetches metadata and extracts the audio track without interrupting your browsing flow.
@@ -639,7 +630,7 @@
         </div>
 
         <!-- Bento 2: 100% On-Device AI -->
-        <div class="rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-pink-500/40 transition shadow-neumorphic-md">
+        <div class="rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-cyan-500/30 transition shadow-neumorphic-md">
           <span class="text-xs font-mono font-semibold text-amber-400 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 mb-4 inline-block">100% Offline Mode</span>
           <h3 class="text-xl font-bold font-display text-white mb-2">Private Whisper & Gemma</h3>
           <p class="text-neutral-400 text-sm leading-relaxed">
@@ -648,8 +639,8 @@
         </div>
 
         <!-- Bento 3: Multi-LLM BYOK Freedom -->
-        <div class="rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-pink-500/40 transition shadow-neumorphic-md">
-          <span class="text-xs font-mono font-semibold text-pink-400 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 mb-4 inline-block">Multi-Provider BYOK</span>
+        <div class="rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-cyan-500/30 transition shadow-neumorphic-md">
+          <span class="text-xs font-mono font-semibold text-cyan-400 px-3 py-1 rounded-full bg-cyan-400/10 border border-cyan-400/20 mb-4 inline-block">Multi-Provider BYOK</span>
           <h3 class="text-xl font-bold font-display text-white mb-2">Groq, OpenAI & Gemini</h3>
           <p class="text-neutral-400 text-sm leading-relaxed">
             Bring your own free developer keys. Switch between Groq LPU, OpenAI GPT-4o, Google Gemini Flash, and DeepSeek with one tap in Settings.
@@ -657,19 +648,19 @@
         </div>
 
         <!-- Bento 4: Personal Google Drive Vault (Wide 2-col) -->
-        <div class="md:col-span-2 rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-pink-500/40 transition shadow-neumorphic-md relative overflow-hidden">
+        <div class="md:col-span-2 rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-cyan-500/30 transition shadow-neumorphic-md relative overflow-hidden">
           <div class="relative z-10">
             <span class="text-xs font-mono font-semibold text-status-ready px-3 py-1 rounded-full bg-status-ready/10 border border-status-ready/20 mb-4 inline-block">WhatsApp-Style Vault Backup</span>
             <h3 class="text-2xl font-bold font-display text-white mb-3">Your Private Google Drive. Zero Middlemen.</h3>
             <p class="text-neutral-400 text-sm max-w-xl leading-relaxed">
-              We leverage Google Sign-In with the strict <code class="text-pink-300 font-mono text-xs bg-pink-950/70 px-1.5 py-0.5 rounded">drive.file</code> scope. Reel Library only has access to the dedicated <code class="text-pink-300 font-mono text-xs bg-pink-950/70 px-1.5 py-0.5 rounded">/ReelLibrary_Vault</code> folder it creates—never your photos, emails, or docs. Automated midnight triggers ensure your knowledge is safe across device switches.
+              We leverage Google Sign-In with the strict <code class="text-cyan-300 font-mono text-xs bg-cyan-950 px-1.5 py-0.5 rounded">drive.file</code> scope. Reel Library only has access to the dedicated <code class="text-cyan-300 font-mono text-xs bg-cyan-950 px-1.5 py-0.5 rounded">/ReelLibrary_Vault</code> folder it creates—never your photos, emails, or docs. Automated midnight triggers ensure your knowledge is safe across device switches.
             </p>
           </div>
         </div>
 
         <!-- Bento 5: Instant Semantic Search -->
-        <div class="rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-pink-500/40 transition shadow-neumorphic-md">
-          <span class="text-xs font-mono font-semibold text-pink-400 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 mb-4 inline-block">Instant Search</span>
+        <div class="rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-cyan-500/30 transition shadow-neumorphic-md">
+          <span class="text-xs font-mono font-semibold text-cyan-400 px-3 py-1 rounded-full bg-cyan-400/10 border border-cyan-400/20 mb-4 inline-block">Instant Search</span>
           <h3 class="text-xl font-bold font-display text-white mb-2">Full-Text Audio Index</h3>
           <p class="text-neutral-400 text-sm leading-relaxed">
             Search for that recipe tip or code snippet you heard 3 months ago. SQLite Full-Text Search checks every spoken word across all indexed transcripts in milliseconds.
@@ -677,7 +668,7 @@
         </div>
 
         <!-- Bento 6: In-App Updates via GitHub CDN -->
-        <div class="rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-pink-500/40 transition shadow-neumorphic-md">
+        <div class="rounded-3xl p-8 bg-obsidian-card border border-white/[0.08] hover:border-cyan-500/30 transition shadow-neumorphic-md">
           <span class="text-xs font-mono font-semibold text-amber-400 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 mb-4 inline-block">Safe In-App Updates</span>
           <h3 class="text-xl font-bold font-display text-white mb-2">Direct GitHub CDN</h3>
           <p class="text-neutral-400 text-sm leading-relaxed">
@@ -697,7 +688,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       <div class="text-center max-w-3xl mx-auto mb-16">
-        <h2 class="text-xs font-mono font-bold tracking-widest uppercase text-pink-400 mb-2">Seamless Workflow</h2>
+        <h2 class="text-xs font-mono font-bold tracking-widest uppercase text-cyan-400 mb-2">Seamless Workflow</h2>
         <p class="text-3xl sm:text-5xl font-display font-extrabold text-white">How Reel Library Works</p>
       </div>
 
@@ -705,7 +696,7 @@
         
         <!-- Step 1 -->
         <div class="p-6 rounded-3xl bg-obsidian-card border border-white/[0.08] relative">
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#FF5252] to-[#E1306C] text-white font-display font-extrabold text-xl flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(225,48,108,0.4)]">
+          <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-display font-extrabold text-xl flex items-center justify-center mb-6">
             01
           </div>
           <h3 class="text-lg font-bold text-white mb-2">Share from Instagram</h3>
@@ -716,7 +707,7 @@
 
         <!-- Step 2 -->
         <div class="p-6 rounded-3xl bg-obsidian-card border border-white/[0.08] relative">
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#FF5252] to-[#E1306C] text-white font-display font-extrabold text-xl flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(225,48,108,0.4)]">
+          <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-display font-extrabold text-xl flex items-center justify-center mb-6">
             02
           </div>
           <h3 class="text-lg font-bold text-white mb-2">AI Transcribes & Summarizes</h3>
@@ -727,7 +718,7 @@
 
         <!-- Step 3 -->
         <div class="p-6 rounded-3xl bg-obsidian-card border border-white/[0.08] relative">
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#FF5252] to-[#E1306C] text-white font-display font-extrabold text-xl flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(225,48,108,0.4)]">
+          <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-display font-extrabold text-xl flex items-center justify-center mb-6">
             03
           </div>
           <h3 class="text-lg font-bold text-white mb-2">Search & Auto-Sync</h3>
@@ -748,7 +739,7 @@
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       
       <div class="text-center mb-16">
-        <h2 class="text-xs font-mono font-bold tracking-widest uppercase text-pink-400 mb-2">Honest Architecture</h2>
+        <h2 class="text-xs font-mono font-bold tracking-widest uppercase text-cyan-400 mb-2">Honest Architecture</h2>
         <p class="text-3xl sm:text-4xl font-display font-extrabold text-white">Reel Library vs. The Rest</p>
       </div>
 
@@ -758,7 +749,7 @@
             <thead class="bg-white/[0.03] text-xs font-mono uppercase text-neutral-400 border-b border-white/[0.08]">
               <tr>
                 <th class="py-4 px-6">Feature</th>
-                <th class="py-4 px-6 text-pink-400 font-bold">Reel Library</th>
+                <th class="py-4 px-6 text-cyan-400 font-bold">Reel Library</th>
                 <th class="py-4 px-6 text-neutral-500">Instagram Saved</th>
                 <th class="py-4 px-6 text-neutral-500">Generic Downloaders</th>
               </tr>
@@ -814,9 +805,9 @@
   <section id="download" class="py-24 border-t border-white/[0.06] bg-obsidian relative">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       
-      <div class="p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-[#211522] via-[#15121B] to-[#0D1017] border border-pink-500/30 shadow-[0_0_50px_rgba(225,48,108,0.25)]">
-        <span class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#FF5252] via-[#E1306C] to-[#833AB4] text-white flex items-center justify-center mx-auto mb-6 shadow-[0_0_25px_rgba(225,48,108,0.5)]">
-          <svg class="w-7 h-7 fill-current" viewBox="0 0 24 24"><path d="M12 16l4-5h-3V4h-2v7H8l4 5zm-7 4h14v-2H5v2z"/></svg>
+      <div class="p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-[#141926] to-[#0D1017] border border-cyan-500/30 shadow-glow-cyan/20">
+        <span class="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto mb-6">
+          <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M12 16l4-5h-3V4h-2v7H8l4 5zm-7 4h14v-2H5v2z"/></svg>
         </span>
 
         <h2 class="text-3xl sm:text-5xl font-display font-extrabold text-white mb-4">
@@ -828,7 +819,7 @@
 
         <!-- Main Big Download Button -->
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
-          <a href="https://github.com/pratham1659/reel-library/releases/download/v1.2.2/ReelLibrary-release-v1.2.2.apk" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#C13584] text-white font-extrabold text-base shadow-[0_0_35px_rgba(225,48,108,0.5)] hover:shadow-[0_0_55px_rgba(225,48,108,0.7)] hover:scale-105 active:scale-95 transition">
+          <a href="https://github.com/pratham1659/reel-library/releases/download/v1.2.2/ReelLibrary-release-v1.2.2.apk" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-cyan-400 to-cyan-500 text-black font-extrabold text-base shadow-glow-cyan hover:scale-105 active:scale-95 transition">
             <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 16l4-5h-3V4h-2v7H8l4 5zm-7 4h14v-2H5v2z"/></svg>
             <span>Download Reel Library v1.2.2 APK</span>
           </a>
@@ -856,7 +847,7 @@
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
       
       <div class="text-center mb-14">
-        <h2 class="text-xs font-mono font-bold tracking-widest uppercase text-pink-400 mb-2">Got Questions?</h2>
+        <h2 class="text-xs font-mono font-bold tracking-widest uppercase text-cyan-400 mb-2">Got Questions?</h2>
         <p class="text-3xl sm:text-4xl font-display font-extrabold text-white">Frequently Asked Questions</p>
       </div>
 
@@ -866,7 +857,7 @@
         <div class="faq-item rounded-2xl bg-obsidian-card border border-white/[0.08] overflow-hidden">
           <button onclick="toggleFaq(this)" class="w-full p-5 text-left font-bold text-white text-sm flex items-center justify-between">
             <span>Do I need to sign in with my Instagram account?</span>
-            <span class="faq-icon text-pink-400 font-mono text-lg">+</span>
+            <span class="faq-icon text-cyan-400 font-mono text-lg">+</span>
           </button>
           <div class="faq-answer hidden px-5 pb-5 text-xs sm:text-sm text-neutral-400 leading-relaxed border-t border-white/[0.04] pt-3">
             No! You never share your Instagram credentials or account session with Reel Library. When you tap "Share" on Instagram, Android passes the public URL to Reel Library via native intents.
@@ -877,10 +868,10 @@
         <div class="faq-item rounded-2xl bg-obsidian-card border border-white/[0.08] overflow-hidden">
           <button onclick="toggleFaq(this)" class="w-full p-5 text-left font-bold text-white text-sm flex items-center justify-between">
             <span>Can other apps access my Google Drive backups?</span>
-            <span class="faq-icon text-pink-400 font-mono text-lg">+</span>
+            <span class="faq-icon text-cyan-400 font-mono text-lg">+</span>
           </button>
           <div class="faq-answer hidden px-5 pb-5 text-xs sm:text-sm text-neutral-400 leading-relaxed border-t border-white/[0.04] pt-3">
-            No. Reel Library explicitly requests the <code class="text-pink-300 font-mono text-xs">drive.file</code> scope from Google Play Services. This strict permission only grants access to files and folders created by Reel Library (<code class="text-pink-300 font-mono text-xs">/ReelLibrary_Vault</code>). It has zero access to your Google Photos, Docs, or private Drive files.
+            No. Reel Library explicitly requests the <code class="text-cyan-300 font-mono text-xs">drive.file</code> scope from Google Play Services. This strict permission only grants access to files and folders created by Reel Library (<code class="text-cyan-300 font-mono text-xs">/ReelLibrary_Vault</code>). It has zero access to your Google Photos, Docs, or private Drive files.
           </div>
         </div>
 
@@ -888,7 +879,7 @@
         <div class="faq-item rounded-2xl bg-obsidian-card border border-white/[0.08] overflow-hidden">
           <button onclick="toggleFaq(this)" class="w-full p-5 text-left font-bold text-white text-sm flex items-center justify-between">
             <span>How does the multi-LLM Bring-Your-Own-Key (BYOK) work?</span>
-            <span class="faq-icon text-pink-400 font-mono text-lg">+</span>
+            <span class="faq-icon text-cyan-400 font-mono text-lg">+</span>
           </button>
           <div class="faq-answer hidden px-5 pb-5 text-xs sm:text-sm text-neutral-400 leading-relaxed border-t border-white/[0.04] pt-3">
             You can input your free API keys for Groq, Google Gemini, OpenAI, or DeepSeek directly in Settings. All keys are encrypted on your phone using Android's hardware-backed EncryptedSharedPreferences (MasterKey / Keystore). Requests are sent straight from your phone to the provider's API with zero middleman servers.
@@ -899,7 +890,7 @@
         <div class="faq-item rounded-2xl bg-obsidian-card border border-white/[0.08] overflow-hidden">
           <button onclick="toggleFaq(this)" class="w-full p-5 text-left font-bold text-white text-sm flex items-center justify-between">
             <span>Can I use Reel Library completely offline?</span>
-            <span class="faq-icon text-pink-400 font-mono text-lg">+</span>
+            <span class="faq-icon text-cyan-400 font-mono text-lg">+</span>
           </button>
           <div class="faq-answer hidden px-5 pb-5 text-xs sm:text-sm text-neutral-400 leading-relaxed border-t border-white/[0.04] pt-3">
             Yes! In the AI Engine settings, switch to "100% On-Device (Whisper + Gemma)". This uses on-device neural models to transcribe audio and synthesize summaries with zero internet connection.
@@ -918,10 +909,10 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
       
       <div class="flex items-center gap-3">
-        <div class="w-6 h-6 rounded-md bg-gradient-to-tr from-[#FCAF45] via-[#E1306C] to-[#833AB4] p-[1px]">
+        <div class="w-6 h-6 rounded-md bg-gradient-to-tr from-[#080C16] to-[#22D3EE] p-[1px]">
           <div class="w-full h-full bg-[#080C16] rounded-[5px] flex items-center justify-center p-0.5">
             <svg viewBox="0 0 108 108" class="w-full h-full" fill="none">
-              <path d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" stroke="#E1306C" stroke-width="5" />
+              <path d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" stroke="#22D3EE" stroke-width="5" />
               <path d="M54,42 A12,12 0 1,1 54,66 A12,12 0 1,1 54,42 Z" stroke="#FFFFFF" stroke-width="4.5" />
               <path d="M51,48 L60,54 L51,60 Z" fill="#FFFFFF" />
             </svg>
@@ -933,9 +924,9 @@
       </div>
 
       <div class="flex items-center gap-6">
-        <a href="https://github.com/pratham1659/reel-library" target="_blank" class="hover:text-pink-400 transition">GitHub Repo</a>
-        <a href="https://github.com/pratham1659/reel-library/releases" target="_blank" class="hover:text-pink-400 transition">Releases</a>
-        <a href="https://github.com/pratham1659/reel-library/issues" target="_blank" class="hover:text-pink-400 transition">Issues</a>
+        <a href="https://github.com/pratham1659/reel-library" target="_blank" class="hover:text-cyan-400 transition">GitHub Repo</a>
+        <a href="https://github.com/pratham1659/reel-library/releases" target="_blank" class="hover:text-cyan-400 transition">Releases</a>
+        <a href="https://github.com/pratham1659/reel-library/issues" target="_blank" class="hover:text-cyan-400 transition">Issues</a>
         <a href="#main" class="hover:text-white transition">Back to top &uarr;</a>
       </div>
 
@@ -963,10 +954,10 @@
         t.className = 'screen-tab px-4 py-2 rounded-lg text-xs font-medium text-neutral-400 hover:text-white transition';
       });
 
-      // Active tab styling with sunset pink gradient
+      // Active tab styling
       const activeTab = document.getElementById('tab-' + screenId);
       if (activeTab) {
-        activeTab.className = 'screen-tab px-4 py-2 rounded-lg text-xs font-semibold text-white bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#C13584] shadow-[0_0_20px_rgba(225,48,108,0.4)] transition';
+        activeTab.className = 'screen-tab px-4 py-2 rounded-lg text-xs font-semibold text-black bg-cyan-400 shadow-glow-cyan transition';
       }
     }
 

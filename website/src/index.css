@@ -24,7 +24,7 @@
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #E1306C;
+    background: #06B6D4;
   }
 }
 
@@ -37,7 +37,7 @@
       linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   }
 
-  /* Top ambient spotlight glow with Sunset Pink aura */
+  /* Top ambient spotlight glow with Electric Cyan aura */
   .spotlight-glow {
     position: absolute;
     top: -120px;
@@ -45,13 +45,13 @@
     transform: translateX(-50%);
     width: 1000px;
     height: 520px;
-    background: radial-gradient(circle at 50% 30%, rgba(225, 48, 108, 0.22) 0%, rgba(193, 53, 132, 0.14) 28%, rgba(252, 175, 69, 0.09) 55%, transparent 75%);
+    background: radial-gradient(circle at 50% 30%, rgba(6, 182, 212, 0.18) 0%, rgba(245, 158, 11, 0.05) 45%, transparent 75%);
     filter: blur(75px);
     pointer-events: none;
     z-index: 0;
   }
 
-  /* Gradient typography matching Sunset Pink Icon */
+  /* Gradient typography matching Electric Cyan Brand */
   .gradient-heading {
     background: linear-gradient(180deg, #FFFFFF 20%, #94A3B8 100%);
     -webkit-background-clip: text;
@@ -59,13 +59,13 @@
   }
   
   .gradient-accent {
-    background: linear-gradient(135deg, #FCAF45 0%, #FF5252 20%, #E1306C 55%, #C13584 80%, #833AB4 100%);
+    background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 50%, #F59E0B 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
-  .bg-gradient-sunset {
-    background: linear-gradient(135deg, #FCAF45 0%, #FF5252 20%, #E1306C 55%, #C13584 80%, #833AB4 100%);
+  .bg-gradient-brand {
+    background: linear-gradient(135deg, #080C16 0%, #0F2438 40%, #0891B2 80%, #22D3EE 100%);
   }
 
   /* Mobile bezel phone glass reflection */
