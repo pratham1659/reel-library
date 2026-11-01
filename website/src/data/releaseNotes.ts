@@ -19,8 +19,8 @@ export const releaseNotesData: ReleaseNote[] = [
     version: 'v1.2.4',
     date: 'November 2026',
     isLatest: true,
-    title: 'Privacy Policy Onboarding, Reel Export Handling & Detailed Takeaways',
-    summary: 'Introduces a mandatory Privacy Policy onboarding screen with zero permission commitments, intelligent handling for reels with restricted export, informative transcript reasons, and exhaustive, unskewed actionable takeaways.',
+    title: 'Privacy Policy Onboarding, Audio Handling, Native Files Export & 16 KB Alignment',
+    summary: 'Introduces an onboarding Privacy Policy gate, intelligent handling for copyright-gated audio, native "Save to Files" vault backup export, 16 KB ELF page-alignment for Android 15, and dedicated Knowledge Drawer filters.',
     categories: [
       {
         category: 'Privacy & Security',
@@ -37,16 +37,52 @@ export const releaseNotesData: ReleaseNote[] = [
         ]
       },
       {
+        category: 'Vault Export & Knowledge Drawer',
+        badgeColor: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
+        items: [
+          {
+            title: 'Native "Save to Files" Export',
+            description: 'Integrated Android Storage Access Framework (CreateDocument), allowing one-tap direct saving of .zip backup archives into any local folder (Downloads, Documents, Drive, or SD Card).'
+          },
+          {
+            title: 'Audio Not Available Drawer Filter',
+            description: 'New sidebar filter chip with live counters specifically for reels with missing or copyright-blocked audio, while keeping caption summaries fully functional.'
+          },
+          {
+            title: 'Instant Full Vault Count',
+            description: 'Knowledge Drawer loads all reels directly from the Room database on first open, decoupled from main feed pagination.'
+          }
+        ]
+      },
+      {
         category: 'Media Extraction & Transcripts',
         badgeColor: 'bg-pink-500/10 text-pink-300 border-pink-500/30',
         items: [
           {
-            title: 'Intelligent Reel Export Handling',
-            description: 'Detects reels where Instagram blocks direct video/audio download (e.g. age-gated or login required), marking them as Not Supported and bypassing AI summarization to save your API quota.'
+            title: 'Intelligent Audio & Copyright Detection',
+            description: 'Detects reels where Instagram restricts media download or copyright-blocks licensed audio, extracting song and artist metadata and conserving AI quota.'
           },
           {
             title: 'Descriptive Transcript Explanations',
-            description: 'Replaced generic "Not available" transcript labels with helpful, context-rich reasons and post caption references in Full Transcript, Reader Mode, and Reel Detail views.'
+            description: 'Replaced generic labels with helpful, context-rich reasons and post caption references in Full Transcript, Reader Mode, and Reel Detail views.'
+          },
+          {
+            title: 'Single-Line Whisper Status Container',
+            description: 'Redesigned audio transcription loading indicator into a clean, single-line neumorphic status pill with progress spinner.'
+          }
+        ]
+      },
+      {
+        category: 'Platform & Performance',
+        badgeColor: 'bg-blue-500/10 text-blue-300 border-blue-500/30',
+        items: [
+          {
+            title: '16 KB ELF Alignment (Android 15)',
+            description: 'Upgraded MediaPipe GenAI engine to 0.10.24 with 16384-byte ELF segment alignment and uncompressed page packaging for Android 15 compatibility.'
+          },
+          {
+            title: 'Multi-Status Distinct Color Palette',
+            description: 'Assigned unique, high-contrast color palettes for every status (Ready, Audio Not Available, Queued, Extracting, Transcribing, Summarizing, Failed) across dark and light themes.'
           }
         ]
       },

@@ -33,7 +33,7 @@ export const DownloadCta: React.FC = () => {
             >
               <Download className="w-4 h-4 shrink-0" />
               <span>Direct APK Download</span>
-              <span className="text-[11px] font-semibold tracking-tight px-2 py-0.5 rounded-md bg-white/20 ml-1">v1.2.4 • 5.5 MB</span>
+              <span className="text-[11px] font-semibold tracking-tight px-2 py-0.5 rounded-md bg-white/20 ml-1">v1.2.4 • 27 MB</span>
             </a>
 
             <a
