@@ -136,8 +136,7 @@ class MainActivity : ComponentActivity() {
                         val scope = rememberCoroutineScope()
                         var currentTab by remember { mutableIntStateOf(0) } // 0 = Vault, 1 = Settings, 2 = Drawer/Knowledge
 
-                        val groupedReels by vaultViewModel.groupedReels.collectAsState()
-                        val allReels = remember(groupedReels) { groupedReels.flatMap { it.reels } }
+                        val allReels by vaultViewModel.allVaultReels.collectAsState()
 
                         var showAddReelDialog by remember { mutableStateOf(false) }
                         var showAiAssistantDialog by remember { mutableStateOf(false) }

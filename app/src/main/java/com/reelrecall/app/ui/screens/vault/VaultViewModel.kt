@@ -189,8 +189,16 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Complete, unpaginated vault reels for knowledge drawer and global statistics
+    val allVaultReels: StateFlow<List<ReelEntity>> = dao.getAllReels()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
+
     // Comprehensive real-time multi-field search across titles, summaries, tags, context, notes & handles
-    private val rawReelsFlow = combine(dao.getAllReels(), searchQuery, isAiSearchEnabled) { allReels, query, aiEnabled ->
+    private val rawReelsFlow = combine(allVaultReels, searchQuery, isAiSearchEnabled) { allReels, query, aiEnabled ->
         val q = query.trim()
         if (q.isBlank()) {
             allReels

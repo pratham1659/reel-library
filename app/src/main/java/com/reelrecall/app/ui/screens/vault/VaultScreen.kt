@@ -3503,6 +3503,11 @@ fun ReelDetailScreen(
                                 if (isTranscribingAudio) {
                                     Spacer(modifier = Modifier.height(10.dp))
                                     Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(colors.accent.copy(alpha = 0.08f))
+                                            .padding(horizontal = 10.dp, vertical = 7.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
@@ -3513,9 +3518,13 @@ fun ReelDetailScreen(
                                         )
                                         Text(
                                             text = "Downloading reel & transcribing with Whisper...",
-                                            fontSize = 11.5.sp,
+                                            fontSize = 11.sp,
                                             fontWeight = FontWeight.SemiBold,
-                                            color = colors.accent
+                                            color = colors.accent,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
                                         )
                                     }
                                 } else {
