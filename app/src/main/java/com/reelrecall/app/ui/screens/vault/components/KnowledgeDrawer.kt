@@ -818,6 +818,7 @@ private fun DrawerReelCard(
             val dotColor = when (reel.status) {
                 IngestionStatus.COMPLETED -> StatusReady
                 IngestionStatus.FAILED -> StatusError
+                IngestionStatus.NOT_SUPPORTED -> Color(0xFFFFB74D)
                 else -> StatusProcessing
             }
             Box(

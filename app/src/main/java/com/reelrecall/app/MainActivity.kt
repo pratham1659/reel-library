@@ -75,6 +75,7 @@ import com.reelrecall.app.data.model.IngestionStatus
 import com.reelrecall.app.data.model.ReelEntity
 import com.reelrecall.app.ui.screens.settings.SettingsScreen
 import com.reelrecall.app.ui.screens.settings.SettingsViewModel
+import com.reelrecall.app.ui.screens.privacy.PrivacyPolicyScreen
 import com.reelrecall.app.ui.screens.vault.VaultScreen
 import com.reelrecall.app.ui.screens.vault.VaultViewModel
 import com.reelrecall.app.data.model.ViewMode
@@ -123,100 +124,108 @@ class MainActivity : ComponentActivity() {
             }
 
             ReelLibraryTheme(isDarkTheme = isDarkTheme) {
+                val colors = if (isDarkTheme) DarkNeumorphic else LightNeumorphic
                 Box(modifier = Modifier.fillMaxSize()) {
-                    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-                    val scope = rememberCoroutineScope()
-                    var currentTab by remember { mutableIntStateOf(0) } // 0 = Vault, 1 = Settings, 2 = Drawer/Knowledge
+                    if (!preferences.hasAcceptedPrivacyPolicy) {
+                        PrivacyPolicyScreen(
+                            colors = colors,
+                            onAccept = { settingsViewModel.acceptPrivacyPolicy() }
+                        )
+                    } else {
+                        val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                        val scope = rememberCoroutineScope()
+                        var currentTab by remember { mutableIntStateOf(0) } // 0 = Vault, 1 = Settings, 2 = Drawer/Knowledge
 
-                    val groupedReels by vaultViewModel.groupedReels.collectAsState()
-                    val allReels = remember(groupedReels) { groupedReels.flatMap { it.reels } }
+                        val groupedReels by vaultViewModel.groupedReels.collectAsState()
+                        val allReels = remember(groupedReels) { groupedReels.flatMap { it.reels } }
 
-                    var showAddReelDialog by remember { mutableStateOf(false) }
-                    var showAiAssistantDialog by remember { mutableStateOf(false) }
+                        var showAddReelDialog by remember { mutableStateOf(false) }
+                        var showAiAssistantDialog by remember { mutableStateOf(false) }
 
-                    androidx.activity.compose.BackHandler(enabled = drawerState.isOpen) {
-                        scope.launch { drawerState.close() }
-                    }
-                    androidx.activity.compose.BackHandler(enabled = !drawerState.isOpen && currentTab != 0) {
-                        currentTab = 0
-                    }
-
-                    ModalNavigationDrawer(
-                        drawerState = drawerState,
-                        drawerContent = {
-                            KnowledgeDrawerContent(
-                                reels = allReels,
-                                isDarkTheme = isDarkTheme,
-                                onSelectReel = { reel ->
-                                    scope.launch { drawerState.close() }
-                                    currentTab = 0
-                                    vaultViewModel.selectReelForDetail(reel.id)
-                                },
-                                onAddReel = {
-                                    showAddReelDialog = true
-                                },
-                                onStartMultiSelect = {
-                                    scope.launch { drawerState.close() }
-                                    currentTab = 0
-                                    vaultViewModel.toggleSelectionMode(true)
-                                },
-                                onToggleViewMode = {
-                                    scope.launch { drawerState.close() }
-                                    currentTab = 0
-                                    val currentMode = vaultViewModel.viewMode.value
-                                    val newMode = if (currentMode == ViewMode.GRID) {
-                                        ViewMode.LIST
-                                    } else {
-                                        ViewMode.GRID
-                                    }
-                                    vaultViewModel.setViewMode(newMode)
-                                },
-                                onReprocessAll = {
-                                    scope.launch {
-                                        drawerState.close()
-                                        vaultViewModel.reprocessDemoReelsIfNeeded()
-                                    }
-                                },
-                                onClose = { scope.launch { drawerState.close() } }
-                            )
+                        androidx.activity.compose.BackHandler(enabled = drawerState.isOpen) {
+                            scope.launch { drawerState.close() }
                         }
-                    ) {
-                        val rootBg = if (isDarkTheme) DarkNeumorphic.background else LightNeumorphic.background
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(rootBg)
-                        ) {
-                            // MAIN CONTENT AREA
-                            when (currentTab) {
-                                0 -> {
-                                    VaultScreen(
-                                        viewModel = vaultViewModel,
-                                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                                        onOpenSettings = { currentTab = 1 },
-                                        onAddReel = { showAddReelDialog = true },
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                                1 -> {
-                                    SettingsScreen(
-                                        viewModel = settingsViewModel,
-                                        onBack = { currentTab = 0 },
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                            }
+                        androidx.activity.compose.BackHandler(enabled = !drawerState.isOpen && currentTab != 0) {
+                            currentTab = 0
+                        }
 
-                            // QUICK ADD REEL URL DIALOG
-                            if (showAddReelDialog) {
-                                AddReelDialog(
+                        ModalNavigationDrawer(
+                            drawerState = drawerState,
+                            drawerContent = {
+                                KnowledgeDrawerContent(
+                                    reels = allReels,
                                     isDarkTheme = isDarkTheme,
-                                    onDismiss = { showAddReelDialog = false },
-                                    onAddReel = { url ->
-                                        showAddReelDialog = false
-                                        ingestReelUrl(url)
-                                    }
+                                    onSelectReel = { reel ->
+                                        scope.launch { drawerState.close() }
+                                        currentTab = 0
+                                        vaultViewModel.selectReelForDetail(reel.id)
+                                    },
+                                    onAddReel = {
+                                        showAddReelDialog = true
+                                    },
+                                    onStartMultiSelect = {
+                                        scope.launch { drawerState.close() }
+                                        currentTab = 0
+                                        vaultViewModel.toggleSelectionMode(true)
+                                    },
+                                    onToggleViewMode = {
+                                        scope.launch { drawerState.close() }
+                                        currentTab = 0
+                                        val currentMode = vaultViewModel.viewMode.value
+                                        val newMode = if (currentMode == ViewMode.GRID) {
+                                            ViewMode.LIST
+                                        } else {
+                                            ViewMode.GRID
+                                        }
+                                        vaultViewModel.setViewMode(newMode)
+                                    },
+                                    onReprocessAll = {
+                                        scope.launch {
+                                            drawerState.close()
+                                            vaultViewModel.reprocessDemoReelsIfNeeded()
+                                        }
+                                    },
+                                    onClose = { scope.launch { drawerState.close() } }
                                 )
+                            }
+                        ) {
+                            val rootBg = if (isDarkTheme) DarkNeumorphic.background else LightNeumorphic.background
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(rootBg)
+                            ) {
+                                // MAIN CONTENT AREA
+                                when (currentTab) {
+                                    0 -> {
+                                        VaultScreen(
+                                            viewModel = vaultViewModel,
+                                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                                            onOpenSettings = { currentTab = 1 },
+                                            onAddReel = { showAddReelDialog = true },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                    1 -> {
+                                        SettingsScreen(
+                                            viewModel = settingsViewModel,
+                                            onBack = { currentTab = 0 },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                }
+
+                                // QUICK ADD REEL URL DIALOG
+                                if (showAddReelDialog) {
+                                    AddReelDialog(
+                                        isDarkTheme = isDarkTheme,
+                                        onDismiss = { showAddReelDialog = false },
+                                        onAddReel = { url ->
+                                            showAddReelDialog = false
+                                            ingestReelUrl(url)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -546,7 +555,7 @@ fun AiAssistantDialog(
         shape = RoundedCornerShape(22.dp),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("✨ Ask Knowledge Vault", color = TextPrimary, fontWeight = FontWeight.Bold)
+                Text("✨ Ask Reel Library Vault", color = TextPrimary, fontWeight = FontWeight.Bold)
             }
         },
         text = {

@@ -18,7 +18,8 @@ object InstagramExtractor {
         val videoUrl: String?,
         val thumbnailUrl: String?,
         val audioFile: File? = null,
-        val audioNote: String? = null
+        val audioNote: String? = null,
+        val isRestricted: Boolean = false
     )
 
     private val OG_TITLE_REGEX = """<meta property="og:title" content="([^"]*)"\s*/?>""".toRegex()
@@ -48,10 +49,20 @@ object InstagramExtractor {
             var creator: String? = null
             var videoUrl: String? = null
             var thumbnailUrl: String? = null
+            var isRestricted = false
 
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     val html = response.body?.string() ?: ""
+
+                    if (html.contains("\"failure_reason\":\"MA\"") ||
+                        html.contains("\"restricted_age\"") ||
+                        html.contains("PolarisErrorRoot") ||
+                        html.contains("show_lox_redesigned_404_page") ||
+                        html.contains("The link to this photo or video may be broken")
+                    ) {
+                        isRestricted = true
+                    }
 
                     val descMatch = OG_DESC_REGEX.find(html)
                     val rawDesc = descMatch?.groupValues?.get(1)
@@ -132,6 +143,13 @@ object InstagramExtractor {
                     client.newCall(embedRequest).execute().use { embedRes ->
                         if (embedRes.isSuccessful) {
                             val embedHtml = embedRes.body?.string() ?: ""
+                            if (embedHtml.contains("The link to this photo or video may be broken") ||
+                                embedHtml.contains("\"restricted_age\"") ||
+                                embedHtml.contains("PolarisErrorRoot") ||
+                                embedHtml.contains("failure_reason")
+                            ) {
+                                isRestricted = true
+                            }
                             val match = Regex("""video_url[^\"]*?[\\:\"]+(https:[^\"]+?\.mp4[^\"]*)""").find(embedHtml)
                                 ?: Regex("""["']video_url["']\s*:\s*["'](https:[^"'\s\\]+[\s\S]*?)["']""").find(embedHtml)
                                 ?: Regex("""(https:[\\/]+[a-zA-Z0-9.\-_\\/]+?\.mp4[a-zA-Z0-9.\-_?&=%\\/]*)""").find(embedHtml)
@@ -194,17 +212,22 @@ object InstagramExtractor {
                     audioNote = TranscriptOutcome.DOWNLOAD_FAILED
                 }
             } else {
-                audioNote = TranscriptOutcome.NO_MEDIA
+                audioNote = if (isRestricted) {
+                    TranscriptOutcome.RESTRICTED_MEDIA
+                } else {
+                    TranscriptOutcome.NO_MEDIA
+                }
             }
 
             Result.success(
                 ExtractedMetadata(
-                    caption = caption?.ifBlank { null } ?: "Instagram Reel shared to Reel Library.",
-                    creatorHandle = creator ?: "@instagram_creator",
+                    caption = caption?.trim()?.ifBlank { null },
+                    creatorHandle = creator?.trim()?.ifBlank { null },
                     videoUrl = videoUrl,
                     thumbnailUrl = thumbnailUrl,
                     audioFile = audioFile,
-                    audioNote = audioNote
+                    audioNote = audioNote,
+                    isRestricted = isRestricted
                 )
             )
 

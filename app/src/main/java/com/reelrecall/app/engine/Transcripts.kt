@@ -15,6 +15,8 @@ data class TranscriptOutcome(
     companion object {
         const val NO_MEDIA =
             "Instagram did not return a downloadable video, so there is no audio to transcribe."
+        const val RESTRICTED_MEDIA =
+            "Instagram restricted this Reel (age or login requirement). Spoken audio and media cannot be downloaded without an authenticated Instagram session."
         const val DOWNLOAD_FAILED =
             "Failed downloading the reel video, so there is no audio to transcribe."
         const val NO_SPEECH = "The audio had no recognizable speech."

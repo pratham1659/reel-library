@@ -80,6 +80,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -132,10 +133,14 @@ import com.reelrecall.app.data.model.ReelEntity
 import com.reelrecall.app.ui.screens.vault.components.SortFilterBottomSheet
 import com.reelrecall.app.ui.theme.ActiveBlue
 import com.reelrecall.app.ui.theme.ActiveBlueBg
+import com.reelrecall.app.ui.theme.BrandRoseEnd
+import com.reelrecall.app.ui.theme.BrandRoseMiddle
+import com.reelrecall.app.ui.theme.BrandRoseStart
 import com.reelrecall.app.ui.theme.CyanAccent
 import com.reelrecall.app.ui.theme.InstagramOrange
 import com.reelrecall.app.ui.theme.InstagramPink
 import com.reelrecall.app.ui.theme.InstagramPurple
+import com.reelrecall.app.ui.theme.WarningYellow
 import com.reelrecall.app.ui.theme.ObsidianBg
 import com.reelrecall.app.ui.theme.ObsidianCard
 import com.reelrecall.app.ui.theme.ObsidianCardBorder
@@ -1231,8 +1236,8 @@ fun RecallReelCard(
                     .background(colors.surface)
                     .clickable(onClick = onOpenReel)
             ) {
-                // Blurred Background Letterbox (Exact Recall Effect)
                 if (!reel.thumbnailUrl.isNullOrBlank()) {
+                    // Blurred Background Letterbox (Exact Recall Effect)
                     AsyncImage(
                         model = reel.thumbnailUrl,
                         contentDescription = null,
@@ -1246,10 +1251,8 @@ fun RecallReelCard(
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.45f))
                     )
-                }
 
-                // Central Vertical Portrait Video / Image
-                if (!reel.thumbnailUrl.isNullOrBlank()) {
+                    // Central Vertical Portrait Video / Image
                     AsyncImage(
                         model = reel.thumbnailUrl,
                         contentDescription = "Reel Preview",
@@ -1260,44 +1263,114 @@ fun RecallReelCard(
                             .align(Alignment.Center)
                             .clip(RoundedCornerShape(10.dp))
                     )
+
+                    if (!isSelectionMode) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .align(Alignment.Center)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.55f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Play",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
                 } else {
-                    // Fallback sleek placeholder if thumbnail hasn't loaded yet
+                    // Fallback branded Tonal Rose gradient card with Instagram glyph
+                    val isRestricted = reel.transcriptNote?.contains("restricted", ignoreCase = true) == true
                     Box(
                         modifier = Modifier
-                            .width(135.dp)
-                            .height(240.dp)
-                            .align(Alignment.Center)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(colors.pillBg),
+                            .fillMaxSize()
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        BrandRoseStart.copy(alpha = 0.85f),
+                                        BrandRoseMiddle.copy(alpha = 0.90f),
+                                        BrandRoseEnd.copy(alpha = 0.95f)
+                                    )
+                                )
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = colors.textMuted,
-                            modifier = Modifier.size(36.dp)
+                        // Dark scrim for contrast
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.35f))
                         )
+
+                        // Central Frosted Information Card
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.Black.copy(alpha = 0.45f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Watch on Instagram",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+
+                                Text(
+                                    text = if (!reel.creatorHandle.isNullOrBlank()) reel.creatorHandle!! else "Instagram Reel",
+                                    color = Color.White,
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = if (isRestricted) WarningYellow.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.18f),
+                                    border = androidx.compose.foundation.BorderStroke(0.8.dp, if (isRestricted) WarningYellow.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.3f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isRestricted) Icons.Default.Lock else Icons.AutoMirrored.Filled.OpenInNew,
+                                            contentDescription = null,
+                                            tint = if (isRestricted) WarningYellow else Color.White,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Text(
+                                            text = if (isRestricted) "Restricted on Web • Tap to Watch" else "Tap to Watch on Instagram",
+                                            color = if (isRestricted) WarningYellow else Color.White,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
-                // Play Icon Overlay or Selection Checkmark
-                if (!isSelectionMode) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .align(Alignment.Center)
-                            .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.55f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                } else {
+                if (isSelectionMode) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -1479,6 +1552,7 @@ fun RecallStatusPill(
             IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFF2E1C0A), SparkleOrange, SparkleOrange.copy(alpha = 0.35f))
             IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFF122815), StatusReady, StatusReady.copy(alpha = 0.35f))
             IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFF331515), StatusError, StatusError.copy(alpha = 0.35f))
+            IngestionStatus.NOT_SUPPORTED -> StatusPillStyle("Not Supported", Color(0xFF332712), Color(0xFFFFB74D), Color(0xFFFFB74D).copy(alpha = 0.35f))
         }
     } else {
         // Obsidian Light theme: clean, vibrant, modern light pastel badges with crisp high-contrast text and subtle border
@@ -1489,6 +1563,7 @@ fun RecallStatusPill(
             IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFFFFEDD5), Color(0xFFEA580C), Color(0xFFFED7AA))
             IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFFDCFCE7), Color(0xFF15803D), Color(0xFF86EFAC))
             IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFFFEE2E2), Color(0xFFDC2626), Color(0xFFFCA5A5))
+            IngestionStatus.NOT_SUPPORTED -> StatusPillStyle("Not Supported", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
         }
     }
 
@@ -1603,7 +1678,7 @@ fun SearchKnowledgeView(
             OutlinedTextField(
                 value = query,
                 onValueChange = viewModel::onSearchQueryChange,
-                placeholder = { Text("Search your knowledge", color = TextMuted, fontSize = 14.sp) },
+                placeholder = { Text("Search Reel Library vault...", color = TextMuted, fontSize = 14.sp) },
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted, modifier = Modifier.size(20.dp))
                 },
@@ -1735,7 +1810,7 @@ fun EmptyVaultView(
         Spacer(modifier = Modifier.height(18.dp))
 
         Text(
-            text = "Your Knowledge Vault is Ready",
+            text = "Your Reel Library Vault is Ready",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = colors.textPrimary
@@ -2115,18 +2190,58 @@ fun RecallReelGridCard(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = colors.textMuted,
-                            modifier = Modifier.size(32.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        BrandRoseStart.copy(alpha = 0.85f),
+                                        BrandRoseMiddle.copy(alpha = 0.90f),
+                                        BrandRoseEnd.copy(alpha = 0.95f)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.35f))
                         )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.25f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Text(
+                                text = if (!reel.creatorHandle.isNullOrBlank()) reel.creatorHandle!! else "#${reel.shortcode.take(6)}",
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
 
                 // Play icon overlay or Selection Checkmark
-                if (!isSelectionMode) {
+                if (!isSelectionMode && !reel.thumbnailUrl.isNullOrBlank()) {
                     Box(
                         modifier = Modifier
                             .size(32.dp)
@@ -2551,22 +2666,99 @@ fun ReelDetailScreen(
                                 .align(Alignment.Center)
                                 .clip(RoundedCornerShape(10.dp))
                         )
-                    }
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .align(Alignment.Center)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.6f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Play",
+                                tint = Color.White,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                    } else {
+                        // Fallback branded Tonal Rose card with Open in Instagram
+                        val isRestricted = currentReel.transcriptNote?.contains("restricted", ignoreCase = true) == true
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            BrandRoseStart.copy(alpha = 0.85f),
+                                            BrandRoseMiddle.copy(alpha = 0.90f),
+                                            BrandRoseEnd.copy(alpha = 0.95f)
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.35f))
+                            )
 
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .align(Alignment.Center)
-                            .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.6f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(26.dp)
-                        )
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.22f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Watch on Instagram",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+
+                                Text(
+                                    text = if (!currentReel.creatorHandle.isNullOrBlank()) currentReel.creatorHandle!! else "Instagram Reel #${currentReel.shortcode}",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = if (isRestricted) WarningYellow.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.20f),
+                                    border = androidx.compose.foundation.BorderStroke(0.8.dp, if (isRestricted) WarningYellow.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.35f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                            contentDescription = null,
+                                            tint = if (isRestricted) WarningYellow else Color.White,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Text(
+                                            text = "Tap to Watch on Instagram",
+                                            color = if (isRestricted) WarningYellow else Color.White,
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // Notes Badge in Left Corner
@@ -2965,6 +3157,124 @@ fun ReelDetailScreen(
                                 }
                             }
                         }
+                    } else if (currentReel.status == IngestionStatus.NOT_SUPPORTED) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = WarningYellow.copy(alpha = 0.10f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, WarningYellow.copy(alpha = 0.4f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(WarningYellow.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Lock,
+                                            contentDescription = "Not Supported",
+                                            tint = WarningYellow,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "Reel Export Not Supported",
+                                            fontSize = 13.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary
+                                        )
+                                        Text(
+                                            text = "Instagram media export blocked • AI skipped",
+                                            fontSize = 11.sp,
+                                            color = colors.textMuted
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Text(
+                                    text = "Instagram does not provide an external downloadable video stream for this reel. Audio transcription and AI summary were skipped to conserve your API quota.",
+                                    fontSize = 12.5.sp,
+                                    color = colors.textSecondary,
+                                    lineHeight = 18.sp
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    NeumorphicButton(
+                                        onClick = { openInInstagram(context, currentReel.canonicalUrl) },
+                                        colors = colors,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                                contentDescription = null,
+                                                tint = colors.accent,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Watch on Instagram",
+                                                fontSize = 12.5.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = colors.textPrimary
+                                            )
+                                        }
+                                    }
+
+                                    if (!currentReel.caption.isNullOrBlank()) {
+                                        Surface(
+                                            onClick = {
+                                                showRunAiConfirmDialog = true
+                                            },
+                                            enabled = !isRetrying,
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = colors.accentBg,
+                                            border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.accent),
+                                            modifier = Modifier.height(48.dp)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center,
+                                                modifier = Modifier.padding(horizontal = 12.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.AutoAwesome,
+                                                    contentDescription = null,
+                                                    tint = colors.accent,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text(
+                                                    text = "Summarize Caption",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = colors.accent
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     } else if (!hasAiContent) {
                         // REEL > 1 MIN TOKEN SAVER CALL-TO-ACTION CARD
                         Surface(
@@ -3221,28 +3531,64 @@ fun ReelDetailScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Icon(Icons.Default.GraphicEq, contentDescription = null, tint = colors.textMuted, modifier = Modifier.size(15.dp))
+                                val note = currentReel.transcriptNote?.takeIf { it.isNotBlank() }
+                                val isRestricted = note?.contains("restricted", ignoreCase = true) == true
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isRestricted) Icons.Default.Lock else Icons.Default.GraphicEq,
+                                        contentDescription = null,
+                                        tint = if (isRestricted) WarningYellow else colors.textMuted,
+                                        modifier = Modifier.size(15.dp)
+                                    )
                                     Text(
-                                        text = "Not available",
-                                        fontSize = 12.sp,
+                                        text = if (isRestricted) "Protected on Instagram" else "Spoken Transcript Unavailable",
+                                        fontSize = 12.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = colors.textMuted
+                                        color = if (isRestricted) WarningYellow else colors.textMuted
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "Not available",
+                                    text = note ?: "Instagram audio could not be extracted for spoken transcription. Native audio and captions may be viewed directly on Instagram.",
                                     fontSize = 12.5.sp,
-                                    color = colors.textMuted,
+                                    color = colors.textSecondary,
                                     lineHeight = 18.sp
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                TextButton(
-                                    onClick = { viewModel.reprocessReel(currentReel.id) },
-                                    enabled = !isRetrying
-                                ) {
-                                    Text(if (isRetrying) "Retrying…" else "Retry transcription")
+                                Spacer(modifier = Modifier.height(10.dp))
+                                if (isRestricted) {
+                                    NeumorphicButton(
+                                        onClick = { openInInstagram(context, currentReel.canonicalUrl) },
+                                        colors = colors,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                                contentDescription = null,
+                                                tint = colors.accent,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = "Watch Reel on Instagram",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = colors.textPrimary
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    TextButton(
+                                        onClick = { viewModel.reprocessReel(currentReel.id) },
+                                        enabled = !isRetrying
+                                    ) {
+                                        Text(if (isRetrying) "Retrying…" else "Retry transcription")
+                                    }
                                 }
                             }
                         }

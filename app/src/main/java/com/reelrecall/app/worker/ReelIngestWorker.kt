@@ -78,6 +78,48 @@ class ReelIngestWorker(
                 android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
             }
 
+            val isExportNotSupported = metadata.isRestricted || metadata.videoUrl.isNullOrBlank() || metadata.audioFile == null
+
+            if (isExportNotSupported) {
+                // RULE: If reel media export is not supported by Instagram, DO NOT run AI to waste API quota.
+                // Mark as NOT_SUPPORTED in status chips and present clean native details.
+                if (existing != null) {
+                    val shortcode = existing.shortcode
+                    val handleDisplay = cleanHandle?.takeIf { it.isNotBlank() && it != "@instagram_creator" }
+                    
+                    val sanitizedCaption = cleanCaption
+                        ?.replace(Regex("""(?i)^(comment|type|drop|dm|send)\s+["']?[a-zA-Z0-9_-]+["']?\s+(and|to|for|&).*?([.!?\n]|$)"""), "")
+                        ?.trim()
+                    val realTitle = sanitizedCaption?.take(60)?.ifBlank { null }
+                        ?: cleanCaption?.take(60)?.ifBlank { null }
+                        ?: (if (handleDisplay != null) "Instagram Reel by $handleDisplay" else "Instagram Reel #$shortcode")
+
+                    val summary = cleanCaption?.take(180)?.ifBlank { null }
+                        ?: "Video export is not supported by Instagram for this reel. Audio transcription and AI summary were skipped to save your API quota."
+
+                    val updated = existing.copy(
+                        creatorHandle = handleDisplay ?: existing.creatorHandle,
+                        caption = cleanCaption ?: existing.caption,
+                        audioPath = null,
+                        thumbnailUrl = metadata.thumbnailUrl ?: existing.thumbnailUrl,
+                        transcript = null,
+                        transcriptNote = metadata.audioNote ?: "Instagram does not permit external video export for this reel. Tap 'Watch Reel on Instagram' to view.",
+                        title = realTitle,
+                        oneLineSummary = summary,
+                        takeawaysJson = "[]",
+                        tagsJson = "[]",
+                        engineUsed = "Export Not Supported (AI Skipped)",
+                        status = IngestionStatus.NOT_SUPPORTED,
+                        errorMessage = null
+                    )
+                    dao.update(updated)
+                }
+
+                val notifTitle = cleanCaption?.take(40) ?: "Reel Library: Export Not Supported"
+                postCompletionNotification(notifTitle, "Export not supported for this reel. Tap in app to view on Instagram.")
+                return Result.success()
+            }
+
             val shouldSkipAiForDuration = durationMs > 60_000L && currentPrefs.engineMode == com.reelrecall.app.data.repository.EngineMode.CLOUD_ONLY
 
             if (shouldSkipAiForDuration) {

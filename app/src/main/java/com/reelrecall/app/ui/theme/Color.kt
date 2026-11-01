@@ -24,6 +24,12 @@ val InstagramPink = Color(0xFFE1306C)
 val InstagramPurple = Color(0xFF833AB4)
 val InstagramOrange = Color(0xFFF77737)
 
+// Official Reel Library Brand Rose Palette
+val BrandRoseStart = Color(0xFFF03850)
+val BrandRoseMiddle = Color(0xFFE22058)
+val BrandRoseEnd = Color(0xFFC81466)
+val WarningYellow = Color(0xFFF59E0B)
+
 val StatusReady = Color(0xFF10B981)
 val StatusGreen = StatusReady
 val StatusProcessing = Color(0xFF06B6D4)

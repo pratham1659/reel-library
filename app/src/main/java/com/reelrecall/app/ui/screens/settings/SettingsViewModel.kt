@@ -276,55 +276,70 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun acceptPrivacyPolicy() {
+        viewModelScope.launch {
+            repository.setPrivacyPolicyAccepted(true)
+        }
+    }
+
     fun setGroqApiKey(key: String) {
+        _cloudTestResult.value = ModelTestResult()
         viewModelScope.launch {
             repository.setGroqApiKey(key)
         }
     }
 
     fun deleteGroqApiKey() {
+        _cloudTestResult.value = ModelTestResult()
         viewModelScope.launch {
             repository.deleteGroqApiKey()
         }
     }
 
     fun setSelectedProvider(provider: com.reelrecall.app.data.repository.AIProvider) {
+        _cloudTestResult.value = ModelTestResult()
         viewModelScope.launch {
             repository.setSelectedProvider(provider)
         }
     }
 
     fun setOpenAIApiKey(key: String) {
+        _cloudTestResult.value = ModelTestResult()
         viewModelScope.launch {
             repository.setOpenAIApiKey(key)
         }
     }
 
     fun deleteOpenAIApiKey() {
+        _cloudTestResult.value = ModelTestResult()
         viewModelScope.launch {
             repository.deleteOpenAIApiKey()
         }
     }
 
     fun setClaudeApiKey(key: String) {
+        _cloudTestResult.value = ModelTestResult()
         viewModelScope.launch {
             repository.setClaudeApiKey(key)
         }
     }
 
     fun deleteClaudeApiKey() {
+        _cloudTestResult.value = ModelTestResult()
         viewModelScope.launch {
             repository.deleteClaudeApiKey()
         }
     }
 
     fun setCustomApiKey(key: String) {
+        _cloudTestResult.value = ModelTestResult()
         viewModelScope.launch {
             repository.setCustomApiKey(key)
         }
     }
 
     fun deleteCustomApiKey() {
+        _cloudTestResult.value = ModelTestResult()
         viewModelScope.launch {
             repository.deleteCustomApiKey()
         }

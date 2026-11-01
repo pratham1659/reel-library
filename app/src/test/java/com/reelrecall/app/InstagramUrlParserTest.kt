@@ -36,6 +36,15 @@ class InstagramUrlParserTest {
     }
 
     @Test
+    fun parse_targetUserReelUrl_extractsSuccessfully() {
+        val input = "https://www.instagram.com/reel/DfFihWAsB_M/?rpxt=Nzdqem5wOG9tdXVl"
+        val parsed = InstagramUrlParser.parse(input)
+        assertNotNull(parsed)
+        assertEquals("https://www.instagram.com/reel/DfFihWAsB_M/", parsed?.canonicalUrl)
+        assertEquals("DfFihWAsB_M", parsed?.shortcode)
+    }
+
+    @Test
     fun parse_invalidUrl_returnsNull() {
         val input = "https://www.youtube.com/watch?v=12345"
         val parsed = InstagramUrlParser.parse(input)

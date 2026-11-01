@@ -15,7 +15,8 @@ enum class IngestionStatus {
     TRANSCRIBING,
     SUMMARIZING,
     COMPLETED,
-    FAILED
+    FAILED,
+    NOT_SUPPORTED
 }
 
 /**

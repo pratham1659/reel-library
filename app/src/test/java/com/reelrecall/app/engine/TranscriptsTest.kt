@@ -76,4 +76,17 @@ class TranscriptsTest {
         assertNull(outcome.text)
         assertTrue(outcome.note!!.contains("25 MB"))
     }
+
+    @Test
+    fun restrictedMediaUsesRestrictedNote() {
+        val outcome = Transcripts.resolve(
+            mediaNote = TranscriptOutcome.RESTRICTED_MEDIA,
+            audioBytes = null,
+            transcription = null,
+            cloudUpload = true
+        )
+        assertNull(outcome.text)
+        assertEquals(TranscriptOutcome.RESTRICTED_MEDIA, outcome.note)
+        assertTrue(outcome.note!!.contains("restricted"))
+    }
 }

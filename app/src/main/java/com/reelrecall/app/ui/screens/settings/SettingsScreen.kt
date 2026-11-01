@@ -308,7 +308,13 @@ private fun ProfileMainScreen(
                 NeumorphicDivider(colors = colors)
 
                 // 2. Models & API (Opens Models & API Subscreen)
-                val isApiKeySet = preferences.groqApiKey.isNotBlank()
+                val activeProviderKey = when (preferences.selectedProvider) {
+                    AIProvider.GROQ -> preferences.groqApiKey
+                    AIProvider.OPENAI -> preferences.openAIApiKey
+                    AIProvider.CLAUDE -> preferences.claudeApiKey
+                    AIProvider.CUSTOM -> preferences.customApiKey
+                }
+                val isApiKeySet = activeProviderKey.isNotBlank()
                 val apiBadgeText = when {
                     !isApiKeySet -> "API Not Set"
                     cloudTestResult.isSuccess == true -> "API Ready"
@@ -1609,18 +1615,19 @@ private fun SelectModelsScreen(
         uri?.let { viewModel.importModelFromUri(it, isWhisper = false) }
     }
 
-    var groqApiKeyInput by remember { mutableStateOf(preferences.groqApiKey) }
-
-    LaunchedEffect(preferences.groqApiKey) {
-        groqApiKeyInput = preferences.groqApiKey
-    }
-
     val activeProvider = preferences.selectedProvider
     val currentApiKey = when (activeProvider) {
         AIProvider.GROQ -> preferences.groqApiKey
         AIProvider.OPENAI -> preferences.openAIApiKey
         AIProvider.CLAUDE -> preferences.claudeApiKey
         AIProvider.CUSTOM -> preferences.customApiKey
+    }
+
+    var localApiKeyOverride by remember(activeProvider) { mutableStateOf<String?>(null) }
+    val effectiveApiKey = localApiKeyOverride ?: currentApiKey
+
+    if (localApiKeyOverride != null && localApiKeyOverride == currentApiKey) {
+        localApiKeyOverride = null
     }
 
     var customBaseUrlInput by remember { mutableStateOf(preferences.customBaseUrl) }
@@ -1699,11 +1706,9 @@ private fun SelectModelsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        localApiKeyOverride = ""
                         when (activeProvider) {
-                            AIProvider.GROQ -> {
-                                groqApiKeyInput = ""
-                                viewModel.deleteGroqApiKey()
-                            }
+                            AIProvider.GROQ -> viewModel.deleteGroqApiKey()
                             AIProvider.OPENAI -> viewModel.deleteOpenAIApiKey()
                             AIProvider.CLAUDE -> viewModel.deleteClaudeApiKey()
                             AIProvider.CUSTOM -> viewModel.deleteCustomApiKey()
@@ -1854,7 +1859,7 @@ private fun SelectModelsScreen(
                             }
                         }
 
-                        val isApiKeySet = currentApiKey.isNotBlank()
+                        val isApiKeySet = effectiveApiKey.isNotBlank()
                         val cardBadgeText = when {
                             !isApiKeySet -> "API Not Set"
                             cloudTestResult.isSuccess == true -> "API Ready"
@@ -2078,7 +2083,7 @@ private fun SelectModelsScreen(
                                 softWrap = false
                             )
                         }
-                        if (currentApiKey.isNotBlank()) {
+                        if (effectiveApiKey.isNotBlank()) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
                                 color = StatusError.copy(alpha = 0.12f),
@@ -2111,7 +2116,7 @@ private fun SelectModelsScreen(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
-                        value = currentApiKey,
+                        value = effectiveApiKey,
                         onValueChange = {}, // Read-only: direct manual text copying/editing blocked for vault security
                         readOnly = true,
                         enabled = isCloudMode,
@@ -2120,7 +2125,7 @@ private fun SelectModelsScreen(
                         singleLine = true,
                         visualTransformation = MaskApiKeyVisualTransformation(visibleChars = 3),
                         trailingIcon = {
-                            if (currentApiKey.isBlank()) {
+                            if (effectiveApiKey.isBlank()) {
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
                                     color = CyanAccent.copy(alpha = 0.15f),
@@ -2131,11 +2136,9 @@ private fun SelectModelsScreen(
                                         .clickable {
                                             val clip = clipboardManager.getText()?.text?.trim()
                                             if (!clip.isNullOrBlank()) {
+                                                localApiKeyOverride = clip
                                                 when (activeProvider) {
-                                                    AIProvider.GROQ -> {
-                                                        groqApiKeyInput = clip
-                                                        viewModel.setGroqApiKey(clip)
-                                                    }
+                                                    AIProvider.GROQ -> viewModel.setGroqApiKey(clip)
                                                     AIProvider.OPENAI -> viewModel.setOpenAIApiKey(clip)
                                                     AIProvider.CLAUDE -> viewModel.setClaudeApiKey(clip)
                                                     AIProvider.CUSTOM -> viewModel.setCustomApiKey(clip)
@@ -2267,7 +2270,7 @@ private fun SelectModelsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedButton(
-                            onClick = { viewModel.testCloudConnection(currentApiKey) },
+                            onClick = { viewModel.testCloudConnection(effectiveApiKey) },
                             enabled = isCloudMode && !cloudTestResult.isTesting,
                             shape = RoundedCornerShape(10.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, if (isCloudMode) CyanAccent else colors.border),
