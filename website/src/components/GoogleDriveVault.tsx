@@ -4,16 +4,16 @@ import { Cloud, ShieldCheck, HardDrive, Lock, Zap } from 'lucide-react'
 export const GoogleDriveVault: React.FC = () => {
   return (
     <section id="cloud-vault" className="relative py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      <div className="relative rounded-3xl p-8 sm:p-12 bg-gradient-to-br from-obsidian-card via-obsidian-elevated to-obsidian border border-cyan-500/20 shadow-glow-cyan overflow-hidden">
+      <div className="relative rounded-3xl p-8 sm:p-12 bg-gradient-to-br from-obsidian-card via-obsidian-elevated to-obsidian border border-pink-500/20 shadow-glow-sunset overflow-hidden">
         
         {/* Ambient background glow */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-pink-500/10 blur-3xl pointer-events-none" />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
           
           {/* Left: Content */}
           <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">
+            <div className="inline-flex items-center gap-2 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-xs text-pink-300">
               <Cloud className="w-3.5 h-3.5" />
               <span>Personal Cloud Architecture (v1.2.2)</span>
             </div>
@@ -31,8 +31,8 @@ export const GoogleDriveVault: React.FC = () => {
 
             <div className="space-y-3 pt-2">
               <div className="flex items-start gap-3 text-sm text-neutral-300">
-                <div className="w-6 h-6 rounded-lg bg-cyan-500/15 flex items-center justify-center shrink-0 mt-0.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                <div className="w-6 h-6 rounded-lg bg-pink-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-pink-400" />
                 </div>
                 <div>
                   <span className="font-semibold text-white">Scoped App Authorization: </span>
@@ -41,8 +41,8 @@ export const GoogleDriveVault: React.FC = () => {
               </div>
 
               <div className="flex items-start gap-3 text-sm text-neutral-300">
-                <div className="w-6 h-6 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0 mt-0.5">
-                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="w-6 h-6 rounded-lg bg-rose-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                  <Lock className="w-3.5 h-3.5 text-rose-400" />
                 </div>
                 <div>
                   <span className="font-semibold text-white">Zero Intermediary Server: </span>
@@ -51,8 +51,8 @@ export const GoogleDriveVault: React.FC = () => {
               </div>
 
               <div className="flex items-start gap-3 text-sm text-neutral-300">
-                <div className="w-6 h-6 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0 mt-0.5">
-                  <HardDrive className="w-3.5 h-3.5 text-amber-400" />
+                <div className="w-6 h-6 rounded-lg bg-purple-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                  <HardDrive className="w-3.5 h-3.5 text-purple-400" />
                 </div>
                 <div>
                   <span className="font-semibold text-white">Real-Time Storage Telemetry: </span>
@@ -84,16 +84,16 @@ export const GoogleDriveVault: React.FC = () => {
                 <span className="text-[10px] text-emerald-400">On-Device SQLite</span>
               </div>
 
-              <div className="flex justify-center text-cyan-400 text-xs">
+              <div className="flex justify-center text-pink-400 text-xs">
                 ↓ Direct TLS 1.3 Scoped OAuth2
               </div>
 
-              <div className="p-3 rounded-xl bg-cyan-500/[0.08] border border-cyan-500/30 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-pink-500/[0.08] border border-pink-500/30 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <Cloud className="w-4 h-4 text-cyan-400" />
+                  <Cloud className="w-4 h-4 text-pink-400" />
                   <span className="text-white">Google Drive API v3</span>
                 </div>
-                <span className="text-[10px] text-cyan-300 font-semibold">User's Private Drive</span>
+                <span className="text-[10px] text-pink-300 font-semibold">User's Private Drive</span>
               </div>
 
               <div className="p-3 rounded-xl bg-white/[0.02] border border-dashed border-red-500/30 text-[11px] text-neutral-400 text-center">
@@ -108,8 +108,8 @@ export const GoogleDriveVault: React.FC = () => {
                 <span className="text-white font-mono">142.8 MB Synced</span>
               </div>
               <div className="h-2 rounded-full bg-white/[0.06] flex overflow-hidden">
-                <div className="bg-cyan-500 h-full w-[45%]" />
-                <div className="bg-blue-500 h-full w-[35%]" />
+                <div className="bg-pink-500 h-full w-[45%]" />
+                <div className="bg-purple-500 h-full w-[35%]" />
                 <div className="bg-amber-400 h-full w-[20%]" />
               </div>
             </div>

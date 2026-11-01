@@ -6,7 +6,7 @@ export const ReleaseNotes: React.FC = () => {
   return (
     <section id="release-notes" className="relative py-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
       <div className="text-center max-w-2xl mx-auto mb-12">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300 mb-3">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-xs text-pink-300 mb-3">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Changelog & Updates</span>
         </div>
@@ -25,7 +25,7 @@ export const ReleaseNotes: React.FC = () => {
             className="rounded-3xl p-6 sm:p-8 bg-obsidian-card border border-white/[0.08] shadow-neumorphic-md space-y-6 relative overflow-hidden"
           >
             {/* Top accent bar */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-cyan-400 to-amber-400" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB]" />
 
             {/* Version Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.06] pb-5">
@@ -33,7 +33,7 @@ export const ReleaseNotes: React.FC = () => {
                 <div className="flex items-center gap-2.5">
                   <span className="font-display text-2xl font-black text-white">{rel.version}</span>
                   {rel.isLatest && (
-                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-pink-500/15 text-pink-300 border border-pink-500/30">
                       Latest Release
                     </span>
                   )}
@@ -63,7 +63,7 @@ export const ReleaseNotes: React.FC = () => {
                       {cat.items.map((it, itemIdx) => (
                         <div key={itemIdx} className="space-y-1">
                           <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-pink-400 shrink-0" />
                             <span>{it.title}</span>
                           </div>
                           <p className="text-[11px] text-neutral-400 leading-relaxed pl-5">
@@ -81,7 +81,7 @@ export const ReleaseNotes: React.FC = () => {
             <div className="pt-3 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-400">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1.5 text-neutral-300">
-                  <Cloud className="w-3.5 h-3.5 text-cyan-400" /> Google Drive Scoped
+                  <Cloud className="w-3.5 h-3.5 text-pink-400" /> Google Drive Scoped
                 </span>
                 <span className="flex items-center gap-1.5 text-neutral-300">
                   <RefreshCw className="w-3.5 h-3.5 text-emerald-400" /> Direct GitHub Updates
@@ -95,7 +95,7 @@ export const ReleaseNotes: React.FC = () => {
                 href="https://github.com/pratham1659/reel-library/releases/tag/v1.2.2"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1"
+                className="text-pink-400 hover:text-pink-300 font-medium flex items-center gap-1"
               >
                 <span>View Full Markdown Changelog on GitHub &rarr;</span>
               </a>

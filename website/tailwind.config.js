@@ -13,14 +13,12 @@ export default {
         'obsidian-elevated': '#161B26',
         'obsidian-border': 'rgba(255, 255, 255, 0.08)',
         'obsidian-border-hover': 'rgba(255, 255, 255, 0.16)',
-        cyan: {
-          400: '#22D3EE',
-          500: '#06B6D4',
-          600: '#0891B2',
-        },
-        amber: {
-          400: '#FBBF24',
-          500: '#F59E0B',
+        sunset: {
+          gold: '#FCAF45',
+          coral: '#FF5252',
+          rose: '#E1306C',
+          fuchsia: '#C13584',
+          indigo: '#5851DB',
         },
         status: {
           ready: '#10B981',
@@ -33,8 +31,8 @@ export default {
         mono: ['Geist Mono', 'monospace'],
       },
       boxShadow: {
-        'glow-cyan': '0 0 35px -5px rgba(6, 182, 212, 0.35)',
-        'glow-cyan-lg': '0 0 60px -10px rgba(6, 182, 212, 0.5)',
+        'glow-sunset': '0 0 35px -5px rgba(225, 48, 108, 0.45)',
+        'glow-sunset-lg': '0 0 60px -10px rgba(225, 48, 108, 0.55)',
         'neumorphic-sm': '4px 4px 10px rgba(0, 0, 0, 0.5), -2px -2px 6px rgba(255, 255, 255, 0.03)',
         'neumorphic-md': '8px 8px 20px rgba(0, 0, 0, 0.6), -4px -4px 12px rgba(255, 255, 255, 0.04)',
         'neumorphic-inset': 'inset 3px 3px 8px rgba(0, 0, 0, 0.6), inset -2px -2px 6px rgba(255, 255, 255, 0.03)',

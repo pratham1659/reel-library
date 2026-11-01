@@ -14,9 +14,9 @@ import { Footer } from './components/Footer'
 
 export const App: React.FC = () => {
   return (
-    <div className="relative min-h-screen bg-obsidian text-[#EDEDF0] selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div className="relative min-h-screen bg-obsidian text-[#EDEDF0] selection:bg-pink-500/30 selection:text-pink-200">
       
-      {/* Top Ambient Spotlight Flare with Electric Cyan Aura */}
+      {/* Top Ambient Spotlight Flare with Warm Sunset Aura */}
       <div className="spotlight-glow" aria-hidden="true" />
 
       {/* Vertical Guide Lines Frame (Inspired by getplexo.app) */}

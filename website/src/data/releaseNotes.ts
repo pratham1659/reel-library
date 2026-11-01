@@ -24,7 +24,7 @@ export const releaseNotesData: ReleaseNote[] = [
     categories: [
       {
         category: 'Personal Cloud',
-        badgeColor: 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30',
+        badgeColor: 'bg-pink-500/10 text-pink-300 border-pink-500/30',
         items: [
           {
             title: 'Google Drive Scoped Backup',
@@ -55,8 +55,8 @@ export const releaseNotesData: ReleaseNote[] = [
         badgeColor: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
         items: [
           {
-            title: 'Electric Cyan & Obsidian Identity',
-            description: 'Distinctive, non-copyrighted brand aesthetic eliminating all trademark imitation of Instagram while retaining an AMOLED dark theme.'
+            title: 'Vibrant Sunset Gradient & Modernized Identity',
+            description: 'Original high-contrast sunset pink and purple gradient matching the official app icon, with the camera flash dot removed for clean branding.'
           },
           {
             title: 'Local On-Device LLM (Coming Soon)',

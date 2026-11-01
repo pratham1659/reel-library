@@ -69,6 +69,9 @@ cmake-build-*/
 ehthumbs.db
 Thumbs.db
 .tempmediaStorage/
+Screenshot_*.jpg
+Screenshot_*.png
+
 
 # Keystore & Signing secrets
 *.jks

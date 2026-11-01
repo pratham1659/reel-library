@@ -8,10 +8,10 @@ export const Footer: React.FC = () => {
         
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#080C16] to-[#22D3EE] p-[1px]">
-            <div className="w-full h-full bg-[#080C16] rounded-[7px] flex items-center justify-center p-0.5">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#FCAF45] via-[#E1306C] to-[#5851DB] p-[1px]">
+            <div className="w-full h-full bg-[#0C0F17] rounded-[7px] flex items-center justify-center p-0.5">
               <svg viewBox="0 0 108 108" className="w-full h-full" fill="none">
-                <path d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" stroke="#22D3EE" strokeWidth="6" />
+                <path d="M38,30 L70,30 A12,12 0 0,1 82,42 L82,66 A12,12 0 0,1 70,78 L38,78 A12,12 0 0,1 26,66 L26,42 A12,12 0 0,1 38,30 Z" stroke="#E1306C" strokeWidth="6" />
                 <circle cx="54" cy="54" r="12" stroke="#FFFFFF" strokeWidth="5" />
                 <path d="M51,48 L60,54 L51,60 Z" fill="#FFFFFF" />
               </svg>
@@ -44,7 +44,7 @@ export const Footer: React.FC = () => {
         {/* Copyright */}
         <div className="flex items-center gap-1 text-neutral-500">
           <span>Crafted with</span>
-          <Heart className="w-3 h-3 text-cyan-400 fill-cyan-400" />
+          <Heart className="w-3 h-3 text-pink-500 fill-pink-500" />
           <span>for creators & learners.</span>
         </div>
 
