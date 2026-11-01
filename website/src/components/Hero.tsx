@@ -78,10 +78,15 @@ export const Hero: React.FC = () => {
             <HardDrive className="w-4 h-4 text-pink-400 shrink-0" />
             <span>Portable Universal Export</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>MIT Open Source</span>
-          </div>
+          <a 
+            href="/LICENSE" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="flex items-center gap-1.5 hover:text-white transition group"
+          >
+            <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+            <span className="underline decoration-white/20 underline-offset-2 group-hover:decoration-white/60">MIT Open Source</span>
+          </a>
         </div>
 
       </div>
