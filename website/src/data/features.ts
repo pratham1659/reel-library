@@ -45,15 +45,15 @@ export const bentoFeatures: FeatureItem[] = [
     highlights: ['Deep transcript querying', 'Smart auto-categorization', 'Offline SQLite database']
   },
   {
-    id: 'google-drive',
-    title: 'Personal Google Drive Cloud',
+    id: 'universal-vault',
+    title: 'Universal Vault Export & Import',
     tagline: 'Your Storage, Your Encryption',
-    description: 'Seamlessly backup transcripts, metadata, and media directly to your private Google Drive using scoped OAuth2. Zero middleman servers.',
-    badge: 'New in v1.2.2',
+    description: 'Seamlessly backup transcripts, metadata, and media directly into portable .zip archives. Zero middleman servers.',
+    badge: 'Privacy First',
     badgeColor: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
     gradient: 'from-[#FF5252]/15 via-[#FCAF45]/10 to-transparent',
-    iconName: 'Cloud',
-    highlights: ['Direct Google Drive API', 'Personal cloud ownership', 'Real-time sync telemetry']
+    iconName: 'HardDrive',
+    highlights: ['Portable .zip archives', 'Full JSON & media export', 'Real-time storage telemetry']
   },
   {
     id: 'byok',

@@ -1,12 +1,12 @@
 import React from 'react'
 import { bentoFeatures } from '../data/features'
-import { Mic, Sparkles, Search, Cloud, Key, Cpu, Check } from 'lucide-react'
+import { Mic, Sparkles, Search, HardDrive, Key, Cpu, Check } from 'lucide-react'
 
 const iconMap: Record<string, React.ReactNode> = {
   Mic: <Mic className="w-5 h-5 text-pink-400" />,
   Sparkles: <Sparkles className="w-5 h-5 text-rose-400" />,
   Search: <Search className="w-5 h-5 text-purple-400" />,
-  Cloud: <Cloud className="w-5 h-5 text-pink-400" />,
+  HardDrive: <HardDrive className="w-5 h-5 text-pink-400" />,
   Key: <Key className="w-5 h-5 text-amber-400" />,
   Cpu: <Cpu className="w-5 h-5 text-purple-400" />
 }

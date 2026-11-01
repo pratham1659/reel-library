@@ -27,12 +27,16 @@ export const releaseNotesData: ReleaseNote[] = [
         badgeColor: 'bg-pink-500/10 text-pink-300 border-pink-500/30',
         items: [
           {
-            title: 'Data & Storage Alignment Refinements',
-            description: 'Balanced Google Drive card header with single-line status pills, aligned Room SQLite Database metrics with secondary reel count sublabels, and perfected drive.file scope security icon alignment.'
+            title: 'Data & Storage Alignment Polish',
+            description: 'Refined typography and spacing across Data & Storage settings to prevent orphaned text lines. Universal Export subtitle optimized into a clean single line.'
           },
           {
-            title: 'Storage Breakdown Typography',
-            description: 'Clean top-aligned baselines for database sizes and item counts, ensuring crisp readability across diverse screen densities.'
+            title: 'System Update Dual-Version Display',
+            description: 'System Update dialog now displays both Current Version and Latest Version simultaneously across header badges and download status cards.'
+          },
+          {
+            title: 'In-App Update Installation',
+            description: 'Optimized package installer intent flags and enhanced user feedback for unknown source permissions and Google Play Protect verification.'
           }
         ]
       },
@@ -52,16 +56,16 @@ export const releaseNotesData: ReleaseNote[] = [
     version: 'v1.2.2',
     date: 'November 2026',
     isLatest: false,
-    title: 'Personal Cloud Vault & Real-Time Telemetry',
-    summary: 'A major milestone introducing private Google Drive personal cloud backups, live storage telemetry, direct in-app GitHub updates, and an updated brand identity.',
+    title: 'Offline Vault & Real-Time Telemetry',
+    summary: 'A major milestone introducing live storage telemetry, direct in-app GitHub updates, and an updated brand identity.',
     categories: [
       {
-        category: 'Personal Cloud',
+        category: 'Vault & Storage',
         badgeColor: 'bg-pink-500/10 text-pink-300 border-pink-500/30',
         items: [
           {
-            title: 'Google Drive Scoped Backup',
-            description: 'Link your personal Google Account via Google Sign-In to sync transcripts, summaries, and audio directly to your own Google Drive (drive.file scope). Zero intermediary servers.'
+            title: 'Universal Vault Export & Import',
+            description: 'Export all transcripts, summaries, and audio archives directly into portable .zip files. Zero intermediary servers.'
           },
           {
             title: 'Real-Time Storage Breakdown',

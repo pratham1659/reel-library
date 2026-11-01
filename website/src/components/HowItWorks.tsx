@@ -17,8 +17,8 @@ export const HowItWorks: React.FC = () => {
     },
     {
       number: '03',
-      title: 'AI Synthesis & Drive Backup',
-      description: 'Your chosen LLM extracts recipes, code snippets, or itineraries. Everything is indexed into SQLite Room and synced to your private Google Drive.',
+      title: 'AI Synthesis & Vault Indexing',
+      description: 'Your chosen LLM extracts recipes, code snippets, or itineraries. Everything is indexed into SQLite Room with full-text search and universal export.',
       icon: <Sparkles className="w-5 h-5 text-purple-400" />
     }
   ]

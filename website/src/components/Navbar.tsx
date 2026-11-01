@@ -28,7 +28,6 @@ export const Navbar: React.FC = () => {
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-400">
           <a href="#features" className="hover:text-white transition">Features</a>
           <a href="#demo" className="hover:text-white transition">Demo</a>
-          <a href="#cloud-vault" className="hover:text-white transition">Google Drive</a>
           <a href="#release-notes" className="hover:text-white transition flex items-center gap-1.5">
             <span>Release Notes</span>
             <span className="text-[9px] px-1.5 py-0.2 rounded bg-pink-500/15 text-pink-300 font-mono">v1.2.3</span>
@@ -87,13 +86,6 @@ export const Navbar: React.FC = () => {
             className="block text-sm font-medium text-neutral-300 hover:text-white py-1"
           >
             Interactive Demo
-          </a>
-          <a 
-            href="#cloud-vault" 
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-neutral-300 hover:text-white py-1"
-          >
-            Google Drive Vault
           </a>
           <a 
             href="#release-notes" 

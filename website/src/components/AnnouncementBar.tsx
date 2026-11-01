@@ -14,7 +14,7 @@ export const AnnouncementBar: React.FC = () => {
             v1.2.3 Released
           </span>
           <span className="text-neutral-300 font-medium">
-            New: Google Drive Personal Cloud, Real-time Storage & In-App Updates
+            New: Real-time Storage Telemetry, Qwen LLM & In-App Updates
           </span>
           <span className="text-pink-400 font-semibold group-hover:translate-x-1 transition-transform inline-flex items-center gap-0.5">
             Read Release Notes <ArrowRight className="w-3 h-3" />
