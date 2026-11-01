@@ -1406,7 +1406,7 @@ fun RecallReelCard(
 
                 // Status Badge in Top Right
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                    RecallStatusPill(status = reel.status)
+                    RecallStatusPill(status = reel.status, transcript = reel.transcript, transcriptNote = reel.transcriptNote)
                 }
             }
 
@@ -1543,28 +1543,41 @@ private data class StatusPillStyle(
 @Composable
 fun RecallStatusPill(
     status: IngestionStatus,
+    transcript: String? = null,
+    transcriptNote: String? = null,
     isDark: Boolean = LocalIsDarkTheme.current
 ) {
+    val isAudioUnavailable = status == IngestionStatus.NOT_SUPPORTED ||
+        (status == IngestionStatus.COMPLETED && transcript.isNullOrBlank() && !transcriptNote.isNullOrBlank())
+
     val style = if (isDark) {
-        when (status) {
-            IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFF332712), Color(0xFFFFB74D), Color(0xFFFFB74D).copy(alpha = 0.35f))
-            IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFF0F2C3A), StatusProcessing, StatusProcessing.copy(alpha = 0.35f))
-            IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFF0F2C3A), StatusProcessing, StatusProcessing.copy(alpha = 0.35f))
-            IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFF2E1C0A), SparkleOrange, SparkleOrange.copy(alpha = 0.35f))
-            IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFF122815), StatusReady, StatusReady.copy(alpha = 0.35f))
-            IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFF331515), StatusError, StatusError.copy(alpha = 0.35f))
-            IngestionStatus.NOT_SUPPORTED -> StatusPillStyle("Not Supported", Color(0xFF332712), Color(0xFFFFB74D), Color(0xFFFFB74D).copy(alpha = 0.35f))
+        if (isAudioUnavailable) {
+            StatusPillStyle("Audio Not Available", Color(0xFF332712), Color(0xFFFFB74D), Color(0xFFFFB74D).copy(alpha = 0.35f))
+        } else {
+            when (status) {
+                IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFF332712), Color(0xFFFFB74D), Color(0xFFFFB74D).copy(alpha = 0.35f))
+                IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFF0F2C3A), StatusProcessing, StatusProcessing.copy(alpha = 0.35f))
+                IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFF0F2C3A), StatusProcessing, StatusProcessing.copy(alpha = 0.35f))
+                IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFF2E1C0A), SparkleOrange, SparkleOrange.copy(alpha = 0.35f))
+                IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFF122815), StatusReady, StatusReady.copy(alpha = 0.35f))
+                IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFF331515), StatusError, StatusError.copy(alpha = 0.35f))
+                IngestionStatus.NOT_SUPPORTED -> StatusPillStyle("Audio Not Available", Color(0xFF332712), Color(0xFFFFB74D), Color(0xFFFFB74D).copy(alpha = 0.35f))
+            }
         }
     } else {
         // Obsidian Light theme: clean, vibrant, modern light pastel badges with crisp high-contrast text and subtle border
-        when (status) {
-            IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
-            IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFFE0F2FE), Color(0xFF0284C7), Color(0xFFBAE6FD))
-            IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFFE0F2FE), Color(0xFF0284C7), Color(0xFFBAE6FD))
-            IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFFFFEDD5), Color(0xFFEA580C), Color(0xFFFED7AA))
-            IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFFDCFCE7), Color(0xFF15803D), Color(0xFF86EFAC))
-            IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFFFEE2E2), Color(0xFFDC2626), Color(0xFFFCA5A5))
-            IngestionStatus.NOT_SUPPORTED -> StatusPillStyle("Not Supported", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+        if (isAudioUnavailable) {
+            StatusPillStyle("Audio Not Available", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+        } else {
+            when (status) {
+                IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+                IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFFE0F2FE), Color(0xFF0284C7), Color(0xFFBAE6FD))
+                IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFFE0F2FE), Color(0xFF0284C7), Color(0xFFBAE6FD))
+                IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFFFFEDD5), Color(0xFFEA580C), Color(0xFFFED7AA))
+                IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFFDCFCE7), Color(0xFF15803D), Color(0xFF86EFAC))
+                IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFFFEE2E2), Color(0xFFDC2626), Color(0xFFFCA5A5))
+                IngestionStatus.NOT_SUPPORTED -> StatusPillStyle("Audio Not Available", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+            }
         }
     }
 
@@ -2139,7 +2152,7 @@ fun FullTranscriptDialog(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
-                                    text = "Spoken Audio Unavailable",
+                                    text = "Audio Not Available",
                                     fontSize = 13.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = WarningYellow
@@ -2166,7 +2179,7 @@ fun FullTranscriptDialog(
                                     lineHeight = 18.sp
                                 )
                             }
-                            if (onRetryTranscription != null && reel.status != IngestionStatus.NOT_SUPPORTED) {
+                            if (onRetryTranscription != null) {
                                 Spacer(modifier = Modifier.height(6.dp))
                                 TextButton(onClick = onRetryTranscription) {
                                     Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp), tint = ActiveBlue)
@@ -2340,7 +2353,7 @@ fun RecallReelGridCard(
 
                 // Status Badge in Top Right
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)) {
-                    RecallStatusPill(status = reel.status)
+                    RecallStatusPill(status = reel.status, transcript = reel.transcript, transcriptNote = reel.transcriptNote)
                 }
             }
 
@@ -2480,7 +2493,7 @@ fun RecallReelTable(
                         if (!reel.userNotes.isNullOrBlank()) {
                             NotePill()
                         }
-                        RecallStatusPill(status = reel.status)
+                        RecallStatusPill(status = reel.status, transcript = reel.transcript, transcriptNote = reel.transcriptNote)
                     }
 
                     // Source
@@ -2826,7 +2839,7 @@ fun ReelDetailScreen(
                             .align(Alignment.TopEnd)
                             .padding(10.dp)
                     ) {
-                        RecallStatusPill(status = currentReel.status)
+                        RecallStatusPill(status = currentReel.status, transcript = currentReel.transcript, transcriptNote = currentReel.transcriptNote)
                     }
                 }
             }
@@ -3205,126 +3218,7 @@ fun ReelDetailScreen(
                                 }
                             }
                         }
-                    } else if (currentReel.status == IngestionStatus.NOT_SUPPORTED) {
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = WarningYellow.copy(alpha = 0.10f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, WarningYellow.copy(alpha = 0.4f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(28.dp)
-                                            .clip(CircleShape)
-                                            .background(WarningYellow.copy(alpha = 0.2f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Lock,
-                                            contentDescription = "Not Supported",
-                                            tint = WarningYellow,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                    Column {
-                                        Text(
-                                            text = "Reel Export Not Supported",
-                                            fontSize = 13.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = colors.textPrimary
-                                        )
-                                        Text(
-                                            text = "Instagram media export blocked • AI skipped",
-                                            fontSize = 11.sp,
-                                            color = colors.textMuted
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                Text(
-                                    text = "Instagram does not provide an external downloadable video stream for this reel. Audio transcription and AI summary were skipped to conserve your API quota.",
-                                    fontSize = 12.5.sp,
-                                    color = colors.textSecondary,
-                                    lineHeight = 18.sp
-                                )
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    NeumorphicButton(
-                                        onClick = { openInInstagram(context, currentReel.canonicalUrl) },
-                                        colors = colors,
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                                contentDescription = null,
-                                                tint = colors.accent,
-                                                modifier = Modifier.size(15.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = "Watch on Instagram",
-                                                fontSize = 12.5.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = colors.textPrimary
-                                            )
-                                        }
-                                    }
-
-                                    if (!currentReel.caption.isNullOrBlank()) {
-                                        Surface(
-                                            onClick = {
-                                                showRunAiConfirmDialog = true
-                                            },
-                                            enabled = !isRetrying,
-                                            shape = RoundedCornerShape(12.dp),
-                                            color = colors.accentBg,
-                                            border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.accent),
-                                            modifier = Modifier.height(48.dp)
-                                        ) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.Center,
-                                                modifier = Modifier.padding(horizontal = 12.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.AutoAwesome,
-                                                    contentDescription = null,
-                                                    tint = colors.accent,
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(6.dp))
-                                                Text(
-                                                    text = "Summarize Caption",
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = colors.accent
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     } else if (!hasAiContent) {
-                        // REEL > 1 MIN TOKEN SAVER CALL-TO-ACTION CARD
                         Surface(
                             shape = RoundedCornerShape(14.dp),
                             color = colors.pillBg,
@@ -3354,13 +3248,13 @@ fun ReelDetailScreen(
                                     }
                                     Column {
                                         Text(
-                                            text = "AI Summary Paused (> 1 min)",
+                                            text = "AI Summary Ready",
                                             fontSize = 13.5.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = colors.textPrimary
                                         )
                                         Text(
-                                            text = "Tokens saved during background ingest",
+                                            text = "Tap below to synthesize summary",
                                             fontSize = 11.sp,
                                             color = colors.textMuted
                                         )
@@ -3370,7 +3264,7 @@ fun ReelDetailScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
-                                    text = "This reel is longer than 1 minute. Transcript and details are ready. Tap below to run AI token summarization on demand.",
+                                    text = "Tap below to run AI summarization on demand using available caption and transcript data.",
                                     fontSize = 12.sp,
                                     color = colors.textSecondary,
                                     lineHeight = 17.sp
@@ -3580,22 +3474,21 @@ fun ReelDetailScreen(
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 val reasonMessage = com.reelrecall.app.engine.Transcripts.display(currentReel.transcript, currentReel.transcriptNote)
-                                val isRestricted = currentReel.transcriptNote?.contains("restricted", ignoreCase = true) == true
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Icon(
-                                        imageVector = if (isRestricted) Icons.Default.Lock else Icons.Default.GraphicEq,
+                                        imageVector = Icons.Default.GraphicEq,
                                         contentDescription = null,
-                                        tint = if (isRestricted) WarningYellow else colors.textMuted,
+                                        tint = colors.textMuted,
                                         modifier = Modifier.size(15.dp)
                                     )
                                     Text(
-                                        text = if (isRestricted) "Protected on Instagram" else "Spoken Transcript Unavailable",
+                                        text = "Audio Not Available",
                                         fontSize = 12.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isRestricted) WarningYellow else colors.textMuted
+                                        color = colors.textMuted
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
@@ -3606,37 +3499,22 @@ fun ReelDetailScreen(
                                     lineHeight = 18.sp
                                 )
                                 Spacer(modifier = Modifier.height(10.dp))
-                                if (isRestricted || currentReel.status == IngestionStatus.NOT_SUPPORTED) {
-                                    NeumorphicButton(
-                                        onClick = { openInInstagram(context, currentReel.canonicalUrl) },
-                                        colors = colors,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                                contentDescription = null,
-                                                tint = colors.accent,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            Text(
-                                                text = "Watch Reel on Instagram",
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = colors.textPrimary
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    TextButton(
-                                        onClick = { viewModel.reprocessReel(currentReel.id) },
-                                        enabled = !isRetrying
-                                    ) {
-                                        Text(if (isRetrying) "Retrying…" else "Retry transcription")
-                                    }
+                                TextButton(
+                                    onClick = { viewModel.reprocessReel(currentReel.id) },
+                                    enabled = !isRetrying
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        tint = colors.accent,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isRetrying) "Retrying…" else "Retry transcription",
+                                        color = colors.accent,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
                             }
                         }

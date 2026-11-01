@@ -456,7 +456,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                                            reel.transcript?.contains("comments - ") == true ||
                                            reel.transcript?.contains("Transcription generated on-device via Whisper", ignoreCase = true) == true
 
-                val isGenericOrDemo = (reel.status == IngestionStatus.COMPLETED && (
+                val isGenericOrDemo = (reel.status == IngestionStatus.NOT_SUPPORTED) || (reel.status == IngestionStatus.COMPLETED && (
                     reel.creatorHandle?.contains("&#") == true ||
                     reel.title.isNullOrBlank() ||
                     reel.oneLineSummary.isNullOrBlank() ||
@@ -504,18 +504,30 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     android.util.Log.d("ReelLibrary", "Reel ${reel.id} summary: success=${summaryResult.isSuccess}")
 
                     if (summary != null) {
+                        val rawTags = summary.tags.map { it.trim().removePrefix("#") }.filter { it.isNotBlank() }.toMutableSet()
+                        if (cleanCaption.isNotBlank()) {
+                            val hashRegex = Regex("""#([a-zA-Z0-9_]{2,30})""")
+                            hashRegex.findAll(cleanCaption).forEach { match ->
+                                val tag = match.groupValues[1].trim()
+                                if (tag.isNotBlank() && !tag.equals("reels", ignoreCase = true) && !tag.equals("instagram", ignoreCase = true) && !tag.equals("fyp", ignoreCase = true) && !tag.equals("viral", ignoreCase = true)) {
+                                    rawTags.add(tag)
+                                }
+                            }
+                        }
+                        val finalTags = rawTags.take(8).toList()
+
                         val updated = reel.copy(
                             title = summary.title,
                             oneLineSummary = summary.one_line_summary,
                             takeawaysJson = kotlinx.serialization.json.Json.encodeToString(summary.actionable_takeaways),
-                            tagsJson = kotlinx.serialization.json.Json.encodeToString(summary.tags),
+                            tagsJson = kotlinx.serialization.json.Json.encodeToString(finalTags),
                             creatorHandle = parsedHandle ?: reel.creatorHandle,
                             caption = cleanCaption.ifBlank { reel.caption },
                             transcript = outcome.text,
                             transcriptNote = outcome.note,
                             thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
                             status = IngestionStatus.COMPLETED,
-                            engineUsed = "${transcriber.name} + ${summarizer.name}",
+                            engineUsed = if (outcome.text != null) "${transcriber.name} + ${summarizer.name}" else "Caption Analysis + ${summarizer.name}",
                             errorMessage = null
                         )
                         dao.update(updated)
@@ -585,52 +597,34 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                                    reel.transcript?.contains("comments - ", ignoreCase = true) == true
                     val outcome = transcribeForReprocess(metadata, transcriber, reel.transcript, hasBogus)
 
-                    val isExportNotSupported = metadata?.isRestricted == true || metadata?.videoUrl.isNullOrBlank() || metadata?.audioFile == null
-                    if (isExportNotSupported) {
-                        val shortcode = reel.shortcode
-                        val handleDisplay = parsedHandle?.takeIf { it.isNotBlank() && it != "@instagram_creator" }
-                        val sanitizedCaption = cleanCaption
-                            .replace(Regex("""(?i)^(comment|type|drop|dm|send)\s+["']?[a-zA-Z0-9_-]+["']?\s+(and|to|for|&).*?([.!?\n]|$)"""), "")
-                            .trim()
-                        val realTitle = sanitizedCaption.take(60).ifBlank { null }
-                            ?: cleanCaption.take(60).ifBlank { null }
-                            ?: (if (handleDisplay != null) "Instagram Reel by $handleDisplay" else "Instagram Reel #$shortcode")
-                        val summary = cleanCaption.take(180).ifBlank { null }
-                            ?: "Video export is not supported by Instagram for this reel. Audio transcription and AI summary were skipped to save your API quota."
-                        val updated = reel.copy(
-                            title = realTitle,
-                            oneLineSummary = summary,
-                            takeawaysJson = "[]",
-                            tagsJson = "[]",
-                            creatorHandle = handleDisplay ?: reel.creatorHandle,
-                            caption = cleanCaption.ifBlank { reel.caption },
-                            transcript = null,
-                            transcriptNote = metadata?.audioNote ?: "Instagram does not permit external video export for this reel. Tap 'Watch Reel on Instagram' to view.",
-                            thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
-                            status = IngestionStatus.NOT_SUPPORTED,
-                            engineUsed = "Export Not Supported (AI Skipped)",
-                            errorMessage = null
-                        )
-                        dao.update(updated)
-                        return@withLock
-                    }
-
                     val summaryResult = summarizer.summarize(cleanCaption, outcome.summaryInput)
                     val summary = summaryResult.getOrNull()
 
                     if (summary != null) {
+                        val rawTags = summary.tags.map { it.trim().removePrefix("#") }.filter { it.isNotBlank() }.toMutableSet()
+                        if (cleanCaption.isNotBlank()) {
+                            val hashRegex = Regex("""#([a-zA-Z0-9_]{2,30})""")
+                            hashRegex.findAll(cleanCaption).forEach { match ->
+                                val tag = match.groupValues[1].trim()
+                                if (tag.isNotBlank() && !tag.equals("reels", ignoreCase = true) && !tag.equals("instagram", ignoreCase = true) && !tag.equals("fyp", ignoreCase = true) && !tag.equals("viral", ignoreCase = true)) {
+                                    rawTags.add(tag)
+                                }
+                            }
+                        }
+                        val finalTags = rawTags.take(8).toList()
+
                         val updated = reel.copy(
                             title = summary.title,
                             oneLineSummary = summary.one_line_summary,
                             takeawaysJson = kotlinx.serialization.json.Json.encodeToString(summary.actionable_takeaways),
-                            tagsJson = kotlinx.serialization.json.Json.encodeToString(summary.tags),
+                            tagsJson = kotlinx.serialization.json.Json.encodeToString(finalTags),
                             creatorHandle = parsedHandle ?: reel.creatorHandle,
                             caption = cleanCaption.ifBlank { reel.caption },
                             transcript = outcome.text,
                             transcriptNote = outcome.note,
                             thumbnailUrl = metadata?.thumbnailUrl ?: reel.thumbnailUrl,
                             status = IngestionStatus.COMPLETED,
-                            engineUsed = "${transcriber.name} + ${summarizer.name}",
+                            engineUsed = if (outcome.text != null) "${transcriber.name} + ${summarizer.name}" else "Caption Analysis + ${summarizer.name}",
                             errorMessage = null
                         )
                         dao.update(updated)

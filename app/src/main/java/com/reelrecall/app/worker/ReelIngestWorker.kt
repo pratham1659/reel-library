@@ -78,81 +78,36 @@ class ReelIngestWorker(
                 android.text.Html.fromHtml(it, android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim()
             }
 
-            val isExportNotSupported = metadata.isRestricted || metadata.videoUrl.isNullOrBlank() || metadata.audioFile == null
+            // Check if there is text content available (caption or audio transcript)
+            val hasContentToSummarize = !cleanCaption.isNullOrBlank() || transcript.isNotBlank()
 
-            if (isExportNotSupported) {
-                // RULE: If reel media export is not supported by Instagram, DO NOT run AI to waste API quota.
-                // Mark as NOT_SUPPORTED in status chips and present clean native details.
+            if (!hasContentToSummarize) {
+                // If neither audio nor caption could be extracted, record metadata cleanly
                 if (existing != null) {
-                    val shortcode = existing.shortcode
-                    val handleDisplay = cleanHandle?.takeIf { it.isNotBlank() && it != "@instagram_creator" }
-                    
-                    val sanitizedCaption = cleanCaption
-                        ?.replace(Regex("""(?i)^(comment|type|drop|dm|send)\s+["']?[a-zA-Z0-9_-]+["']?\s+(and|to|for|&).*?([.!?\n]|$)"""), "")
-                        ?.trim()
-                    val realTitle = sanitizedCaption?.take(60)?.ifBlank { null }
-                        ?: cleanCaption?.take(60)?.ifBlank { null }
-                        ?: (if (handleDisplay != null) "Instagram Reel by $handleDisplay" else "Instagram Reel #$shortcode")
-
-                    val summary = cleanCaption?.take(180)?.ifBlank { null }
-                        ?: "Video export is not supported by Instagram for this reel. Audio transcription and AI summary were skipped to save your API quota."
-
+                    val fallbackTitle = cleanHandle?.let { "Instagram Reel by $it" } ?: "Instagram Reel #${existing.shortcode}"
                     val updated = existing.copy(
-                        creatorHandle = handleDisplay ?: existing.creatorHandle,
-                        caption = cleanCaption ?: existing.caption,
+                        creatorHandle = cleanHandle ?: existing.creatorHandle,
+                        caption = null,
                         audioPath = null,
                         thumbnailUrl = metadata.thumbnailUrl ?: existing.thumbnailUrl,
                         transcript = null,
-                        transcriptNote = metadata.audioNote ?: "Instagram does not permit external video export for this reel. Tap 'Watch Reel on Instagram' to view.",
-                        title = realTitle,
-                        oneLineSummary = summary,
-                        takeawaysJson = "[]",
-                        tagsJson = "[]",
-                        engineUsed = "Export Not Supported (AI Skipped)",
-                        status = IngestionStatus.NOT_SUPPORTED,
-                        errorMessage = null
-                    )
-                    dao.update(updated)
-                }
-
-                val notifTitle = cleanCaption?.take(40) ?: "Reel Library: Export Not Supported"
-                postCompletionNotification(notifTitle, "Export not supported for this reel. Tap in app to view on Instagram.")
-                return Result.success()
-            }
-
-            val shouldSkipAiForDuration = durationMs > 60_000L && currentPrefs.engineMode == com.reelrecall.app.data.repository.EngineMode.CLOUD_ONLY
-
-            if (shouldSkipAiForDuration) {
-                // RULE: Long Reel (> 1 min) in Cloud Mode -> Save all extracted details without consuming paid/free API rate limits
-                if (existing != null) {
-                    val sanitizedCaption = cleanCaption?.replace(Regex("""(?i)^(comment|type|drop|dm|send)\s+["']?[a-zA-Z0-9_-]+["']?\s+(and|to|for|&).*?([.!?\n]|$)"""), "")?.trim()
-                    val fallbackTitle = sanitizedCaption?.take(60)?.ifBlank { null }
-                        ?: cleanCaption?.take(60)?.ifBlank { null }
-                        ?: "Instagram Reel by ${cleanHandle ?: "@creator"}"
-                    val updated = existing.copy(
-                        creatorHandle = cleanHandle ?: existing.creatorHandle,
-                        caption = cleanCaption ?: existing.caption,
-                        audioPath = metadata.audioFile?.absolutePath,
-                        thumbnailUrl = metadata.thumbnailUrl ?: existing.thumbnailUrl,
-                        transcript = transcriptOutcome.text,
-                        transcriptNote = transcriptOutcome.note,
+                        transcriptNote = transcriptOutcome.note ?: "Instagram audio stream and post caption were both unavailable.",
                         title = fallbackTitle,
-                        oneLineSummary = null,
+                        oneLineSummary = "No caption or extractable audio was found to generate an AI summary.",
                         takeawaysJson = "[]",
                         tagsJson = "[]",
-                        engineUsed = transcriptionEngine.name,
+                        engineUsed = "Metadata Only",
                         status = IngestionStatus.COMPLETED,
                         errorMessage = null
                     )
                     dao.update(updated)
                 }
-
-                val notifTitle = cleanCaption?.take(40) ?: "Reel Library: Long Reel Indexed"
-                postCompletionNotification(notifTitle, "Reel is over 1 min. Tap in app to run AI summary on demand.")
+                val notifTitle = cleanHandle?.let { "Reel by $it saved" } ?: "Reel saved"
+                postCompletionNotification(notifTitle, "Saved reel metadata.")
                 return Result.success()
             }
 
-            // Step 3: Update status to SUMMARIZING for reels <= 1 minute
+            // Step 3: Update status to SUMMARIZING
             dao.updateStatus(reelId, IngestionStatus.SUMMARIZING)
 
             // Keep the transcript even if summarization later fails.
@@ -167,7 +122,7 @@ class ReelIngestWorker(
             }
 
             val summarizationEngine = dispatcher.resolveSummarizationEngine(currentPrefs)
-            val summaryResult = summarizationEngine.summarize(metadata.caption, transcript)
+            val summaryResult = summarizationEngine.summarize(cleanCaption, transcript)
 
             val summary = summaryResult.getOrElse { originalErr ->
                 return handleError(reelId, "Processing failed: ${originalErr.message}")
@@ -175,6 +130,18 @@ class ReelIngestWorker(
 
             // Step 4: Persist finalized entity in Room DB
             if (existing != null) {
+                val rawTags = summary.tags.map { it.trim().removePrefix("#") }.filter { it.isNotBlank() }.toMutableSet()
+                if (!cleanCaption.isNullOrBlank()) {
+                    val hashRegex = Regex("""#([a-zA-Z0-9_]{2,30})""")
+                    hashRegex.findAll(cleanCaption).forEach { match ->
+                        val tag = match.groupValues[1].trim()
+                        if (tag.isNotBlank() && !tag.equals("reels", ignoreCase = true) && !tag.equals("instagram", ignoreCase = true) && !tag.equals("fyp", ignoreCase = true) && !tag.equals("viral", ignoreCase = true)) {
+                            rawTags.add(tag)
+                        }
+                    }
+                }
+                val finalTags = rawTags.take(8).toList()
+
                 val updated = existing.copy(
                     creatorHandle = cleanHandle ?: existing.creatorHandle,
                     caption = cleanCaption ?: existing.caption,
@@ -185,8 +152,8 @@ class ReelIngestWorker(
                     title = summary.title,
                     oneLineSummary = summary.one_line_summary,
                     takeawaysJson = Json.encodeToString(summary.actionable_takeaways),
-                    tagsJson = Json.encodeToString(summary.tags),
-                    engineUsed = "${transcriptionEngine.name} + ${summarizationEngine.name}",
+                    tagsJson = Json.encodeToString(finalTags),
+                    engineUsed = if (transcriptOutcome.text != null) "${transcriptionEngine.name} + ${summarizationEngine.name}" else "Caption Analysis + ${summarizationEngine.name}",
                     status = IngestionStatus.COMPLETED,
                     errorMessage = null
                 )
