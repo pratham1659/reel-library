@@ -815,11 +815,16 @@ private fun DrawerReelCard(
             }
 
             // Status indicator dot
-            val dotColor = when (reel.status) {
-                IngestionStatus.COMPLETED -> StatusReady
-                IngestionStatus.FAILED -> StatusError
-                IngestionStatus.NOT_SUPPORTED -> Color(0xFFFFB74D)
-                else -> StatusProcessing
+            val isAudioUnavailable = reel.status == IngestionStatus.NOT_SUPPORTED ||
+                (reel.status == IngestionStatus.COMPLETED && !com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(reel.transcript))
+            val dotColor = when {
+                reel.status == IngestionStatus.FAILED -> StatusError
+                isAudioUnavailable -> Color(0xFFFBBF24)
+                reel.status == IngestionStatus.COMPLETED -> StatusReady
+                reel.status == IngestionStatus.TRANSCRIBING -> Color(0xFFC084FC)
+                reel.status == IngestionStatus.SUMMARIZING -> Color(0xFFFB923C)
+                reel.status == IngestionStatus.EXTRACTING -> Color(0xFF38BDF8)
+                else -> Color(0xFF94A3B8)
             }
             Box(
                 modifier = Modifier

@@ -1552,16 +1552,16 @@ fun RecallStatusPill(
 
     val style = if (isDark) {
         if (isAudioUnavailable) {
-            StatusPillStyle("Audio Not Available", Color(0xFF332712), Color(0xFFFFB74D), Color(0xFFFFB74D).copy(alpha = 0.35f))
+            StatusPillStyle("Audio Not Available", Color(0xFF2E2008), Color(0xFFFBBF24), Color(0xFFF59E0B).copy(alpha = 0.35f))
         } else {
             when (status) {
-                IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFF332712), Color(0xFFFFB74D), Color(0xFFFFB74D).copy(alpha = 0.35f))
-                IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFF0F2C3A), StatusProcessing, StatusProcessing.copy(alpha = 0.35f))
-                IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFF0F2C3A), StatusProcessing, StatusProcessing.copy(alpha = 0.35f))
-                IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFF2E1C0A), SparkleOrange, SparkleOrange.copy(alpha = 0.35f))
-                IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFF122815), StatusReady, StatusReady.copy(alpha = 0.35f))
-                IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFF331515), StatusError, StatusError.copy(alpha = 0.35f))
-                IngestionStatus.NOT_SUPPORTED -> StatusPillStyle("Audio Not Available", Color(0xFF332712), Color(0xFFFFB74D), Color(0xFFFFB74D).copy(alpha = 0.35f))
+                IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFF1E2230), Color(0xFF94A3B8), Color(0xFF64748B).copy(alpha = 0.35f))
+                IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFF0C2533), Color(0xFF38BDF8), Color(0xFF0EA5E9).copy(alpha = 0.35f))
+                IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFF231638), Color(0xFFC084FC), Color(0xFFA855F7).copy(alpha = 0.35f))
+                IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFF2E1608), Color(0xFFFB923C), Color(0xFFF97316).copy(alpha = 0.35f))
+                IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFF102818), Color(0xFF4ADE80), Color(0xFF22C55E).copy(alpha = 0.35f))
+                IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFF331418), Color(0xFFF87171), Color(0xFFEF4444).copy(alpha = 0.35f))
+                IngestionStatus.NOT_SUPPORTED -> StatusPillStyle("Audio Not Available", Color(0xFF2E2008), Color(0xFFFBBF24), Color(0xFFF59E0B).copy(alpha = 0.35f))
             }
         }
     } else {
@@ -1570,12 +1570,12 @@ fun RecallStatusPill(
             StatusPillStyle("Audio Not Available", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
         } else {
             when (status) {
-                IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+                IngestionStatus.QUEUED -> StatusPillStyle("Queued", Color(0xFFF1F5F9), Color(0xFF475569), Color(0xFFCBD5E1))
                 IngestionStatus.EXTRACTING -> StatusPillStyle("Extracting", Color(0xFFE0F2FE), Color(0xFF0284C7), Color(0xFFBAE6FD))
-                IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFFE0F2FE), Color(0xFF0284C7), Color(0xFFBAE6FD))
-                IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFFFFEDD5), Color(0xFFEA580C), Color(0xFFFED7AA))
+                IngestionStatus.TRANSCRIBING -> StatusPillStyle("Transcribing", Color(0xFFF3E8FF), Color(0xFF7E22CE), Color(0xFFD8B4FE))
+                IngestionStatus.SUMMARIZING -> StatusPillStyle("Summarizing", Color(0xFFFFEDD5), Color(0xFFC2410C), Color(0xFFFED7AA))
                 IngestionStatus.COMPLETED -> StatusPillStyle("Ready", Color(0xFFDCFCE7), Color(0xFF15803D), Color(0xFF86EFAC))
-                IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFFFEE2E2), Color(0xFFDC2626), Color(0xFFFCA5A5))
+                IngestionStatus.FAILED -> StatusPillStyle("Failed", Color(0xFFFEE2E2), Color(0xFFB91C1C), Color(0xFFFCA5A5))
                 IngestionStatus.NOT_SUPPORTED -> StatusPillStyle("Audio Not Available", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
             }
         }

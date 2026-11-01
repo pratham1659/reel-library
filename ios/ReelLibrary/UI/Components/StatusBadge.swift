@@ -19,11 +19,11 @@ public struct StatusBadge: View {
     private var statusColor: Color {
         switch status {
         case .queued:
-            return Color.sparkleOrange.opacity(0.9)
+            return Color(hex: 0x94A3B8)
         case .extracting:
             return Color.cyanAccent
         case .transcribing:
-            return Color.activeBlue
+            return Color(hex: 0xC084FC)
         case .summarizing:
             return Color.sparkleOrange
         case .completed:
