@@ -43,9 +43,9 @@ enum class AIProvider(
         displayName = "Groq Cloud (LPU)",
         shortName = "Groq",
         badgeText = "Free-Tier",
-        subtitle = "Ultra-fast inference (Llama 3.3, Qwen 2.5, Whisper Large v3)",
+        subtitle = "Ultra-fast inference (Qwen 3, Whisper Large v3)",
         defaultBaseUrl = "https://api.groq.com/openai/v1",
-        defaultSummarizerModel = "llama-3.3-70b-versatile",
+        defaultSummarizerModel = "qwen/qwen3.8-27b",
         defaultTranscriptionModel = "whisper-large-v3-turbo",
         consoleUrl = "https://console.groq.com/keys"
     ),
