@@ -4,7 +4,7 @@ import { Sparkles, CheckCircle2, HardDrive, RefreshCw, Cpu } from 'lucide-react'
 
 export const ReleaseNotes: React.FC = () => {
   return (
-    <section id="release-notes" className="relative py-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
+    <section id="release-notes" className="relative py-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto overflow-hidden w-full">
       <div className="text-center max-w-2xl mx-auto mb-12">
         <div className="inline-flex items-center gap-1.5 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-xs text-pink-300 mb-3">
           <Sparkles className="w-3.5 h-3.5" />

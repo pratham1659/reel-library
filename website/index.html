@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="scroll-smooth overflow-x-hidden">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <title>Reel Library — Turn Fleeting Reels into a Searchable Personal Vault</title>
     <meta name="description" content="A private, open-source Android app that transcribes, summarizes, and organizes your saved Instagram reels using on-device and cloud AI, with offline SQLite storage and universal export." />
     
@@ -11,13 +11,14 @@
     <meta property="og:description" content="Private, open-source Android app with local speech-to-text, multi-model AI summarization, and offline SQLite storage." />
     <meta property="og:type" content="website" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="license" href="/LICENSE" />
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
   </head>
-  <body class="relative min-h-screen bg-obsidian text-[#EDEDF0] font-sans selection:bg-pink-500/30 selection:text-pink-200 antialiased overflow-x-hidden">
+  <body class="relative min-h-screen bg-obsidian text-[#EDEDF0] font-sans selection:bg-pink-500/30 selection:text-pink-200 antialiased overflow-x-hidden w-full max-w-full">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

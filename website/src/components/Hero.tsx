@@ -3,7 +3,7 @@ import { Download, Github, Shield, Cpu, HardDrive, CheckCircle } from 'lucide-re
 
 export const Hero: React.FC = () => {
   return (
-    <section className="relative pt-14 pb-12 sm:pt-20 sm:pb-16 text-center px-4 sm:px-6 lg:px-8">
+    <section className="relative pt-14 pb-12 sm:pt-20 sm:pb-16 text-center px-4 sm:px-6 lg:px-8 overflow-hidden w-full max-w-full">
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Official App Icon Emblem Showcase */}

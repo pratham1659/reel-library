@@ -10,7 +10,7 @@ export const FaqSection: React.FC = () => {
   }
 
   return (
-    <section id="faq" className="relative py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+    <section id="faq" className="relative py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto overflow-hidden w-full">
       <div className="text-center mb-12">
         <span className="text-xs font-semibold uppercase tracking-wider text-pink-400">
           Frequently Asked Questions

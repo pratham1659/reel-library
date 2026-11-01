@@ -3,7 +3,7 @@ import { Download, Github, ShieldCheck, Smartphone, Sparkles } from 'lucide-reac
 
 export const DownloadCta: React.FC = () => {
   return (
-    <section id="download" className="relative py-14 sm:py-20 px-3 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center">
+    <section id="download" className="relative py-14 sm:py-20 px-3 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center overflow-hidden w-full">
       <div className="relative rounded-3xl p-5 sm:p-10 md:p-14 bg-gradient-to-b from-obsidian-card via-obsidian-elevated to-obsidian border border-pink-500/30 shadow-[0_0_80px_rgba(225,48,108,0.25)] overflow-hidden">
         
         {/* Top Glow Ambient */}

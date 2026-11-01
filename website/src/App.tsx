@@ -13,17 +13,19 @@ import { Footer } from './components/Footer'
 
 export const App: React.FC = () => {
   return (
-    <div className="relative min-h-screen bg-obsidian text-[#EDEDF0] selection:bg-pink-500/30 selection:text-pink-200">
+    <div className="relative min-h-screen bg-obsidian text-[#EDEDF0] selection:bg-pink-500/30 selection:text-pink-200 overflow-x-hidden w-full max-w-full">
       
-      {/* Top Ambient Spotlight Flare with Warm Sunset Aura */}
-      <div className="spotlight-glow" aria-hidden="true" />
+      {/* Top Ambient Spotlight Flare with Warm Sunset Aura (strictly clipped to viewport) */}
+      <div className="absolute top-0 left-0 right-0 h-[520px] overflow-hidden pointer-events-none z-0" aria-hidden="true">
+        <div className="spotlight-glow" />
+      </div>
 
       {/* Vertical Guide Lines Frame (Inspired by getplexo.app) */}
       <div className="fixed inset-0 pointer-events-none flex justify-center z-0" aria-hidden="true">
         <div className="w-full max-w-7xl h-full border-x border-white/[0.04]" />
       </div>
 
-      <div className="relative z-10 flex flex-col min-h-screen">
+      <div className="relative z-10 flex flex-col min-h-screen overflow-x-hidden w-full max-w-full">
         <AnnouncementBar />
         <Navbar />
         

@@ -85,9 +85,9 @@ export const DeviceMockup: React.FC = () => {
       </div>
 
       {/* Phone Bezel Container */}
-      <div className="relative mx-auto w-full max-w-[310px] sm:max-w-[360px] md:max-w-[380px]">
+      <div className="relative mx-auto w-full max-w-[300px] xs:max-w-[310px] sm:max-w-[360px] md:max-w-[380px]">
         {/* Outer Phone Ambient Shadow */}
-        <div className="absolute -inset-4 rounded-[50px] bg-gradient-to-b from-pink-500/20 via-purple-500/10 to-transparent blur-2xl -z-10" />
+        <div className="absolute -inset-1 sm:-inset-4 rounded-[50px] bg-gradient-to-b from-pink-500/20 via-purple-500/10 to-transparent blur-xl sm:blur-2xl -z-10" />
 
         {/* Physical Bezel */}
         <div className="relative rounded-[44px] p-2.5 sm:p-3 bg-neutral-900 border-[3px] border-neutral-700/80 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)]">
