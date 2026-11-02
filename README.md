@@ -138,9 +138,30 @@ flowchart TD
 
 ---
 
-## 🔒 Security & Privacy Policy
+## 🔒 Permissions & Privacy Policy
 
-Reel Library does not collect, sell, or transmit your personal data to any third-party analytics or tracking servers. All indexing, notes, and full-text searches happen **100% locally on your device**. Cloud AI requests only occur in Cloud Mode using your personal API key directly with your configured provider's official API (Groq, OpenAI, Anthropic, or your custom endpoint). API keys are stored exclusively in the hardware-backed Secure Enclave Keychain.
+Reel Library follows a strict **zero-telemetry, local-first privacy architecture**. We do not operate tracking servers, sell analytics, or log user activity. Your database, audio transcripts, executive summaries, and search indices remain 100% on your local device.
+
+### Android Permission Transparency
+
+In compliance with open-source security standards and direct GitHub distribution best practices, Reel Library requests only the minimal set of permissions required for core functionality:
+
+| Permission | Protection Level | Purpose & Justification |
+| :--- | :--- | :--- |
+| `android.permission.INTERNET` | Normal | Fetches Instagram reel audio streams/embed metadata and connects directly to your chosen AI provider endpoint (Groq, OpenAI, Anthropic, or self-hosted API) using your personal API key. |
+| `android.permission.ACCESS_NETWORK_STATE` | Normal | Enables the **Auto-Hybrid Dispatcher** to detect whether Wi-Fi or cellular connectivity is active before routing requests or executing scheduled Google Drive backups. |
+| `android.permission.POST_NOTIFICATIONS` | Runtime (API 33+) | Alerts you with a system notification when background transcription and summarization of a shared reel complete. |
+| `android.permission.REQUEST_INSTALL_PACKAGES` | Special | Exclusively powers the **in-app update installer** for users who sideload Reel Library from GitHub Releases. Never triggers silently; requires explicit user confirmation before launching the system package installer. |
+
+### Package Visibility & Anti-Snooping Guard
+- **No `QUERY_ALL_PACKAGES`**: Reel Library explicitly rejects invasive broad package query permissions.
+- **Targeted `<queries>` Intent Filters**: Package visibility is strictly constrained to `com.instagram.android` (for 1-tap reel deep linking), HTTPS web browsers (for viewing documentation and AI provider developer consoles), and mail clients (for user feedback).
+
+### Network & Binary Hardening
+- **Strict TLS Only (`usesCleartextTraffic="false"`)**: Enforced system-wide via `network_security_config.xml`. All plain HTTP traffic is blocked at the OS layer.
+- **Stripped Production Logcat**: All debug, verbose, info, warning, and error logs are stripped from release binaries via R8 optimizer rules, preventing accidental token or URL leakage.
+- **Triple Signature Scheme (v1 + v2 + v3)**: Signed with APK Signature Schemes v1, v2, and v3 to guarantee complete cryptographic integrity and prevent Google Play Protect sideloading false positives.
+- **Hardware-Backed Key Vault**: Cloud API keys are encrypted at rest using AES-256-GCM backed by hardware-backed Android Keystore (`MasterKeys`) on Android and the Apple Secure Enclave Keychain on iOS.
 
 ---
 
