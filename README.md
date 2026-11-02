@@ -144,17 +144,17 @@ Reel Library follows a strict **zero-telemetry, local-first privacy architecture
 
 ### Android Permission Transparency
 
-In compliance with open-source security standards and direct GitHub distribution best practices, Reel Library requests only the minimal set of permissions required for core functionality:
+In compliance with open-source security standards and direct GitHub distribution best practices, Reel Library requests strictly minimal, non-invasive permissions:
 
 | Permission | Protection Level | Purpose & Justification |
 | :--- | :--- | :--- |
 | `android.permission.INTERNET` | Normal | Fetches Instagram reel audio streams/embed metadata and connects directly to your chosen AI provider endpoint (Groq, OpenAI, Anthropic, or self-hosted API) using your personal API key. |
 | `android.permission.ACCESS_NETWORK_STATE` | Normal | Enables the **Auto-Hybrid Dispatcher** to detect whether Wi-Fi or cellular connectivity is active before routing requests or executing scheduled Google Drive backups. |
 | `android.permission.POST_NOTIFICATIONS` | Runtime (API 33+) | Alerts you with a system notification when background transcription and summarization of a shared reel complete. |
-| `android.permission.REQUEST_INSTALL_PACKAGES` | Special | Exclusively powers the **in-app update installer** for users who sideload Reel Library from GitHub Releases. Never triggers silently; requires explicit user confirmation before launching the system package installer. |
 
 ### Package Visibility & Anti-Snooping Guard
 - **No `QUERY_ALL_PACKAGES`**: Reel Library explicitly rejects invasive broad package query permissions.
+- **Zero High-Heuristic Installer Permissions**: `REQUEST_INSTALL_PACKAGES`, `SYSTEM_ALERT_WINDOW`, and `BIND_ACCESSIBILITY_SERVICE` are completely removed. Updates are downloaded safely via GitHub Releases through the user's browser, eliminating Play Protect installer heuristics.
 - **Targeted `<queries>` Intent Filters**: Package visibility is strictly constrained to `com.instagram.android` (for 1-tap reel deep linking), HTTPS web browsers (for viewing documentation and AI provider developer consoles), and mail clients (for user feedback).
 
 ### Network & Binary Hardening
