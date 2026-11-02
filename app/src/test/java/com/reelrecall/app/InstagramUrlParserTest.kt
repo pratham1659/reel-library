@@ -50,4 +50,32 @@ class InstagramUrlParserTest {
         val parsed = InstagramUrlParser.parse(input)
         assertNull(parsed)
     }
+
+    @Test
+    fun parse_reelWithoutHttpProtocol_extractsSuccessfully() {
+        val input = "instagram.com/reel/C8XYZ123abc/"
+        val parsed = InstagramUrlParser.parse(input)
+        assertNotNull(parsed)
+        assertEquals("https://www.instagram.com/reel/C8XYZ123abc/", parsed?.canonicalUrl)
+        assertEquals("C8XYZ123abc", parsed?.shortcode)
+    }
+
+    @Test
+    fun extractAnyUrl_youtubeAndTiktok_extractsNormalized() {
+        val yt = "youtube.com/watch?v=dQw4w9WgXcQ"
+        assertEquals("https://youtube.com/watch?v=dQw4w9WgXcQ", InstagramUrlParser.extractAnyUrl(yt))
+
+        val tiktok = "https://www.tiktok.com/@user/video/123456"
+        assertEquals("https://www.tiktok.com/@user/video/123456", InstagramUrlParser.extractAnyUrl(tiktok))
+    }
+
+    @Test
+    fun isUnsupportedUrl_detection() {
+        org.junit.Assert.assertTrue(InstagramUrlParser.isUnsupportedUrl("https://www.youtube.com/watch?v=123"))
+        org.junit.Assert.assertTrue(InstagramUrlParser.isUnsupportedUrl("youtube.com/shorts/123"))
+        org.junit.Assert.assertTrue(InstagramUrlParser.isUnsupportedUrl("tiktok.com/@creator/123"))
+        org.junit.Assert.assertFalse(InstagramUrlParser.isUnsupportedUrl("https://www.instagram.com/reel/C8XYZ123abc/"))
+        org.junit.Assert.assertFalse(InstagramUrlParser.isUnsupportedUrl("instagram.com/reel/C8XYZ123abc/"))
+        org.junit.Assert.assertFalse(InstagramUrlParser.isUnsupportedUrl("just random text"))
+    }
 }

@@ -34,26 +34,36 @@ class ShareReceiverActivity : ComponentActivity() {
 
         if (parsed == null) {
             val genericUrl = InstagramUrlParser.extractAnyUrl(sharedText) ?: sharedText.trim()
-            if (genericUrl.isNotBlank() && (genericUrl.startsWith("http://") || genericUrl.startsWith("https://"))) {
+            val normalizedUrl = if (genericUrl.startsWith("http://") || genericUrl.startsWith("https://")) {
+                genericUrl
+            } else if (genericUrl.contains(".") && !genericUrl.contains(" ")) {
+                "https://$genericUrl"
+            } else {
+                null
+            }
+
+            if (normalizedUrl != null) {
                 lifecycleScope.launch {
                     val db = AppDatabase.getInstance(applicationContext)
                     val dao = db.reelDao()
-                    val hash = genericUrl.hashCode().toString().removePrefix("-")
-                    val existing = dao.findByCanonicalUrl(genericUrl)
+                    val hash = normalizedUrl.hashCode().toString().removePrefix("-")
+                    val existing = dao.findByCanonicalUrl(normalizedUrl)
                     if (existing == null) {
                         val unsupportedReel = ReelEntity(
-                            canonicalUrl = genericUrl,
+                            canonicalUrl = normalizedUrl,
                             shortcode = "link_$hash",
                             title = "Unsupported Link",
                             status = IngestionStatus.NOT_SUPPORTED,
                             errorMessage = "Unsupported link: Reel Library only supports Instagram Reels."
                         )
                         dao.insert(unsupportedReel)
+                    } else {
+                        dao.updateStatus(existing.id, IngestionStatus.NOT_SUPPORTED, "Unsupported link: Reel Library only supports Instagram Reels.")
                     }
 
                     val mainIntent = Intent(applicationContext, MainActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        putExtra("UNSUPPORTED_LINK_ALERT", genericUrl)
+                        putExtra("UNSUPPORTED_LINK_ALERT", normalizedUrl)
                     }
                     startActivity(mainIntent)
                     finish()

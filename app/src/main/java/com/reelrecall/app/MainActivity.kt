@@ -344,22 +344,32 @@ class MainActivity : ComponentActivity() {
         val parsed = InstagramUrlParser.parse(url)
         if (parsed == null) {
             val genericUrl = InstagramUrlParser.extractAnyUrl(url) ?: url.trim()
-            if (genericUrl.isNotBlank() && (genericUrl.startsWith("http://") || genericUrl.startsWith("https://"))) {
-                unsupportedLinkAlertState.value = genericUrl
+            val normalizedUrl = if (genericUrl.startsWith("http://") || genericUrl.startsWith("https://")) {
+                genericUrl
+            } else if (genericUrl.contains(".") && !genericUrl.contains(" ")) {
+                "https://$genericUrl"
+            } else {
+                null
+            }
+
+            if (normalizedUrl != null) {
+                unsupportedLinkAlertState.value = normalizedUrl
                 lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                     val db = AppDatabase.getInstance(applicationContext)
                     val dao = db.reelDao()
-                    val hash = genericUrl.hashCode().toString().removePrefix("-")
-                    val existing = dao.findByCanonicalUrl(genericUrl)
+                    val hash = normalizedUrl.hashCode().toString().removePrefix("-")
+                    val existing = dao.findByCanonicalUrl(normalizedUrl)
                     if (existing == null) {
                         val unsupportedReel = ReelEntity(
-                            canonicalUrl = genericUrl,
+                            canonicalUrl = normalizedUrl,
                             shortcode = "link_$hash",
                             title = "Unsupported Link",
                             status = IngestionStatus.NOT_SUPPORTED,
                             errorMessage = "Unsupported link: Reel Library only supports Instagram Reels."
                         )
                         dao.insert(unsupportedReel)
+                    } else {
+                        dao.updateStatus(existing.id, IngestionStatus.NOT_SUPPORTED, "Unsupported link: Reel Library only supports Instagram Reels.")
                     }
                 }
             } else {
@@ -425,6 +435,7 @@ fun AddReelDialog(
 ) {
     var urlInput by remember { mutableStateOf("") }
     val colors = getNeumorphicColors(isDarkTheme)
+    val isUnsupported = remember(urlInput) { InstagramUrlParser.isUnsupportedUrl(urlInput) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -497,8 +508,8 @@ fun AddReelDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = colors.pillBg,
                         unfocusedContainerColor = colors.pillBg,
-                        focusedBorderColor = colors.accent,
-                        unfocusedBorderColor = colors.border,
+                        focusedBorderColor = if (isUnsupported) Color(0xFFFB923C) else colors.accent,
+                        unfocusedBorderColor = if (isUnsupported) Color(0xFFF97316).copy(alpha = 0.6f) else colors.border,
                         focusedTextColor = colors.textPrimary,
                         unfocusedTextColor = colors.textPrimary
                     ),
@@ -506,6 +517,47 @@ fun AddReelDialog(
                         .fillMaxWidth()
                         .height(50.dp)
                 )
+
+                if (isUnsupported) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isDarkTheme) Color(0xFF2E1608) else Color(0xFFFFF7ED),
+                        border = androidx.compose.foundation.BorderStroke(
+                            0.8.dp,
+                            if (isDarkTheme) Color(0xFFF97316).copy(alpha = 0.5f) else Color(0xFFFDBA74)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = if (isDarkTheme) Color(0xFFFB923C) else Color(0xFFEA580C),
+                                modifier = Modifier.size(16.dp).padding(top = 1.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "Link Not Supported",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDarkTheme) Color(0xFFFB923C) else Color(0xFFEA580C)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Reel Library only supports Instagram Reels. Links from other platforms (such as YouTube, TikTok, or web pages) cannot be transcribed or summarized.",
+                                    fontSize = 11.sp,
+                                    color = if (isDarkTheme) Color(0xFFFDBA74) else Color(0xFF9A3412),
+                                    lineHeight = 15.sp
+                                )
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -537,7 +589,7 @@ fun AddReelDialog(
                         },
                         enabled = urlInput.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = colors.accent,
+                            containerColor = if (isUnsupported) Color(0xFFEA580C) else colors.accent,
                             disabledContainerColor = colors.accent.copy(alpha = 0.35f)
                         ),
                         shape = RoundedCornerShape(10.dp),
@@ -546,7 +598,7 @@ fun AddReelDialog(
                             .height(38.dp)
                     ) {
                         Text(
-                            text = "Add Reel",
+                            text = if (isUnsupported) "Add as Unsupported" else "Add Reel",
                             color = Color.White,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
