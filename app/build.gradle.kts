@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.reelrecall.app"
+    namespace = "com.reel_library.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.reelrecall.app"
+        applicationId = "com.reel_library.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 6
