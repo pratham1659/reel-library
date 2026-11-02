@@ -67,6 +67,7 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -75,6 +76,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -88,6 +90,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -168,6 +171,7 @@ fun VaultScreen(
     viewModel: VaultViewModel,
     onOpenDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenModelsSettings: () -> Unit = onOpenSettings,
     onAddReel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -190,6 +194,11 @@ fun VaultScreen(
     val preferences by viewModel.preferences.collectAsState()
     val isDarkTheme = preferences.themeMode != "OBSIDIAN_LIGHT"
     val colors = getNeumorphicColors(isDarkTheme)
+    val isApiKeyConfigured = preferences.groqApiKey.isNotBlank() ||
+        preferences.openAIApiKey.isNotBlank() ||
+        preferences.claudeApiKey.isNotBlank() ||
+        preferences.customApiKey.isNotBlank() ||
+        preferences.engineMode == com.reelrecall.app.data.repository.EngineMode.LOCAL_ONLY
 
     var readerModeReel by remember { mutableStateOf<ReelEntity?>(null) }
     var fullTranscriptReel by remember { mutableStateOf<ReelEntity?>(null) }
@@ -224,7 +233,8 @@ fun VaultScreen(
                 reelId = selectedReelIdForDetail!!,
                 viewModel = viewModel,
                 colors = colors,
-                onBack = { viewModel.selectReelForDetail(null) }
+                onBack = { viewModel.selectReelForDetail(null) },
+                onOpenModelsSettings = onOpenModelsSettings
             )
         } else {
             // MAIN FEED VIEW (Search Bar expands right here on Home Screen!)
@@ -601,8 +611,9 @@ fun VaultScreen(
                         }
                     } else {
                         EmptyVaultView(
-                            onOpenInstagram = { openInInstagram(context, "https://www.instagram.com/reels/") },
-                            colors = colors
+                            onOpenModelsSettings = onOpenModelsSettings,
+                            colors = colors,
+                            isApiKeyConfigured = isApiKeyConfigured
                         )
                     }
                 } else {
@@ -1792,80 +1803,275 @@ fun SearchKnowledgeView(
 
 @Composable
 fun EmptyVaultView(
-    onOpenInstagram: () -> Unit,
-    colors: NeumorphicColors = getNeumorphicColors(true)
+    onOpenModelsSettings: () -> Unit,
+    colors: NeumorphicColors = getNeumorphicColors(true),
+    isApiKeyConfigured: Boolean = false
 ) {
+    val context = LocalContext.current
+    val groqConsoleUrl = "https://console.groq.com/keys"
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // Glowing Icon Badge using official Raspberry Rose Brand Gradient
         Box(
             modifier = Modifier
-                .size(76.dp)
+                .size(72.dp)
                 .clip(CircleShape)
                 .background(
                     Brush.linearGradient(
-                        listOf(InstagramPurple, InstagramPink, InstagramOrange)
+                        listOf(BrandRoseStart, BrandRoseMiddle, BrandRoseEnd)
                     )
                 ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.AutoAwesome,
+                imageVector = if (isApiKeyConfigured) Icons.Default.AutoAwesome else Icons.Default.Key,
                 contentDescription = null,
                 tint = Color.White,
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(34.dp)
             )
         }
 
         Spacer(modifier = Modifier.height(18.dp))
 
         Text(
-            text = "Your Reel Library Vault is Ready",
+            text = if (isApiKeyConfigured) "Your Reel Library Vault is Ready" else "Setup Free Groq AI Key",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = colors.textPrimary
+            color = colors.textPrimary,
+            textAlign = TextAlign.Center,
+            fontSize = 19.sp
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Open Instagram, tap Share on any Reel, and choose Reel Library to capture its takeaways, poster preview, and full transcript.",
+            text = if (isApiKeyConfigured) {
+                "Your API key is configured! Share any Reel from Instagram to Reel Library to capture instant summaries, key takeaways, and Whisper audio transcripts."
+            } else {
+                "Reel Library uses Groq's high-speed cloud LPU to transcribe audio with Whisper and synthesize structured takeaways for free."
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp,
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
+        // INSTRUCTIONS CARD WITH PROPER ALIGNMENT
+        NeumorphicCard(
+            modifier = Modifier.fillMaxWidth(),
+            colors = colors,
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isApiKeyConfigured) Icons.Default.CheckCircle else Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = if (isApiKeyConfigured) StatusReady else colors.accent,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = if (isApiKeyConfigured) "How to Save Reels" else "How to Add Your Free Groq Key",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.5.sp,
+                        color = colors.textPrimary
+                    )
+                }
+
+                HorizontalDivider(color = colors.border.copy(alpha = 0.5f), thickness = 0.8.dp)
+
+                if (!isApiKeyConfigured) {
+                    SetupStepItem(
+                        stepNumber = "1",
+                        title = "Get your free Groq API key",
+                        description = "Open Groq Console in your browser. Sign in and create a free API key (takes ~10 seconds, no card required).",
+                        colors = colors
+                    )
+
+                    SetupStepItem(
+                        stepNumber = "2",
+                        title = "Open Models & API Settings",
+                        description = "Tap 'Configure Groq API in Settings' below to jump directly to Models & API configuration.",
+                        colors = colors
+                    )
+
+                    SetupStepItem(
+                        stepNumber = "3",
+                        title = "Paste Key & Select Model",
+                        description = "Paste your key into the Groq API Key field and save. Recommended: Qwen 2.5 32B or Llama 3.3 70B.",
+                        colors = colors
+                    )
+
+                    SetupStepItem(
+                        stepNumber = "4",
+                        title = "Share Reels to Reel Library",
+                        description = "When browsing Instagram, tap Share on any reel and choose Reel Library for automatic takeaways!",
+                        colors = colors
+                    )
+                } else {
+                    SetupStepItem(
+                        stepNumber = "1",
+                        title = "Browse Instagram Reels",
+                        description = "Find any reel, video, or tutorial that contains valuable knowledge or insights.",
+                        colors = colors
+                    )
+
+                    SetupStepItem(
+                        stepNumber = "2",
+                        title = "Tap Share ➔ Reel Library",
+                        description = "Tap the Instagram share paper-plane button and select Reel Library from your apps.",
+                        colors = colors
+                    )
+
+                    SetupStepItem(
+                        stepNumber = "3",
+                        title = "Instant AI Synthesis",
+                        description = "Groq Cloud transcribes audio and extracts bullet takeaways directly into your local vault.",
+                        colors = colors
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // PRIMARY ACTION BUTTON (Redirect to Models Settings)
         NeumorphicButton(
-            onClick = onOpenInstagram,
+            onClick = onOpenModelsSettings,
             colors = colors,
             shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.height(52.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(horizontal = 20.dp)
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
             ) {
                 Icon(
-                    Icons.Default.PlayArrow,
+                    imageVector = Icons.Default.Tune,
                     contentDescription = null,
                     tint = colors.accent,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(19.dp)
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Open Instagram App",
-                    fontWeight = FontWeight.SemiBold,
+                    text = if (isApiKeyConfigured) "Manage Models & API" else "Configure Groq API in Settings",
+                    fontWeight = FontWeight.Bold,
                     color = colors.textPrimary,
-                    fontSize = 15.sp
+                    fontSize = 14.5.sp
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // SECONDARY ACTION: DIRECT LINK TO GROQ CONSOLE
+        Surface(
+            onClick = { openWebUrl(context, groqConsoleUrl) },
+            shape = RoundedCornerShape(12.dp),
+            color = colors.pillBg.copy(alpha = 0.5f),
+            border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    tint = CyanAccent,
+                    modifier = Modifier.size(15.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Get Free API Key at console.groq.com",
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = CyanAccent
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SetupStepItem(
+    stepNumber: String,
+    title: String,
+    description: String,
+    colors: NeumorphicColors
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(colors.accent.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stepNumber,
+                color = colors.accent,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary
+            )
+            Text(
+                text = description,
+                fontSize = 11.5.sp,
+                color = colors.textSecondary,
+                lineHeight = 16.sp
+            )
+        }
+    }
+}
+
+private fun openWebUrl(context: Context, url: String) {
+    val uri = Uri.parse(url)
+    val intent = Intent(Intent.ACTION_VIEW, uri)
+    try {
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(context, "Could not open browser", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -2564,10 +2770,18 @@ fun ReelDetailScreen(
     viewModel: VaultViewModel,
     colors: NeumorphicColors,
     onBack: () -> Unit,
+    onOpenModelsSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     BackHandler(onBack = onBack)
+
+    val preferences by viewModel.preferences.collectAsState()
+    val isApiKeyConfigured = preferences.groqApiKey.isNotBlank() ||
+        preferences.openAIApiKey.isNotBlank() ||
+        preferences.claudeApiKey.isNotBlank() ||
+        preferences.customApiKey.isNotBlank() ||
+        preferences.engineMode == com.reelrecall.app.data.repository.EngineMode.LOCAL_ONLY
 
     val reelFlow = remember(reelId) { viewModel.getReel(reelId) }
     val reel by reelFlow.collectAsState(initial = null)
@@ -3049,18 +3263,22 @@ fun ReelDetailScreen(
 
                         Spacer(modifier = Modifier.width(10.dp))
 
-                        // Action Button (Run AI or Retry AI)
+                        // Action Button (Run AI, Retry AI, or Configure API)
                         Surface(
                             onClick = {
-                                android.util.Log.d("ReelLibrary", "Top AI Summary button clicked for ${currentReel.id}")
-                                showRunAiConfirmDialog = true
+                                if (!isApiKeyConfigured) {
+                                    onOpenModelsSettings()
+                                } else {
+                                    android.util.Log.d("ReelLibrary", "Top AI Summary button clicked for ${currentReel.id}")
+                                    showRunAiConfirmDialog = true
+                                }
                             },
                             enabled = !isRetrying,
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isRetrying) colors.accentBg else if (!hasAiContent) colors.accent.copy(alpha = 0.12f) else colors.pillBg,
+                            color = if (isRetrying) colors.accentBg else if (!isApiKeyConfigured) WarningYellow.copy(alpha = 0.15f) else if (!hasAiContent) colors.accent.copy(alpha = 0.12f) else colors.pillBg,
                             border = androidx.compose.foundation.BorderStroke(
-                                if (!hasAiContent) 1.dp else 0.7.dp,
-                                if (isRetrying || !hasAiContent) colors.accent else colors.border
+                                if (!hasAiContent || !isApiKeyConfigured) 1.dp else 0.7.dp,
+                                if (isRetrying) colors.accent else if (!isApiKeyConfigured) WarningYellow.copy(alpha = 0.6f) else if (!hasAiContent) colors.accent else colors.border
                             )
                         ) {
                             Row(
@@ -3075,6 +3293,9 @@ fun ReelDetailScreen(
                                         color = colors.accent
                                     )
                                     Text("Synthesizing...", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = colors.accent)
+                                } else if (!isApiKeyConfigured) {
+                                    Icon(Icons.Default.Key, contentDescription = "Configure API", tint = WarningYellow, modifier = Modifier.size(13.dp))
+                                    Text("Configure API", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = WarningYellow)
                                 } else if (!hasAiContent) {
                                     Icon(Icons.Default.AutoAwesome, contentDescription = "Run AI", tint = colors.accent, modifier = Modifier.size(13.dp))
                                     Text("Run AI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.accent)
@@ -3113,7 +3334,179 @@ fun ReelDetailScreen(
 
                     val isFailed = currentReel.status == IngestionStatus.FAILED || !currentReel.errorMessage.isNullOrBlank()
 
-                    if (isFailed) {
+                    if (!isApiKeyConfigured && !hasAiContent) {
+                        // DEDICATED API KEY NOT CONFIGURED CARD
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = WarningYellow.copy(alpha = 0.08f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, WarningYellow.copy(alpha = 0.45f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .background(WarningYellow.copy(alpha = 0.18f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Key,
+                                            contentDescription = "API Key Missing",
+                                            tint = WarningYellow,
+                                            modifier = Modifier.size(17.dp)
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "AI API Key Not Configured",
+                                            fontSize = 13.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary
+                                        )
+                                        Text(
+                                            text = "Summary & takeaways are empty without an API key",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = WarningYellow
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Text(
+                                    text = "Reel Library saved this reel's media & caption, but AI summarization requires an API key. Add a free Groq API key to generate executive summaries, key takeaways, and Whisper transcripts.",
+                                    fontSize = 12.sp,
+                                    color = colors.textSecondary,
+                                    lineHeight = 17.sp
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                // STEP-BY-STEP INSTRUCTIONS WITH PROPER ALIGNMENT
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.pillBg,
+                                    border = androidx.compose.foundation.BorderStroke(0.6.dp, colors.border),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Text(
+                                            text = "How to add free Groq API key:",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary
+                                        )
+
+                                        SetupStepItem(
+                                            stepNumber = "1",
+                                            title = "Get free Groq key",
+                                            description = "Visit console.groq.com/keys (instant, free tier, no card required).",
+                                            colors = colors
+                                        )
+
+                                        SetupStepItem(
+                                            stepNumber = "2",
+                                            title = "Open Models & API",
+                                            description = "Tap 'Configure Groq API in Settings' below.",
+                                            colors = colors
+                                        )
+
+                                        SetupStepItem(
+                                            stepNumber = "3",
+                                            title = "Paste key & save",
+                                            description = "Paste your API key under Groq Cloud and tap Save.",
+                                            colors = colors
+                                        )
+
+                                        SetupStepItem(
+                                            stepNumber = "4",
+                                            title = "Run AI summarizer",
+                                            description = "Return here and tap 'Run AI' to synthesize summary & takeaways!",
+                                            colors = colors
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                // BUTTON: OPEN MODELS SETTINGS
+                                NeumorphicButton(
+                                    onClick = onOpenModelsSettings,
+                                    colors = colors,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(48.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Tune,
+                                            contentDescription = null,
+                                            tint = colors.accent,
+                                            modifier = Modifier.size(17.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Configure Groq API in Settings",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // LINK: OPEN GROQ CONSOLE
+                                Surface(
+                                    onClick = { openWebUrl(context, "https://console.groq.com/keys") },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color.Transparent,
+                                    border = androidx.compose.foundation.BorderStroke(0.7.dp, colors.border),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(40.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                            contentDescription = null,
+                                            tint = CyanAccent,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Get Free API Key (console.groq.com)",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = CyanAccent
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else if (isFailed) {
                         // DEDICATED AI FAILURE REASON CARD
                         Surface(
                             shape = RoundedCornerShape(14.dp),
@@ -3483,19 +3876,23 @@ fun ReelDetailScreen(
                                     Icon(
                                         imageVector = Icons.Default.GraphicEq,
                                         contentDescription = null,
-                                        tint = colors.textMuted,
+                                        tint = if (!isApiKeyConfigured) WarningYellow else colors.textMuted,
                                         modifier = Modifier.size(15.dp)
                                     )
                                     Text(
-                                        text = "Audio Not Available",
+                                        text = if (!isApiKeyConfigured) "Audio Transcription Requires API Key" else "Audio Not Available",
                                         fontSize = 12.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = colors.textMuted
+                                        color = if (!isApiKeyConfigured) WarningYellow else colors.textMuted
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = reasonMessage,
+                                    text = if (!isApiKeyConfigured) {
+                                        "Whisper audio transcription requires a free Groq API key configured in Models & API settings."
+                                    } else {
+                                        reasonMessage
+                                    },
                                     fontSize = 12.5.sp,
                                     color = colors.textSecondary,
                                     lineHeight = 18.sp
@@ -3525,6 +3922,24 @@ fun ReelDetailScreen(
                                             softWrap = false,
                                             overflow = TextOverflow.Ellipsis,
                                             modifier = Modifier.weight(1f, fill = false)
+                                        )
+                                    }
+                                } else if (!isApiKeyConfigured) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    TextButton(
+                                        onClick = onOpenModelsSettings
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Tune,
+                                            contentDescription = null,
+                                            tint = colors.accent,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Configure Groq API in Settings",
+                                            color = colors.accent,
+                                            fontWeight = FontWeight.SemiBold
                                         )
                                     }
                                 } else {
@@ -4000,47 +4415,86 @@ fun ReelDetailScreen(
 
         // RUN AI CONFIRMATION DIALOG
         if (showRunAiConfirmDialog) {
-            AlertDialog(
-                onDismissRequest = { showRunAiConfirmDialog = false },
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = colors.accent, modifier = Modifier.size(20.dp))
-                        Text("Run AI Analysis", fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                    }
-                },
-                text = {
-                    Text(
-                        text = "Running AI will analyze this reel and regenerate the Title, AI Summary, Key Takeaways, and Spoken Audio Transcript.\n\nDo you want to proceed?",
-                        color = colors.textSecondary,
-                        fontSize = 13.5.sp,
-                        lineHeight = 20.sp
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            showRunAiConfirmDialog = false
-                            viewModel.reprocessReel(currentReel.id)
-                            Toast.makeText(
-                                context,
-                                "Running AI... Updating Title, Summary & Spoken Transcript",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("Run AI", fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showRunAiConfirmDialog = false }) {
-                        Text("Cancel", color = colors.textMuted)
-                    }
-                },
-                containerColor = colors.surface,
-                shape = RoundedCornerShape(20.dp)
-            )
+            if (!isApiKeyConfigured) {
+                AlertDialog(
+                    onDismissRequest = { showRunAiConfirmDialog = false },
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.Key, contentDescription = null, tint = WarningYellow, modifier = Modifier.size(20.dp))
+                            Text("Groq API Key Required", fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                        }
+                    },
+                    text = {
+                        Text(
+                            text = "To run AI summarization and Whisper audio transcription, please configure your free Groq API key in Settings first.",
+                            color = colors.textSecondary,
+                            fontSize = 13.5.sp,
+                            lineHeight = 20.sp
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                showRunAiConfirmDialog = false
+                                onOpenModelsSettings()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Configure in Settings", fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showRunAiConfirmDialog = false }) {
+                            Text("Cancel", color = colors.textMuted)
+                        }
+                    },
+                    containerColor = colors.surface,
+                    shape = RoundedCornerShape(20.dp)
+                )
+            } else {
+                AlertDialog(
+                    onDismissRequest = { showRunAiConfirmDialog = false },
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = colors.accent, modifier = Modifier.size(20.dp))
+                            Text("Run AI Analysis", fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                        }
+                    },
+                    text = {
+                        Text(
+                            text = "Running AI will analyze this reel and regenerate the Title, AI Summary, Key Takeaways, and Spoken Audio Transcript.\n\nDo you want to proceed?",
+                            color = colors.textSecondary,
+                            fontSize = 13.5.sp,
+                            lineHeight = 20.sp
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                showRunAiConfirmDialog = false
+                                viewModel.reprocessReel(currentReel.id)
+                                Toast.makeText(
+                                    context,
+                                    "Running AI... Updating Title, Summary & Spoken Transcript",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Run AI", fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showRunAiConfirmDialog = false }) {
+                            Text("Cancel", color = colors.textMuted)
+                        }
+                    },
+                    containerColor = colors.surface,
+                    shape = RoundedCornerShape(20.dp)
+                )
+            }
         }
 
         // DELETE REEL CONFIRMATION DIALOG

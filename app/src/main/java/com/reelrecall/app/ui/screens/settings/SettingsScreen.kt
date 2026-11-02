@@ -153,16 +153,19 @@ enum class SettingsSubscreen {
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    initialSubscreen: SettingsSubscreen = SettingsSubscreen.PROFILE_MAIN
 ) {
-    var currentSubscreen by remember { mutableStateOf(SettingsSubscreen.PROFILE_MAIN) }
+    var currentSubscreen by remember(initialSubscreen) { mutableStateOf(initialSubscreen) }
     val preferences by viewModel.preferences.collectAsState()
     val isDarkTheme = preferences.themeMode != "OBSIDIAN_LIGHT"
     val colors = getNeumorphicColors(isDarkTheme)
 
     // Intercept system back button
     BackHandler {
-        if (currentSubscreen != SettingsSubscreen.PROFILE_MAIN) {
+        if (initialSubscreen == SettingsSubscreen.SELECT_MODELS && currentSubscreen == SettingsSubscreen.SELECT_MODELS) {
+            onBack()
+        } else if (currentSubscreen != SettingsSubscreen.PROFILE_MAIN) {
             currentSubscreen = SettingsSubscreen.PROFILE_MAIN
         } else {
             onBack()
@@ -194,7 +197,13 @@ fun SettingsScreen(
             SelectModelsScreen(
                 viewModel = viewModel,
                 colors = colors,
-                onBack = { currentSubscreen = SettingsSubscreen.PROFILE_MAIN },
+                onBack = {
+                    if (initialSubscreen == SettingsSubscreen.SELECT_MODELS) {
+                        onBack()
+                    } else {
+                        currentSubscreen = SettingsSubscreen.PROFILE_MAIN
+                    }
+                },
                 modifier = modifier
             )
         }

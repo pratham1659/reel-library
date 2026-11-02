@@ -74,6 +74,7 @@ import com.reelrecall.app.data.local.AppDatabase
 import com.reelrecall.app.data.model.IngestionStatus
 import com.reelrecall.app.data.model.ReelEntity
 import com.reelrecall.app.ui.screens.settings.SettingsScreen
+import com.reelrecall.app.ui.screens.settings.SettingsSubscreen
 import com.reelrecall.app.ui.screens.settings.SettingsViewModel
 import com.reelrecall.app.ui.screens.privacy.PrivacyPolicyScreen
 import com.reelrecall.app.ui.screens.vault.VaultScreen
@@ -135,6 +136,7 @@ class MainActivity : ComponentActivity() {
                         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                         val scope = rememberCoroutineScope()
                         var currentTab by remember { mutableIntStateOf(0) } // 0 = Vault, 1 = Settings, 2 = Drawer/Knowledge
+                        var settingsInitialSubscreen by remember { mutableStateOf(SettingsSubscreen.PROFILE_MAIN) }
 
                         val allReels by vaultViewModel.allVaultReels.collectAsState()
 
@@ -200,7 +202,14 @@ class MainActivity : ComponentActivity() {
                                         VaultScreen(
                                             viewModel = vaultViewModel,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
-                                            onOpenSettings = { currentTab = 1 },
+                                            onOpenSettings = {
+                                                settingsInitialSubscreen = SettingsSubscreen.PROFILE_MAIN
+                                                currentTab = 1
+                                            },
+                                            onOpenModelsSettings = {
+                                                settingsInitialSubscreen = SettingsSubscreen.SELECT_MODELS
+                                                currentTab = 1
+                                            },
                                             onAddReel = { showAddReelDialog = true },
                                             modifier = Modifier.fillMaxSize()
                                         )
@@ -208,7 +217,11 @@ class MainActivity : ComponentActivity() {
                                     1 -> {
                                         SettingsScreen(
                                             viewModel = settingsViewModel,
-                                            onBack = { currentTab = 0 },
+                                            initialSubscreen = settingsInitialSubscreen,
+                                            onBack = {
+                                                settingsInitialSubscreen = SettingsSubscreen.PROFILE_MAIN
+                                                currentTab = 0
+                                            },
                                             modifier = Modifier.fillMaxSize()
                                         )
                                     }
