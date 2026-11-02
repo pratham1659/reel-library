@@ -33,8 +33,35 @@ class ShareReceiverActivity : ComponentActivity() {
         val parsed = InstagramUrlParser.parse(sharedText)
 
         if (parsed == null) {
-            Toast.makeText(this, "Could not detect a valid Instagram Reel URL", Toast.LENGTH_SHORT).show()
-            finish()
+            val genericUrl = InstagramUrlParser.extractAnyUrl(sharedText) ?: sharedText.trim()
+            if (genericUrl.isNotBlank() && (genericUrl.startsWith("http://") || genericUrl.startsWith("https://"))) {
+                lifecycleScope.launch {
+                    val db = AppDatabase.getInstance(applicationContext)
+                    val dao = db.reelDao()
+                    val hash = genericUrl.hashCode().toString().removePrefix("-")
+                    val existing = dao.findByCanonicalUrl(genericUrl)
+                    if (existing == null) {
+                        val unsupportedReel = ReelEntity(
+                            canonicalUrl = genericUrl,
+                            shortcode = "link_$hash",
+                            title = "Unsupported Link",
+                            status = IngestionStatus.NOT_SUPPORTED,
+                            errorMessage = "Unsupported link: Reel Library only supports Instagram Reels."
+                        )
+                        dao.insert(unsupportedReel)
+                    }
+
+                    val mainIntent = Intent(applicationContext, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        putExtra("UNSUPPORTED_LINK_ALERT", genericUrl)
+                    }
+                    startActivity(mainIntent)
+                    finish()
+                }
+            } else {
+                Toast.makeText(this, "Could not detect a valid Instagram Reel URL", Toast.LENGTH_SHORT).show()
+                finish()
+            }
             return
         }
 

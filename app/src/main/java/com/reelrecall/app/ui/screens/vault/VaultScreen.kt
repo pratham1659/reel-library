@@ -49,6 +49,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -165,6 +166,7 @@ import com.reelrecall.app.ui.theme.TextSecondary
 import kotlinx.serialization.json.Json
 
 val LocalIsDarkTheme = androidx.compose.runtime.staticCompositionLocalOf { true }
+val LocalIsApiKeyConfigured = androidx.compose.runtime.staticCompositionLocalOf { true }
 
 @Composable
 fun VaultScreen(
@@ -222,7 +224,10 @@ fun VaultScreen(
         viewModel.selectReelForDetail(null)
     }
 
-    androidx.compose.runtime.CompositionLocalProvider(LocalIsDarkTheme provides isDarkTheme) {
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalIsDarkTheme provides isDarkTheme,
+        LocalIsApiKeyConfigured provides isApiKeyConfigured
+    ) {
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -1417,7 +1422,13 @@ fun RecallReelCard(
 
                 // Status Badge in Top Right
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                    RecallStatusPill(status = reel.status, transcript = reel.transcript, transcriptNote = reel.transcriptNote)
+                    RecallStatusPill(
+                        status = reel.status,
+                        transcript = reel.transcript,
+                        transcriptNote = reel.transcriptNote,
+                        errorMessage = reel.errorMessage,
+                        canonicalUrl = reel.canonicalUrl
+                    )
                 }
             }
 
@@ -1551,18 +1562,70 @@ private data class StatusPillStyle(
     val border: Color
 )
 
+fun isUnsupportedLink(
+    status: IngestionStatus,
+    canonicalUrl: String?,
+    errorMessage: String?
+): Boolean {
+    if (status == IngestionStatus.NOT_SUPPORTED && canonicalUrl != null && !canonicalUrl.contains("instagram.com")) {
+        return true
+    }
+    if (errorMessage != null && errorMessage.contains("unsupported link", ignoreCase = true)) {
+        return true
+    }
+    return false
+}
+
+fun isApiNotConfiguredError(
+    status: IngestionStatus,
+    errorMessage: String?,
+    isApiKeyConfigured: Boolean? = null
+): Boolean {
+    if (status != IngestionStatus.FAILED && status != IngestionStatus.QUEUED) {
+        return false
+    }
+    if (errorMessage != null) {
+        val lower = errorMessage.lowercase()
+        if (lower.contains("api key") ||
+            lower.contains("api is not") ||
+            lower.contains("api not configured") ||
+            lower.contains("key is missing") ||
+            lower.contains("missing api") ||
+            lower.contains("key not configured") ||
+            lower.contains("no api key") ||
+            lower.contains("api key missing")
+        ) {
+            return true
+        }
+    }
+    if (status == IngestionStatus.FAILED && isApiKeyConfigured == false) {
+        return true
+    }
+    return false
+}
+
 @Composable
 fun RecallStatusPill(
     status: IngestionStatus,
     transcript: String? = null,
     transcriptNote: String? = null,
+    errorMessage: String? = null,
+    canonicalUrl: String? = null,
+    isApiKeyConfigured: Boolean = LocalIsApiKeyConfigured.current,
     isDark: Boolean = LocalIsDarkTheme.current
 ) {
-    val isAudioUnavailable = status == IngestionStatus.NOT_SUPPORTED ||
-        (status == IngestionStatus.COMPLETED && !com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(transcript))
+    val isUnsupported = isUnsupportedLink(status, canonicalUrl, errorMessage)
+    val isAudioUnavailable = !isUnsupported && (status == IngestionStatus.NOT_SUPPORTED ||
+        (status == IngestionStatus.COMPLETED && !com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(transcript)))
+
+    val isApiMissing = !isUnsupported && isApiNotConfiguredError(status, errorMessage, isApiKeyConfigured)
 
     val style = if (isDark) {
-        if (isAudioUnavailable) {
+        if (isUnsupported) {
+            StatusPillStyle("Not Supported Link", Color(0xFF2E1608), Color(0xFFFB923C), Color(0xFFF97316).copy(alpha = 0.4f))
+        } else if (isApiMissing) {
+            StatusPillStyle("API Not Set", Color(0xFF2E2008), Color(0xFFFBBF24), Color(0xFFF59E0B).copy(alpha = 0.4f))
+        } else if (isAudioUnavailable) {
             StatusPillStyle("Audio Not Available", Color(0xFF2E2008), Color(0xFFFBBF24), Color(0xFFF59E0B).copy(alpha = 0.35f))
         } else {
             when (status) {
@@ -1577,7 +1640,11 @@ fun RecallStatusPill(
         }
     } else {
         // Obsidian Light theme: clean, vibrant, modern light pastel badges with crisp high-contrast text and subtle border
-        if (isAudioUnavailable) {
+        if (isUnsupported) {
+            StatusPillStyle("Not Supported Link", Color(0xFFFFEDD5), Color(0xFFC2410C), Color(0xFFFED7AA))
+        } else if (isApiMissing) {
+            StatusPillStyle("API Not Set", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+        } else if (isAudioUnavailable) {
             StatusPillStyle("Audio Not Available", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
         } else {
             when (status) {
@@ -2559,7 +2626,13 @@ fun RecallReelGridCard(
 
                 // Status Badge in Top Right
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)) {
-                    RecallStatusPill(status = reel.status, transcript = reel.transcript, transcriptNote = reel.transcriptNote)
+                    RecallStatusPill(
+                        status = reel.status,
+                        transcript = reel.transcript,
+                        transcriptNote = reel.transcriptNote,
+                        errorMessage = reel.errorMessage,
+                        canonicalUrl = reel.canonicalUrl
+                    )
                 }
             }
 
@@ -2692,14 +2765,20 @@ fun RecallReelTable(
                 ) {
                     // Status & Note
                     Row(
-                        modifier = Modifier.width(82.dp),
+                        modifier = Modifier.widthIn(min = 82.dp),
                         horizontalArrangement = Arrangement.spacedBy(3.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (!reel.userNotes.isNullOrBlank()) {
                             NotePill()
                         }
-                        RecallStatusPill(status = reel.status, transcript = reel.transcript, transcriptNote = reel.transcriptNote)
+                        RecallStatusPill(
+                            status = reel.status,
+                            transcript = reel.transcript,
+                            transcriptNote = reel.transcriptNote,
+                            errorMessage = reel.errorMessage,
+                            canonicalUrl = reel.canonicalUrl
+                        )
                     }
 
                     // Source
@@ -3055,7 +3134,13 @@ fun ReelDetailScreen(
                             .align(Alignment.TopEnd)
                             .padding(10.dp)
                     ) {
-                        RecallStatusPill(status = currentReel.status, transcript = currentReel.transcript, transcriptNote = currentReel.transcriptNote)
+                        RecallStatusPill(
+                            status = currentReel.status,
+                            transcript = currentReel.transcript,
+                            transcriptNote = currentReel.transcriptNote,
+                            errorMessage = currentReel.errorMessage,
+                            canonicalUrl = currentReel.canonicalUrl
+                        )
                     }
                 }
             }
@@ -3332,9 +3417,97 @@ fun ReelDetailScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    val isUnsupported = isUnsupportedLink(currentReel.status, currentReel.canonicalUrl, currentReel.errorMessage)
                     val isFailed = currentReel.status == IngestionStatus.FAILED || !currentReel.errorMessage.isNullOrBlank()
 
-                    if (!isApiKeyConfigured && !hasAiContent) {
+                    if (isUnsupported) {
+                        // DEDICATED NOT SUPPORTED LINK CARD
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = SparkleOrange.copy(alpha = 0.08f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, SparkleOrange.copy(alpha = 0.45f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .background(SparkleOrange.copy(alpha = 0.18f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = "Unsupported Link",
+                                            tint = SparkleOrange,
+                                            modifier = Modifier.size(17.dp)
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "Not Supported Link",
+                                            fontSize = 13.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary
+                                        )
+                                        Text(
+                                            text = "Only Instagram Reels are currently supported",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = SparkleOrange
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Text(
+                                    text = "Reel Library is designed specifically to extract and summarize Instagram Reels. Links from other platforms cannot be transcribed or summarized.",
+                                    fontSize = 12.sp,
+                                    color = colors.textSecondary,
+                                    lineHeight = 17.sp
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Surface(
+                                    onClick = { openWebUrl(context, currentReel.canonicalUrl) },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.pillBg,
+                                    border = androidx.compose.foundation.BorderStroke(0.7.dp, colors.border),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(42.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center,
+                                        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                            contentDescription = null,
+                                            tint = CyanAccent,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Open Link in Browser",
+                                            fontSize = 12.5.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = CyanAccent
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else if (!isApiKeyConfigured && !hasAiContent) {
                         // DEDICATED API KEY NOT CONFIGURED CARD
                         Surface(
                             shape = RoundedCornerShape(14.dp),
@@ -3869,6 +4042,7 @@ fun ReelDetailScreen(
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 val reasonMessage = com.reelrecall.app.engine.Transcripts.display(currentReel.transcript, currentReel.transcriptNote)
+                                val isUnsupportedAudio = isUnsupportedLink(currentReel.status, currentReel.canonicalUrl, currentReel.errorMessage)
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -3876,19 +4050,21 @@ fun ReelDetailScreen(
                                     Icon(
                                         imageVector = Icons.Default.GraphicEq,
                                         contentDescription = null,
-                                        tint = if (!isApiKeyConfigured) WarningYellow else colors.textMuted,
+                                        tint = if (isUnsupportedAudio) SparkleOrange else if (!isApiKeyConfigured) WarningYellow else colors.textMuted,
                                         modifier = Modifier.size(15.dp)
                                     )
                                     Text(
-                                        text = if (!isApiKeyConfigured) "Audio Transcription Requires API Key" else "Audio Not Available",
+                                        text = if (isUnsupportedAudio) "Not Supported Link" else if (!isApiKeyConfigured) "Audio Transcription Requires API Key" else "Audio Not Available",
                                         fontSize = 12.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (!isApiKeyConfigured) WarningYellow else colors.textMuted
+                                        color = if (isUnsupportedAudio) SparkleOrange else if (!isApiKeyConfigured) WarningYellow else colors.textMuted
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = if (!isApiKeyConfigured) {
+                                    text = if (isUnsupportedAudio) {
+                                        "Whisper audio transcription is only supported for Instagram Reels."
+                                    } else if (!isApiKeyConfigured) {
                                         "Whisper audio transcription requires a free Groq API key configured in Models & API settings."
                                     } else {
                                         reasonMessage

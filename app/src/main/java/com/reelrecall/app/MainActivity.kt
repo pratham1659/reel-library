@@ -87,6 +87,9 @@ import com.reelrecall.app.ui.theme.ObsidianBg
 import com.reelrecall.app.ui.theme.ObsidianCard
 import com.reelrecall.app.ui.theme.ObsidianPill
 import com.reelrecall.app.ui.theme.ObsidianPillBorder
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.text.style.TextOverflow
+import com.reelrecall.app.ui.theme.WarningYellow
 import com.reelrecall.app.ui.theme.ReelLibraryTheme
 import com.reelrecall.app.ui.theme.SparkleOrange
 import com.reelrecall.app.ui.theme.TextMuted
@@ -102,10 +105,29 @@ class MainActivity : ComponentActivity() {
 
     private val vaultViewModel by viewModels<VaultViewModel>()
     private val settingsViewModel by viewModels<SettingsViewModel>()
+    private val unsupportedLinkAlertState = androidx.compose.runtime.mutableStateOf<String?>(null)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.hasExtra("UNSUPPORTED_LINK_ALERT")) {
+            val alertUrl = intent.getStringExtra("UNSUPPORTED_LINK_ALERT")
+            if (!alertUrl.isNullOrBlank()) {
+                unsupportedLinkAlertState.value = alertUrl
+            }
+        }
+    }
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (intent?.hasExtra("UNSUPPORTED_LINK_ALERT") == true) {
+            val alertUrl = intent.getStringExtra("UNSUPPORTED_LINK_ALERT")
+            if (!alertUrl.isNullOrBlank()) {
+                unsupportedLinkAlertState.value = alertUrl
+            }
+        }
 
         lifecycleScope.launch {
             val app = application as? ReelLibraryApp
@@ -238,6 +260,69 @@ class MainActivity : ComponentActivity() {
                                         }
                                     )
                                 }
+
+                                // UNSUPPORTED LINK DISPOSABLE ALERT MODAL
+                                val unsupportedLinkAlertUrl by unsupportedLinkAlertState
+                                if (unsupportedLinkAlertUrl != null) {
+                                    AlertDialog(
+                                        onDismissRequest = { unsupportedLinkAlertState.value = null },
+                                        title = {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Warning,
+                                                    contentDescription = null,
+                                                    tint = WarningYellow,
+                                                    modifier = Modifier.size(22.dp)
+                                                )
+                                                Text(
+                                                    text = "Link Not Supported",
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = colors.textPrimary,
+                                                    fontSize = 17.sp
+                                                )
+                                            }
+                                        },
+                                        text = {
+                                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                                Text(
+                                                    text = "Reel Library currently only supports Instagram Reels. Links from other platforms (such as YouTube, TikTok, or web pages) cannot be transcribed or summarized.",
+                                                    color = colors.textSecondary,
+                                                    fontSize = 13.5.sp,
+                                                    lineHeight = 20.sp
+                                                )
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = colors.pillBg,
+                                                    border = androidx.compose.foundation.BorderStroke(0.6.dp, colors.border),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Text(
+                                                        text = unsupportedLinkAlertUrl ?: "",
+                                                        color = colors.textMuted,
+                                                        fontSize = 11.5.sp,
+                                                        maxLines = 2,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier.padding(8.dp)
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        confirmButton = {
+                                            Button(
+                                                onClick = { unsupportedLinkAlertState.value = null },
+                                                colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                                                shape = RoundedCornerShape(10.dp)
+                                            ) {
+                                                Text("Got it", fontWeight = FontWeight.Bold)
+                                            }
+                                        },
+                                        containerColor = colors.surface,
+                                        shape = RoundedCornerShape(18.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -258,7 +343,28 @@ class MainActivity : ComponentActivity() {
     private fun ingestReelUrl(url: String) {
         val parsed = InstagramUrlParser.parse(url)
         if (parsed == null) {
-            Toast.makeText(this, "Please enter a valid Instagram Reel link", Toast.LENGTH_SHORT).show()
+            val genericUrl = InstagramUrlParser.extractAnyUrl(url) ?: url.trim()
+            if (genericUrl.isNotBlank() && (genericUrl.startsWith("http://") || genericUrl.startsWith("https://"))) {
+                unsupportedLinkAlertState.value = genericUrl
+                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val db = AppDatabase.getInstance(applicationContext)
+                    val dao = db.reelDao()
+                    val hash = genericUrl.hashCode().toString().removePrefix("-")
+                    val existing = dao.findByCanonicalUrl(genericUrl)
+                    if (existing == null) {
+                        val unsupportedReel = ReelEntity(
+                            canonicalUrl = genericUrl,
+                            shortcode = "link_$hash",
+                            title = "Unsupported Link",
+                            status = IngestionStatus.NOT_SUPPORTED,
+                            errorMessage = "Unsupported link: Reel Library only supports Instagram Reels."
+                        )
+                        dao.insert(unsupportedReel)
+                    }
+                }
+            } else {
+                Toast.makeText(this, "Please enter a valid Instagram Reel link", Toast.LENGTH_SHORT).show()
+            }
             return
         }
 

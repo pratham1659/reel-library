@@ -109,6 +109,7 @@ enum class DrawerFilter {
     READY,
     AUDIO_UNAVAILABLE,
     PROCESSING,
+    API_NOT_SET,
     FAILED,
     NOTES
 }
@@ -117,6 +118,30 @@ enum class DrawerSortOrder {
     NEWEST,
     OLDEST,
     TITLE
+}
+
+fun isApiMissingForReel(reel: ReelEntity): Boolean {
+    val msg = reel.errorMessage?.lowercase() ?: ""
+    return reel.status == IngestionStatus.FAILED && (
+        msg.contains("api key") ||
+        msg.contains("api is not") ||
+        msg.contains("api not configured") ||
+        msg.contains("key is missing") ||
+        msg.contains("missing api") ||
+        msg.contains("key not configured") ||
+        msg.contains("no api key") ||
+        msg.contains("api key missing")
+    )
+}
+
+fun isUnsupportedLinkForReel(reel: ReelEntity): Boolean {
+    if (reel.status == IngestionStatus.NOT_SUPPORTED && !reel.canonicalUrl.contains("instagram.com")) {
+        return true
+    }
+    if (reel.errorMessage?.contains("unsupported link", ignoreCase = true) == true) {
+        return true
+    }
+    return false
 }
 
 @Composable
@@ -140,6 +165,7 @@ fun KnowledgeDrawerContent(
 
     // Counts for filters
     val totalCount = reels.size
+
     val readyCount = remember(reels) { reels.count { it.status == IngestionStatus.COMPLETED && com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(it.transcript) } }
     val audioUnavailableCount = remember(reels) {
         reels.count {
@@ -154,7 +180,8 @@ fun KnowledgeDrawerContent(
             it.status != IngestionStatus.NOT_SUPPORTED
         }
     }
-    val failedCount = remember(reels) { reels.count { it.status == IngestionStatus.FAILED } }
+    val apiNotSetCount = remember(reels) { reels.count { isApiMissingForReel(it) } }
+    val failedCount = remember(reels) { reels.count { it.status == IngestionStatus.FAILED && !isApiMissingForReel(it) } }
     val notesCount = remember(reels) { reels.count { !it.userNotes.isNullOrBlank() } }
 
     // Colors according to theme
@@ -192,7 +219,8 @@ fun KnowledgeDrawerContent(
                 it.status != IngestionStatus.FAILED &&
                 it.status != IngestionStatus.NOT_SUPPORTED
             }
-            DrawerFilter.FAILED -> list.filter { it.status == IngestionStatus.FAILED }
+            DrawerFilter.API_NOT_SET -> list.filter { isApiMissingForReel(it) }
+            DrawerFilter.FAILED -> list.filter { it.status == IngestionStatus.FAILED && !isApiMissingForReel(it) }
             DrawerFilter.NOTES -> list.filter { !it.userNotes.isNullOrBlank() }
         }
 
@@ -396,6 +424,13 @@ fun KnowledgeDrawerContent(
                             selected = selectedFilter == DrawerFilter.PROCESSING,
                             isDark = isDarkTheme,
                             onClick = { selectedFilter = DrawerFilter.PROCESSING }
+                        )
+                        DrawerFilterChip(
+                            label = "API Not Set",
+                            count = apiNotSetCount,
+                            selected = selectedFilter == DrawerFilter.API_NOT_SET,
+                            isDark = isDarkTheme,
+                            onClick = { selectedFilter = DrawerFilter.API_NOT_SET }
                         )
                         DrawerFilterChip(
                             label = "Failed",
@@ -855,9 +890,13 @@ private fun DrawerReelCard(
             }
 
             // Status indicator dot
-            val isAudioUnavailable = reel.status == IngestionStatus.NOT_SUPPORTED ||
-                (reel.status == IngestionStatus.COMPLETED && !com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(reel.transcript))
+            val isUnsupported = isUnsupportedLinkForReel(reel)
+            val isAudioUnavailable = !isUnsupported && (reel.status == IngestionStatus.NOT_SUPPORTED ||
+                (reel.status == IngestionStatus.COMPLETED && !com.reelrecall.app.engine.Transcripts.hasSpokenTranscript(reel.transcript)))
+            val isApiMissing = !isUnsupported && isApiMissingForReel(reel)
             val dotColor = when {
+                isUnsupported -> Color(0xFFFB923C) // Orange for Unsupported Link
+                isApiMissing -> Color(0xFFFBBF24) // Amber for API Not Set
                 reel.status == IngestionStatus.FAILED -> StatusError
                 isAudioUnavailable -> Color(0xFFFBBF24)
                 reel.status == IngestionStatus.COMPLETED -> StatusReady
