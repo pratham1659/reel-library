@@ -1,0 +1,108 @@
+name: Build & Release Signed APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release Artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configure Release Keystore
+        id: setup-keystore
+        run: |
+          mkdir -p "$RUNNER_TEMP/keystore"
+          KEYSTORE_FILE="$RUNNER_TEMP/keystore/release.keystore"
+
+          if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+            echo "Using base64-encoded release keystore from GitHub Secrets..."
+            echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > "$KEYSTORE_FILE"
+            echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS || secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD || secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+          elif [ -f "release.keystore" ]; then
+            echo "Using repository release.keystore..."
+            echo "KEYSTORE_PATH=$(pwd)/release.keystore" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD || secrets.KEYSTORE_PASSWORD || 'android' }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS || secrets.KEY_ALIAS || 'reellibrary' }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD || secrets.KEY_PASSWORD || 'android' }}" >> $GITHUB_ENV
+          else
+            echo "Generating automated fallback keystore for reproducible public fork builds..."
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE_FILE" \
+              -alias "reellibrary" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass "reellibrary_pass" \
+              -keypass "reellibrary_pass" \
+              -dname "CN=Reel Library, OU=Mobile, O=OpenSource, L=Global, S=Global, C=US"
+            echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=reellibrary_pass" >> $GITHUB_ENV
+            echo "KEY_ALIAS=reellibrary" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=reellibrary_pass" >> $GITHUB_ENV
+          fi
+
+      - name: Grant Execute Permission to Gradle
+        run: chmod +x gradlew
+
+      - name: Run Unit Tests
+        run: ./gradlew test
+
+      - name: Assemble Release APK
+        run: ./gradlew assembleRelease
+
+      - name: Compute SHA-256 Checksum
+        id: checksum
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ]; then
+            echo "Error: Release APK was not found in outputs directory."
+            exit 1
+          fi
+
+          APK_DIR=$(dirname "$APK_PATH")
+          APK_NAME=$(basename "$APK_PATH")
+          SHA_FILE="${APK_PATH}.sha256"
+
+          echo "Found APK: $APK_PATH"
+          cd "$APK_DIR"
+          sha256sum "$APK_NAME" > "$(basename "$SHA_FILE")"
+          cat "$(basename "$SHA_FILE")"
+
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+          echo "SHA_FILE=$SHA_FILE" >> $GITHUB_ENV
+
+      - name: Upload Artifacts to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ${{ env.APK_PATH }}
+            ${{ env.SHA_FILE }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false

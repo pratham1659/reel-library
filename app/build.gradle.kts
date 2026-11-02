@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.reelrecall.app"
+    namespace = "com.reel_library.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.reelrecall.app"
+        applicationId = "com.reel_library.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 6
@@ -50,8 +50,15 @@ android {
                     val rawPath = keystoreProperties.getProperty("storeFile").removePrefix("../")
                     rootProject.file(rawPath)
                 }
+                !System.getenv("KEYSTORE_PATH").isNullOrBlank() -> {
+                    val envPath = System.getenv("KEYSTORE_PATH")!!
+                    val file = File(envPath)
+                    if (file.isAbsolute) file else rootProject.file(envPath)
+                }
                 !System.getenv("RELEASE_STORE_FILE").isNullOrBlank() -> {
-                    rootProject.file(System.getenv("RELEASE_STORE_FILE")!!)
+                    val envPath = System.getenv("RELEASE_STORE_FILE")!!
+                    val file = File(envPath)
+                    if (file.isAbsolute) file else rootProject.file(envPath)
                 }
                 rootProject.file("release.keystore").exists() -> {
                     rootProject.file("release.keystore")
@@ -60,16 +67,16 @@ android {
             }
 
             val resolvedStorePassword = keystoreProperties.getProperty("storePassword")
-                ?: System.getenv("RELEASE_STORE_PASSWORD")
                 ?: System.getenv("KEYSTORE_PASSWORD")
+                ?: System.getenv("RELEASE_STORE_PASSWORD")
 
             val resolvedKeyAlias = keystoreProperties.getProperty("keyAlias")
-                ?: System.getenv("RELEASE_KEY_ALIAS")
                 ?: System.getenv("KEY_ALIAS")
+                ?: System.getenv("RELEASE_KEY_ALIAS")
 
             val resolvedKeyPassword = keystoreProperties.getProperty("keyPassword")
-                ?: System.getenv("RELEASE_KEY_PASSWORD")
                 ?: System.getenv("KEY_PASSWORD")
+                ?: System.getenv("RELEASE_KEY_PASSWORD")
 
             if (resolvedStoreFile != null && resolvedStoreFile.exists() &&
                 !resolvedStorePassword.isNullOrBlank() &&
@@ -80,10 +87,14 @@ android {
                 storePassword = resolvedStorePassword
                 keyAlias = resolvedKeyAlias
                 keyPassword = resolvedKeyPassword
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = false
             } else if (isReleaseTaskRequested) {
                 throw GradleException(
                     "Production release signing failure: Production keystore and credentials are required for Release builds. " +
-                    "Configure keystore.properties or environment variables (RELEASE_STORE_FILE, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD). " +
+                    "Configure keystore.properties or environment variables (KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD). " +
                     "Silent fallback to debug signing is strictly disallowed."
                 )
             } else {
