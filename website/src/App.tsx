@@ -6,6 +6,7 @@ import { DeviceMockup } from './components/DeviceMockup'
 import { BentoFeatures } from './components/BentoFeatures'
 import { HowItWorks } from './components/HowItWorks'
 import { ReleaseNotes } from './components/ReleaseNotes'
+import { SecuritySection } from './components/SecuritySection'
 import { ComparisonTable } from './components/ComparisonTable'
 import { FaqSection } from './components/FaqSection'
 import { DownloadCta } from './components/DownloadCta'
@@ -35,6 +36,7 @@ export const App: React.FC = () => {
           <BentoFeatures />
           <HowItWorks />
           <ReleaseNotes />
+          <SecuritySection />
           <ComparisonTable />
           <FaqSection />
           <DownloadCta />

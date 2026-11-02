@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.reel_library.app.ui.theme.BrandRoseEnd
@@ -129,7 +130,8 @@ fun PrivacyPolicyScreen(
                     fontSize = 22.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = colors.textPrimary,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -139,7 +141,8 @@ fun PrivacyPolicyScreen(
                     fontSize = 13.5.sp,
                     color = colors.accent,
                     fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -149,7 +152,10 @@ fun PrivacyPolicyScreen(
                     fontSize = 12.5.sp,
                     color = colors.textSecondary,
                     textAlign = TextAlign.Center,
-                    lineHeight = 18.sp
+                    lineHeight = 18.sp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
                 )
 
                 Spacer(modifier = Modifier.height(22.dp))
@@ -218,7 +224,7 @@ fun PrivacyPolicyScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(28.dp))
             }
 
             // BOTTOM ACTION BAR: AGREEMENT CHECKBOX & ENTER BUTTON
@@ -234,24 +240,25 @@ fun PrivacyPolicyScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { hasAgreed = !hasAgreed }
-                        .padding(vertical = 4.dp),
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
                         checked = hasAgreed,
                         onCheckedChange = { hasAgreed = it },
                         colors = CheckboxDefaults.colors(
-                            checkedColor = colors.accent,
+                            checkedColor = BrandRoseStart,
                             uncheckedColor = colors.textMuted,
                             checkmarkColor = Color.White
                         )
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "I have read and agree to the Privacy Policy and local vault data storage terms.",
+                        text = "I have read and agree to the Privacy Policy and terms.",
                         fontSize = 12.sp,
                         color = colors.textPrimary,
-                        lineHeight = 16.sp
+                        lineHeight = 16.sp,
+                        modifier = Modifier.weight(1f)
                     )
                 }
 
@@ -264,7 +271,10 @@ fun PrivacyPolicyScreen(
                             onAccept()
                         }
                     },
-                    colors = colors,
+                    colors = if (hasAgreed) colors.copy(
+                        border = BrandRoseStart.copy(alpha = 0.8f),
+                        highlight = BrandRoseStart.copy(alpha = 0.4f)
+                    ) else colors,
                     enabled = hasAgreed,
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
@@ -285,7 +295,7 @@ fun PrivacyPolicyScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
-                            tint = if (hasAgreed) Color.White else colors.textMuted,
+                            tint = if (hasAgreed) BrandRoseStart else colors.textMuted,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -294,9 +304,13 @@ fun PrivacyPolicyScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Acceptance is required to initialize your encrypted local vault.",
+                    text = "Required to initialize your local vault.",
                     fontSize = 11.sp,
-                    color = colors.textMuted
+                    color = colors.textMuted,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -326,12 +340,12 @@ private fun PrivacyCommitmentCard(
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(38.dp)
                     .clip(CircleShape)
                     .background(colors.accent.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
@@ -344,19 +358,23 @@ private fun PrivacyCommitmentCard(
                 )
             }
 
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
                 Text(
                     text = title,
                     fontSize = 13.5.sp,
                     fontWeight = FontWeight.Bold,
-                    color = colors.textPrimary
+                    color = colors.textPrimary,
+                    textAlign = TextAlign.Start
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = description,
                     fontSize = 12.sp,
                     color = colors.textSecondary,
-                    lineHeight = 17.sp
+                    lineHeight = 17.sp,
+                    textAlign = TextAlign.Start
                 )
             }
         }
@@ -414,37 +432,44 @@ private fun FullPrivacyPolicyDialog(
             ) {
                 PolicySection(
                     title = "1. Zero Phone Access Guarantee",
-                    content = "Reel Library does not seek, request, or access any sensitive hardware permissions on your phone. This includes contacts, photos/media storage, camera, audio microphone, SMS, call logs, and GPS location. Reel Library processes data solely when you explicitly share an Instagram Reel URL via Android's native share menu."
+                    content = "Reel Library does not seek, request, or access any sensitive hardware permissions on your phone. This includes contacts, photos/media storage, camera, audio microphone, SMS, call logs, and GPS location. Reel Library processes data solely when you explicitly share an Instagram Reel URL via Android's native share menu.",
+                    colors = colors
                 )
 
                 PolicySection(
                     title = "2. 100% Local Hardware-Backed Vault",
-                    content = "Every reel link, title, transcript, note, and takeaway is stored strictly inside your phone's local Room SQLite database. Private credentials, such as AI API keys, are protected with hardware-level Android Keystore encryption (AES-256-GCM / MasterKey) and are never uploaded to any proprietary Reel Library server."
+                    content = "Every reel link, title, transcript, note, and takeaway is stored strictly inside your phone's local Room SQLite database. Private credentials, such as AI API keys, are protected with hardware-level Android Keystore encryption (AES-256-GCM / MasterKey) and are never uploaded to any proprietary Reel Library server.",
+                    colors = colors
                 )
 
                 PolicySection(
                     title = "3. AI Inference & BYOK Direct Connect",
-                    content = "Reel Library follows a Bring Your Own Key (BYOK) architecture. When running AI summarization or transcription, requests travel directly from your phone to your chosen provider's official API endpoint (Groq, OpenAI, Anthropic Claude, or custom OpenAI-compatible endpoints) over TLS/HTTPS. We operate zero intermediary analytics or telemetry relay proxies."
+                    content = "Reel Library follows a Bring Your Own Key (BYOK) architecture. When running AI summarization or transcription, requests travel directly from your phone to your chosen provider's official API endpoint (Groq, OpenAI, Anthropic Claude, or custom OpenAI-compatible endpoints) over TLS/HTTPS. We operate zero intermediary analytics or telemetry relay proxies.",
+                    colors = colors
                 )
 
                 PolicySection(
                     title = "4. Optional Cloud Backups",
-                    content = "Cloud backup is completely optional and disabled by default. If you choose to enable cloud backups, Reel Library connects directly to your personal Google Drive with restricted app-specific folder access (drive.file scope). No third party or developer has access to your backup archives."
+                    content = "Cloud backup is completely optional and disabled by default. If you choose to enable cloud backups, Reel Library connects directly to your personal Google Drive with restricted app-specific folder access (drive.file scope). No third party or developer has access to your backup archives.",
+                    colors = colors
                 )
 
                 PolicySection(
                     title = "5. No Advertisements, Tracking, or Profiling",
-                    content = "Reel Library is completely ad-free and contains zero commercial tracking SDKs, device fingerprinting, or user behavioral profiling libraries. We never sell, monetize, or harvest your personal content or indexed Reels."
+                    content = "Reel Library is completely ad-free and contains zero commercial tracking SDKs, device fingerprinting, or user behavioral profiling libraries. We never sell, monetize, or harvest your personal content or indexed Reels.",
+                    colors = colors
                 )
 
                 PolicySection(
                     title = "6. Data Ownership, Portability & Deletion",
-                    content = "You maintain full ownership of all data in your vault. You may export your entire vault as JSON or ZIP archives at any time. You can also delete individual reels or purge the entire vault instantly from Settings."
+                    content = "You maintain full ownership of all data in your vault. You may export your entire vault as JSON or ZIP archives at any time. You can also delete individual reels or purge the entire vault instantly from Settings.",
+                    colors = colors
                 )
 
                 PolicySection(
                     title = "7. Open Source & License",
-                    content = "Reel Library is distributed under the open-source MIT License. Crafted with Pratham Builds. For inquiries or audits, users can review the codebase directly."
+                    content = "Reel Library is distributed under the open-source MIT License. Crafted with Pratham Builds. For inquiries or audits, users can review the codebase directly.",
+                    colors = colors
                 )
             }
         },
@@ -457,19 +482,23 @@ private fun FullPrivacyPolicyDialog(
 }
 
 @Composable
-private fun PolicySection(title: String, content: String) {
+private fun PolicySection(
+    title: String,
+    content: String,
+    colors: NeumorphicColors
+) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text(
             text = title,
             fontSize = 13.5.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = colors.textPrimary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = content,
             fontSize = 12.sp,
-            color = TextSecondary,
+            color = colors.textSecondary,
             lineHeight = 17.sp
         )
     }

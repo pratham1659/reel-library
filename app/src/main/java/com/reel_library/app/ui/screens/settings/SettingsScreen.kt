@@ -1090,12 +1090,16 @@ private fun SoftwareUpdateDialog(
                             is UpdateDialogState.Downloaded -> {
                                 NeumorphicButton(
                                     onClick = {
-                                        val installed = UpdateManager.installApk(context, state.apkFile)
-                                        if (!installed && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
+                                        val installed = UpdateManager.installApk(
+                                            context = context,
+                                            apkFile = state.apkFile,
+                                            fallbackUrl = state.updateInfo?.apkUrl
+                                        )
+                                        if (!installed) {
                                             android.widget.Toast.makeText(
                                                 context,
-                                                "Please allow 'Install unknown apps' to update Reel Library",
-                                                android.widget.Toast.LENGTH_LONG
+                                                "Opening GitHub Releases to download update",
+                                                android.widget.Toast.LENGTH_SHORT
                                             ).show()
                                         }
                                     },

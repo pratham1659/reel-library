@@ -2025,25 +2025,25 @@ fun EmptyVaultView(
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
+                .height(50.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                horizontalArrangement = Arrangement.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Tune,
                     contentDescription = null,
                     tint = colors.accent,
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (isApiKeyConfigured) "Manage Models & API" else "Configure Groq API in Settings",
                     fontWeight = FontWeight.Bold,
                     color = colors.textPrimary,
-                    fontSize = 14.5.sp
+                    fontSize = 13.5.sp,
+                    maxLines = 1
                 )
             }
         }
@@ -2058,14 +2058,14 @@ fun EmptyVaultView(
             border = androidx.compose.foundation.BorderStroke(0.8.dp, colors.border),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(44.dp)
+                .height(42.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 12.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.OpenInNew,
@@ -2075,13 +2075,17 @@ fun EmptyVaultView(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Get Free API Key at console.groq.com",
-                    fontSize = 12.5.sp,
+                    text = "Get Free API Key (console.groq.com)",
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = CyanAccent
+                    color = CyanAccent,
+                    maxLines = 1
                 )
             }
         }
+
+        // Bottom spacer to ensure complete clearance above Floating Action Button / Dock
+        Spacer(modifier = Modifier.height(96.dp))
     }
 }
 

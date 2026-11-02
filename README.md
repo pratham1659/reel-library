@@ -1,6 +1,6 @@
 # Reel Library 📱⚡
 
-[![Release](https://img.shields.io/badge/Release-v1.2.4-orange.svg)](https://github.com/pratham1659/reel-library/releases/tag/v1.2.4)
+[![Release](https://img.shields.io/badge/Release-v1.2.5-orange.svg)](https://github.com/pratham1659/reel-library/releases/tag/v1.2.5)
 [![Android](https://img.shields.io/badge/Platform-Android_8.0+_(API_26--36)-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
 [![iOS](https://img.shields.io/badge/Platform-iOS_17.0+-000000?logo=apple&logoColor=white)](https://developer.apple.com/ios/)
 [![iPadOS](https://img.shields.io/badge/Platform-iPadOS_17.0+-000000?logo=apple&logoColor=white)](https://developer.apple.com/ipados/)
@@ -12,41 +12,123 @@
 [![Security](https://img.shields.io/badge/Security-Keychain_%2B_Keystore-10B981)](https://developer.apple.com/documentation/security/keychain_services)
 [![License: MIT](https://img.shields.io/badge/License-MIT-pink.svg)](LICENSE)
 
-**Reel Library** is a multi-platform native mobile intelligence vault (**Android & iOS/iPadOS**) that transforms fleeting Instagram Reels into structured, searchable knowledge assets. Captured seamlessly via the system share sheet, each reel is ingested in the background, its audio transcribed into clean Hinglish/English text, and synthesized into actionable executive briefings using hybrid on-device and ultra-low-latency cloud intelligence.
+A modern, open-source native Android & iOS mobile application built with Kotlin, Jetpack Compose, Swift 6, and SwiftUI. **Reel Library** transforms fleeting Instagram Reels into structured, searchable knowledge assets. Ingested seamlessly via the system share sheet, each reel is transcribed locally or via ultra-fast cloud LPUs, synthesized into actionable executive briefings, and stored securely in your private offline vault.
 
 ---
 
-## 🌟 Key Highlights
+## 🚀 Download & Installation
 
-### ⚡ Multi-Provider Cloud & On-Device Intelligence Architecture
+Get the latest signed APK directly from the [Releases](https://github.com/pratham1659/reel-library/releases) tab.
+
+- **Direct Download**: [`ReelLibrary-release-v1.2.5.apk`](https://github.com/pratham1659/reel-library/releases/download/v1.2.5/ReelLibrary-release-v1.2.5.apk)
+- **Official Website**: [https://reel-library.web.app](https://reel-library.web.app)
+
+### Verification (SHA-256 Checksum)
+
+To ensure the downloaded APK has not been tampered with and matches the official build:
+
+```bash
+sha256sum ReelLibrary-release-v1.2.5.apk
+```
+
+**Official Release v1.2.5 SHA-256 Hash**:
+```text
+17225c02bff6f11841734accf55ae5c6941a6c5c6878b43389cce6a71f2420c7  ReelLibrary-release-v1.2.5.apk
+```
+
+Every GitHub release also includes an attached `SHA256SUMS.txt` file so you can verify integrity automatically:
+```bash
+sha256sum -c SHA256SUMS.txt
+```
+
+---
+
+## 🛡️ Permissions & Security Transparency
+
+This application is distributed independently outside the Google Play Store. To maintain full user trust, every declared permission is strictly scoped:
+
+| Permission | Purpose | Why It's Needed |
+| :--- | :--- | :--- |
+| `INTERNET` | API requests | Syncing data with external endpoints (Groq LPU, OpenAI, Claude, or custom self-hosted endpoints) and extracting reel audio streams. |
+| `POST_NOTIFICATIONS` | Local notifications | Alerting users when background audio transcription and executive briefing generation are complete. |
+| `ACCESS_NETWORK_STATE` | Network monitoring | Checking whether Wi-Fi or cellular data is active before triggering background network jobs or Google Drive backups. |
+
+- **Zero Analytics / Trackers**: No user telemetry, ad frameworks, crash loggers, or third-party trackers are bundled.
+- **On-Device First**: All processing, transcripts, SQLite database, and stored credentials remain local on your device.
+- **Zero High-Heuristic Installer Permissions**: `QUERY_ALL_PACKAGES`, `REQUEST_INSTALL_PACKAGES`, `SYSTEM_ALERT_WINDOW`, and `BIND_ACCESSIBILITY_SERVICE` are completely absent. In-app update checks redirect directly to GitHub Releases in the browser to eliminate heuristic flags.
+- **Targeted `<queries>` Intent Filters**: Package queries are strictly constrained to `com.instagram.android` (for 1-tap reel deep linking), HTTPS web browsers, and mail clients.
+- **Strict TLS Only (`usesCleartextTraffic="false"`)**: Enforced at the OS layer via `network_security_config.xml`. All unencrypted HTTP traffic is rejected.
+- **Stripped Production Bytecode**: All `android.util.Log` calls (v, d, i, w, e, println) are completely stripped in R8 release builds.
+- **Triple Signature Scheme**: Signed with APK Signature Schemes **v1, v2, and v3** for maximum compatibility and integrity across Android 8.0 through Android 15.
+
+---
+
+### ⚠️ Notes on Google Play Protect
+
+Because this app is self-signed and distributed directly via GitHub, Android may display an **"Unrecognized app"** or **"Play Protect"** prompt during first install. This is standard behavior for sideloaded binaries signed with an independent developer certificate.
+
+**To proceed:**
+1. Tap **More details**.
+2. Select **Install anyway**.
+
+---
+
+## 🛠️ Building from Source
+
+### Clone the Repository
+```bash
+git clone https://github.com/pratham1659/reel-library.git
+cd reel-library
+```
+
+### Android Build
+1. Open the project in **Android Studio** (Ladybug 2024.2.1 or newer) with **JDK 17 or 21**.
+2. Run unit tests:
+   ```bash
+   ./gradlew testDebugUnitTest
+   ```
+3. Build debug APK:
+   ```bash
+   ./gradlew assembleDebug
+   ```
+4. Build signed release APK:
+   ```bash
+   ./gradlew assembleRelease
+   ```
+   The compiled APK will be output to `app/build/outputs/apk/release/ReelLibrary-release-v1.2.5.apk`.
+
+### iOS & iPadOS Build
+1. **Prerequisites**: macOS 14.0+, Xcode 15.0+ or 16.0+ (Swift 6.0), and XcodeGen (`brew install xcodegen`).
+2. Generate Xcode project & run tests:
+   ```bash
+   cd ios
+   xcodegen generate
+   xcodebuild test -scheme ReelLibraryTests -destination 'platform=iOS Simulator,name=iPhone 17'
+   ```
+3. Open in Xcode to install on connected devices:
+   ```bash
+   open ios/ReelLibrary.xcodeproj
+   ```
+
+---
+
+## 🌟 Key Highlights & Architecture
+
+### ⚡ Multi-Provider Cloud & On-Device Intelligence
 - **Multi-Cloud AI Provider Selection**:
   - **Groq Cloud (LPU)**: Sub-second transcription via **Whisper Large v3 Turbo** and summarization via **Llama 3.3 70B** and **Qwen 2.5**.
   - **OpenAI**: Multimodal analysis and synthesis via **GPT-4o / GPT-4o-mini** and high-fidelity speech recognition via **Whisper-1**.
-  - **Anthropic Claude**: Deep executive analysis via **Claude 3.5 Sonnet / Claude 3.5 Haiku** paired with hybrid audio transcription (OpenAI/Groq/WhisperKit).
+  - **Anthropic Claude**: Deep executive analysis via **Claude 3.5 Sonnet / Claude 3.5 Haiku** paired with hybrid audio transcription.
   - **Custom / OpenAI-Compatible**: Plug in any self-hosted or proxy endpoint including **OpenRouter**, **DeepSeek**, **Together AI**, **Ollama**, or **vLLM**.
 - **Local On-Device Mode**:
-  - **iOS/iPadOS**: 100% offline, privacy-preserving speech transcription powered by **WhisperKit** running on the Apple Neural Engine (ANE) and local quantized models.
+  - **iOS/iPadOS**: 100% offline, privacy-preserving speech transcription powered by **WhisperKit** running on the Apple Neural Engine (ANE).
   - **Android**: 100% offline LLM inference using **MediaPipe Tasks GenAI** (quantized Gemma 2B) and local whisper weights.
-- **Auto-Hybrid Dispatcher**:
-  - Automatically assesses network availability (via `NWPathMonitor` on iOS / `ConnectivityManager` on Android), model weight availability, and user preferences to route processing.
+- **Auto-Hybrid Dispatcher**: Automatically assesses network availability, model weight availability, and user preferences to route processing.
 
 ### 📱 Universal iPhone & iPad Native Experience
 - **Adaptive Multi-Column Grid**: Smoothly scales from 2 columns on iPhone up to 4–6 columns on iPad Pro / iPad Air.
 - **iPadOS Multitasking**: Full native support for Split View, Slide Over, and Stage Manager window resizing.
 - **1-Tap Share Sheet Extension**: Native Share Sheet integration (`ReelLibraryShare`) that ingests reel metadata into local SQLite in `< 200ms` without exceeding iOS sandbox limits.
-
-### 📊 Real-Time Cloud Telemetry & Zero Mock Data
-- **Live Latency & Network Ping**: Precision round-trip latency measured and displayed down to the millisecond (e.g. `⚡ 165ms • Cloud`).
-- **Granular Token Telemetry**: Real-time tracking of `prompt_tokens`, `completion_tokens`, and audio duration parsed directly from provider responses.
-- **Color-Coded Status Diagnostics**: Live verification badges for HTTP `200 OK`, `401 Unauthorized`, and `429 Rate Limited`.
-
-### 🛡️ Pre-Release Security & Privacy Hardening
-- **Hardware-Secured Key Vaults**:
-  - **iOS**: Apple **Keychain Services** (`kSecClassGenericPassword`) backed by the **Secure Enclave**.
-  - **Android**: Hardware-backed Android Keystore (`MasterKeys`) with zero plaintext fallback.
-- **Prompt Injection Fencing**: User captions and audio transcripts are isolated inside `<spoken_transcript>` and `<post_caption>` XML blocks with strict boundary truncation (12,000 char transcript / 4,000 char caption) and anti-tag breakout neutralization.
-- **Network Audio Size Guard**: Strict 25 MB boundary guard (`MAX_GROQ_AUDIO_BYTES = 25 * 1024 * 1024`) validated before network payload serialization.
-- **Strict HTTPS & Domain Whitelisting**: Network extraction is restricted strictly to verified `https://*.instagram.com` domains, preventing SSRF or malicious redirects.
 
 ### 🎨 Obsidian Neumorphic UI
 - **Design System**: Hand-crafted Obsidian Dark and Obsidian Light themes with tactile depth elevation and high-contrast typography.
@@ -60,35 +142,35 @@
 ```mermaid
 flowchart TD
     subgraph Capture Layer
-        A1[Instagram Reel on Android] -->|Tap Share Sheet| B1[ShareReceiverActivity]
-        A2[Instagram Reel on iOS / iPadOS] -->|Tap Share Sheet| B2[ReelLibraryShare Extension]
+        A1["Instagram Reel on Android"] -->|Tap Share Sheet| B1["ShareReceiverActivity"]
+        A2["Instagram Reel on iOS / iPadOS"] -->|Tap Share Sheet| B2["ReelLibraryShare Extension"]
     end
     
-    B1 -->|Queue in Room DB| C1[Android ReelIngestWorker]
-    B2 -->|Queue in SQLite DB| C2[iOS Ingestion Pipeline]
+    B1 -->|Queue in Room DB| C1["Android ReelIngestWorker"]
+    B2 -->|Queue in SQLite DB| C2["iOS Ingestion Pipeline"]
     
     subgraph Engine Dispatcher
-        C1 & C2 -->|Extract Audio Stream| D[Audio Extractor]
-        D --> E{Engine Mode}
-        E -->|Cloud-Only / Auto-Hybrid| F[Groq Whisper Cloud LPU]
-        E -->|Local-Only / Offline| G[On-Device WhisperKit / MediaPipe]
-        F --> H[Hinglish Roman Script Transcript]
-        G --> I[Offline Raw Transcript]
-        H & I --> J[Groq LLM Summarizer Chain]
+        C1 & C2 -->|Extract Audio Stream| D["Audio Extractor"]
+        D --> E{"Engine Mode"}
+        E -->|Cloud-Only / Auto-Hybrid| F["Groq Whisper Cloud LPU"]
+        E -->|Local-Only / Offline| G["On-Device WhisperKit / MediaPipe"]
+        F --> H["Hinglish / Roman Script Transcript"]
+        G --> I["Offline Raw Transcript"]
+        H & I --> J["Groq / Claude / OpenAI LLM Summarizer"]
     end
     
-    J -->|Extract Title, Briefing, Takeaways, Tags| K[(SQLite Local Vault + FTS)]
-    K --> L[Local System Notification & Obsidian UI]
+    J -->|Extract Title, Briefing, Takeaways, Tags| K[("SQLite Local Vault + FTS")]
+    K --> L["Local System Notification & Obsidian UI"]
 ```
 
 ---
 
 ## 📦 Production Release Artifacts
 
-| Platform | Target Artifact | Location | Packaging Scheme |
+| Platform | Target Artifact | Location | Packaging & Signing Scheme |
 | :--- | :--- | :--- | :--- |
-| **Android** | `ReelLibrary-release-v1.2.4.apk` | GitHub release v1.2.4 | APK Signature Scheme v2 |
-| **iOS / iPadOS** | `ReelLibrary-v1.2.4.ipa` | GitHub release v1.2.4 | Apple Development (registered devices) |
+| **Android** | `ReelLibrary-release-v1.2.5.apk` | GitHub release v1.2.5 | APK Signature Scheme v1 + v2 + v3 |
+| **iOS / iPadOS** | `ReelLibrary-v1.2.5.ipa` | GitHub release v1.2.5 | Apple Development (registered devices) |
 
 ---
 
@@ -107,68 +189,10 @@ flowchart TD
 
 ---
 
-## 🚀 Getting Started for Developers
-
-### Android Build Instructions
-1. **Prerequisites**: Android Studio Ladybug (2024.2.1+), JDK 21, Android SDK API 36.
-2. **Run Unit Tests**:
-   ```bash
-   ./gradlew testDebugUnitTest
-   ```
-3. **Assemble Debug Build**:
-   ```bash
-   ./gradlew assembleDebug
-   adb install -r app/build/outputs/apk/debug/app-debug.apk
-   ```
-
-### iOS & iPadOS Build Instructions
-1. **Prerequisites**: macOS 14.0+ (Sonoma or Sequoia), Xcode 15.0+ or 16.0+ (Swift 6.0), XcodeGen (`brew install xcodegen`).
-2. **Generate Xcode Project & Run Tests**:
-   ```bash
-   cd ios
-   xcodegen generate
-   xcodebuild test -scheme ReelLibraryTests -destination 'platform=iOS Simulator,name=iPhone 17'
-   ```
-3. **Install to Connected iPad / iPhone**:
-   ```bash
-   open ios/ReelLibrary.xcodeproj
-   # Or via command line:
-   xcodebuild build -project ios/ReelLibrary.xcodeproj -scheme ReelLibrary -destination 'id=<DEVICE_UDID>'
-   ```
-
----
-
-## 🔒 Permissions & Privacy Policy
-
-Reel Library follows a strict **zero-telemetry, local-first privacy architecture**. We do not operate tracking servers, sell analytics, or log user activity. Your database, audio transcripts, executive summaries, and search indices remain 100% on your local device.
-
-### Android Permission Transparency
-
-In compliance with open-source security standards and direct GitHub distribution best practices, Reel Library requests only the minimal set of permissions required for core functionality:
-
-| Permission | Protection Level | Purpose & Justification |
-| :--- | :--- | :--- |
-| `android.permission.INTERNET` | Normal | Fetches Instagram reel audio streams/embed metadata and connects directly to your chosen AI provider endpoint (Groq, OpenAI, Anthropic, or self-hosted API) using your personal API key. |
-| `android.permission.ACCESS_NETWORK_STATE` | Normal | Enables the **Auto-Hybrid Dispatcher** to detect whether Wi-Fi or cellular connectivity is active before routing requests or executing scheduled Google Drive backups. |
-| `android.permission.POST_NOTIFICATIONS` | Runtime (API 33+) | Alerts you with a system notification when background transcription and summarization of a shared reel complete. |
-| `android.permission.REQUEST_INSTALL_PACKAGES` | Special | Exclusively powers the **in-app update installer** for users who sideload Reel Library from GitHub Releases. Never triggers silently; requires explicit user confirmation before launching the system package installer. |
-
-### Package Visibility & Anti-Snooping Guard
-- **No `QUERY_ALL_PACKAGES`**: Reel Library explicitly rejects invasive broad package query permissions.
-- **Targeted `<queries>` Intent Filters**: Package visibility is strictly constrained to `com.instagram.android` (for 1-tap reel deep linking), HTTPS web browsers (for viewing documentation and AI provider developer consoles), and mail clients (for user feedback).
-
-### Network & Binary Hardening
-- **Strict TLS Only (`usesCleartextTraffic="false"`)**: Enforced system-wide via `network_security_config.xml`. All plain HTTP traffic is blocked at the OS layer.
-- **Stripped Production Logcat**: All debug, verbose, info, warning, and error logs are stripped from release binaries via R8 optimizer rules, preventing accidental token or URL leakage.
-- **Triple Signature Scheme (v1 + v2 + v3)**: Signed with APK Signature Schemes v1, v2, and v3 to guarantee complete cryptographic integrity and prevent Google Play Protect sideloading false positives.
-- **Hardware-Backed Key Vault**: Cloud API keys are encrypted at rest using AES-256-GCM backed by hardware-backed Android Keystore (`MasterKeys`) on Android and the Apple Secure Enclave Keychain on iOS.
-
----
-
 ## 📄 License
 
-Licensed under the MIT License. See [LICENSE](LICENSE) for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-Crafted with ❤️ by pratham builds
+Made with love & caffeine by **Pratham Studio**

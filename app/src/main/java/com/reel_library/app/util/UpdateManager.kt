@@ -188,50 +188,48 @@ object UpdateManager {
     }
 
     /**
-     * Verifies if the app has permission to install unknown apps (Android 8.0+).
+     * Opens the GitHub release download or releases page directly in the user's browser.
+     * This eliminates any high-heuristic installer permissions (e.g. REQUEST_INSTALL_PACKAGES),
+     * preventing Google Play Protect false-positive flags on sideloaded builds.
      */
-    fun canRequestPackageInstalls(context: Context): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.packageManager.canRequestPackageInstalls()
-        } else {
-            true
+    fun openReleasePage(context: Context, releaseUrl: String? = null) {
+        val targetUrl = releaseUrl ?: "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+        context.startActivity(intent)
     }
 
     /**
-     * Launches unknown source permission settings or starts the package installer intent.
+     * Attempts to open the downloaded APK file via FileProvider, falling back cleanly
+     * to the GitHub Releases web page if direct package launching is restricted.
      */
-    fun installApk(context: Context, apkFile: File): Boolean {
+    fun installApk(context: Context, apkFile: File, fallbackUrl: String? = null): Boolean {
         if (!apkFile.exists() || apkFile.length() == 0L) {
+            openReleasePage(context, fallbackUrl)
             return false
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
-            val manageIntent = Intent(
-                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                Uri.parse("package:${context.packageName}")
-            ).apply {
+        return try {
+            val apkUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                apkFile
+            )
+
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
             }
-            context.startActivity(manageIntent)
-            return false
+
+            context.startActivity(installIntent)
+            true
+        } catch (e: Exception) {
+            openReleasePage(context, fallbackUrl)
+            false
         }
-
-        val apkUri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            apkFile
-        )
-
-        val installIntent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(apkUri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
-        }
-
-        context.startActivity(installIntent)
-        return true
     }
 }
