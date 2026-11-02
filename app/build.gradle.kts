@@ -17,8 +17,8 @@ android {
         applicationId = "com.reel_library.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.2.4"
+        versionCode = 7
+        versionName = "1.2.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -163,7 +163,7 @@ val copyReleaseApk by tasks.registering(Copy::class) {
     from(layout.buildDirectory.dir("outputs/apk/release"))
     include("*.apk")
     into(rootProject.layout.projectDirectory.dir("release"))
-    rename { "ReelLibrary-release-v1.2.4.apk" }
+    rename { "ReelLibrary-release-v1.2.5.apk" }
 }
 
 tasks.matching { it.name == "assembleRelease" }.configureEach {

@@ -16,9 +16,64 @@ export interface ReleaseNote {
 
 export const releaseNotesData: ReleaseNote[] = [
   {
-    version: 'v1.2.4',
+    version: 'v1.2.5',
     date: 'November 2026',
     isLatest: true,
+    title: 'Package Migration to com.reel_library.app, Security Hardening & Zero-Installer Heuristics',
+    summary: 'Official transition to com.reel_library.app, home screen Groq API setup guide with direct settings routing, removal of REQUEST_INSTALL_PACKAGES for zero Play Protect false positives, strict TLS network security, triple APK signature schemes (v1, v2, v3), and SHA-256 integrity verification.',
+    categories: [
+      {
+        category: 'Security & Distribution Hardening',
+        badgeColor: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+        items: [
+          {
+            title: 'Zero-Installer Heuristic (Play Protect Ready)',
+            description: 'Completely removed REQUEST_INSTALL_PACKAGES, delegating software updates safely through GitHub Releases in the user\'s browser to eliminate heuristic warning flags.'
+          },
+          {
+            title: 'Strict TLS Network Security',
+            description: 'Enforced android:usesCleartextTraffic="false" and network_security_config.xml to block all unencrypted HTTP traffic at the OS layer.'
+          },
+          {
+            title: 'Triple APK Signature Schemes (v1 + v2 + v3)',
+            description: 'Simultaneously signs JAR (v1), APK Scheme v2, and APK Scheme v3 for full sideloading verification across Android 7.0 through Android 15.'
+          },
+          {
+            title: 'Automated CI/CD & SHA-256 Checksums',
+            description: 'Releases are compiled through transparent GitHub Actions pipelines with SHA256SUMS.txt published alongside release binaries.'
+          }
+        ]
+      },
+      {
+        category: 'Package Migration & Identity',
+        badgeColor: 'bg-pink-500/10 text-pink-300 border-pink-500/30',
+        items: [
+          {
+            title: 'Official com.reel_library.app Namespace',
+            description: 'Fully migrated application ID, FileProvider authority, database migrations, and secure keys to com.reel_library.app with zero legacy traces.'
+          }
+        ]
+      },
+      {
+        category: 'AI Guidance & Experience',
+        badgeColor: 'bg-blue-500/10 text-blue-300 border-blue-500/30',
+        items: [
+          {
+            title: 'Home Vault Groq API Setup Guide',
+            description: 'Replaced empty state with an actionable step-by-step Groq API setup card, browser console link, and direct routing into Models & API Settings.'
+          },
+          {
+            title: 'API Not Set & Unsupported Link Status Chips',
+            description: 'Added amber "API Not Set" and orange "Not Supported Link" status chips across feeds, drawers, and detail screens with disposable alert dialogs.'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    version: 'v1.2.4',
+    date: 'November 2026',
+    isLatest: false,
     title: 'Privacy Policy Onboarding, Audio Handling, Native Files Export & 16 KB Alignment',
     summary: 'Introduces an onboarding Privacy Policy gate, intelligent handling for copyright-gated audio, native "Save to Files" vault backup export, 16 KB ELF page-alignment for Android 15, and dedicated Knowledge Drawer filters.',
     categories: [

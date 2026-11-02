@@ -18,7 +18,7 @@ export const Navbar: React.FC = () => {
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="font-display font-bold text-sm sm:text-base tracking-tight text-white whitespace-nowrap">Reel Library</span>
               <span className="hidden xs:inline-block text-[9px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-pink-300 border border-pink-500/20">
-                v1.2.4
+                v1.2.5
               </span>
             </div>
           </div>
@@ -30,8 +30,9 @@ export const Navbar: React.FC = () => {
           <a href="#demo" className="hover:text-white transition">Demo</a>
           <a href="#release-notes" className="hover:text-white transition flex items-center gap-1.5">
             <span>Release Notes</span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded bg-pink-500/15 text-pink-300 font-mono">v1.2.4</span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-pink-500/15 text-pink-300 font-mono">v1.2.5</span>
           </a>
+          <a href="#security" className="hover:text-white transition">Security</a>
           <a href="#comparison" className="hover:text-white transition">Comparison</a>
           <a href="#faq" className="hover:text-white transition">FAQ</a>
         </div>
@@ -49,8 +50,8 @@ export const Navbar: React.FC = () => {
           </a>
 
           <a 
-            href="/release/ReelLibrary-release-v1.2.4.apk" 
-            download="ReelLibrary-release-v1.2.4.apk"
+            href="/release/ReelLibrary-release-v1.2.5.apk" 
+            download="ReelLibrary-release-v1.2.5.apk"
             className="inline-flex items-center gap-1.5 sm:gap-2 rounded-lg bg-gradient-to-r from-[#FF5252] via-[#E1306C] to-[#5851DB] px-2.5 xs:px-3 sm:px-4 py-1.5 text-xs font-semibold text-white shadow-glow-sunset transition hover:brightness-110 active:scale-95 whitespace-nowrap"
           >
             <Download className="w-3.5 h-3.5 shrink-0" />
@@ -92,7 +93,14 @@ export const Navbar: React.FC = () => {
             onClick={() => setMobileMenuOpen(false)}
             className="block text-sm font-medium text-neutral-300 hover:text-white py-1"
           >
-            Release Notes (v1.2.4)
+            Release Notes (v1.2.5)
+          </a>
+          <a 
+            href="#security" 
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm font-medium text-neutral-300 hover:text-white py-1"
+          >
+            Security &amp; Trust
           </a>
           <a 
             href="#comparison" 

@@ -37,6 +37,7 @@ export const Footer: React.FC = () => {
             <a href="#features" className="hover:text-white transition py-1">Features</a>
             <a href="#demo" className="hover:text-white transition py-1">Demo</a>
             <a href="#release-notes" className="hover:text-white transition py-1">Release Notes</a>
+            <a href="#security" className="hover:text-white transition py-1">Security</a>
             <a href="#faq" className="hover:text-white transition py-1">FAQ</a>
             <button 
               onClick={() => setIsLicenseOpen(true)} 
@@ -55,9 +56,9 @@ export const Footer: React.FC = () => {
             </a>
           </div>
 
-          {/* Author Branding / Crafted With */}
+          {/* Author Branding / Made With */}
           <div className="flex items-center justify-center gap-1.5 text-neutral-300 text-xs sm:text-sm py-2 px-3.5 rounded-xl bg-white/[0.04] border border-white/[0.08] shadow-sm">
-            <span>crafted with</span>
+            <span>Made with love &amp; caffeine by</span>
             <Heart className="w-3.5 h-3.5 text-pink-500 fill-pink-500 animate-pulse" />
             <a 
               href="https://github.com/pratham1659" 
@@ -65,7 +66,7 @@ export const Footer: React.FC = () => {
               rel="noopener noreferrer" 
               className="font-bold text-pink-400 hover:text-pink-300 transition underline underline-offset-4 decoration-pink-500/40 hover:decoration-pink-400"
             >
-              pratham builds
+              Pratham Studio
             </a>
           </div>
 
