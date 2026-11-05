@@ -100,7 +100,7 @@ jobs:
           echo "SUMS_FILE=$SUMS_FILE" >> $GITHUB_ENV
 
       - name: Upload Artifacts to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
