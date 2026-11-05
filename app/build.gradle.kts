@@ -206,7 +206,7 @@ dependencies {
     implementation("com.google.mediapipe:tasks-genai:0.10.35")
 
     // Google Sign-In & Google Play Services Auth for Google Drive Personal Cloud
-    implementation("com.google.android.gms:play-services-auth:21.3.0")
+    implementation("com.google.android.gms:play-services-auth:22.0.0")
 
     // Unit Testing
     testImplementation(libs.junit)
