@@ -203,7 +203,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     // MediaPipe GenAI for On-Device LLM Inference (0.10.24+ for 16 KB ELF page alignment)
-    implementation("com.google.mediapipe:tasks-genai:0.10.24")
+    implementation("com.google.mediapipe:tasks-genai:0.10.35")
 
     // Google Sign-In & Google Play Services Auth for Google Drive Personal Cloud
     implementation("com.google.android.gms:play-services-auth:21.3.0")
